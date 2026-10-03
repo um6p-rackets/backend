@@ -11,7 +11,9 @@ describe('ClubServiceController', () => {
       providers: [ClubServiceService],
     }).compile();
 
-    clubServiceController = app.get<ClubServiceController>(ClubServiceController);
+    clubServiceController = app.get<ClubServiceController>(
+      ClubServiceController,
+    );
   });
 
   describe('root', () => {
