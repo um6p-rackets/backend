@@ -21,12 +21,32 @@
     "types": [
       "vitest/globals",
       "node"
-    ]
+    ],
+    "paths": {
+      "@app/common": [
+        "./libs/common/src/index.ts"
+      ],
+      "@app/common/*": [
+        "./libs/common/src/*"
+      ],
+      "@app/contracts": [
+        "./libs/contracts/src/index.ts"
+      ],
+      "@app/contracts/*": [
+        "./libs/contracts/src/*"
+      ],
+      "@app/rmq": [
+        "./libs/rmq/src/index.ts"
+      ],
+      "@app/rmq/*": [
+        "./libs/rmq/src/*"
+      ]
+    }
   },
-  "files": [],
+"files": [],
   "references": [
     {
-      "path": "./apps/backend/tsconfig.app.json"
+      "path": "./apps/api-gateway/tsconfig.app.json"
     },
     {
       "path": "./apps/auth-service/tsconfig.app.json"
@@ -36,6 +56,15 @@
     },
     {
       "path": "./apps/notification-service/tsconfig.app.json"
+    },
+    {
+      "path": "./libs/common/tsconfig.lib.json"
+    },
+    {
+      "path": "./libs/contracts/tsconfig.lib.json"
+    },
+    {
+      "path": "./libs/rmq/tsconfig.lib.json"
     }
   ]
 }
