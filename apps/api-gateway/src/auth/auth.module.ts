@@ -1,7 +1,27 @@
 import { Module } from '@nestjs/common';
+import { ClientsModule } from '@nestjs/microservices';
+import { ConfigService } from '@nestjs/config';
+
+import { QUEUES } from '@app/contracts/queues.js';
+import { AUTH_SERVICE } from '@app/contracts';
+import { rmqOptions } from '@app/rmq';
 import { AuthController } from './auth.controller.js';
 
 @Module({
-    controllers: [AuthController],
+	imports: [
+		// This is the microservices module that registers the RabbitMQ client for the AuthService
+		ClientsModule.registerAsync([
+			{
+				name: AUTH_SERVICE,
+				inject: [ConfigService],
+				useFactory: (configService: ConfigService) => {
+					// The ! is a TypeScript non-null assertion operator, which tells the compiler that the value is not null or undefined.
+					const rmqUrl = configService.get<string>('RABBITMQ_URL')!;
+					return rmqOptions(rmqUrl, QUEUES.AUTH);
+				}
+			},
+		]),
+	],
+	controllers: [AuthController],
 })
 export class AuthModule {}
