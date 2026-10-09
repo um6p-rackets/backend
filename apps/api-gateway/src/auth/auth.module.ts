@@ -16,7 +16,7 @@ import { AuthController } from './auth.controller.js';
 				inject: [ConfigService],
 				useFactory: (configService: ConfigService) => {
 					// The ! is a TypeScript non-null assertion operator, which tells the compiler that the value is not null or undefined.
-					const rmqUrl = configService.get<string>('RABBITMQ_URL')!;
+					const rmqUrl = configService.getOrThrow<string>('rabbitmq.url')!;
 					return rmqOptions(rmqUrl, QUEUES.AUTH, true); // Forces the consumer to acknowledge messages automatically, which can lead to message loss if the consumer crashes before processing the message. Set to false for manual acknowledgment.
 				}
 			},

@@ -1,10 +1,15 @@
 import { Module } from '@nestjs/common';
-import { ClubServiceController } from './club-service.controller.js';
-import { ClubServiceService } from './club-service.service.js';
+import { ConfigModule } from '@nestjs/config';
+import { configuration, envFiles } from '@app/common';
 
 @Module({
-  imports: [],
-  controllers: [ClubServiceController],
-  providers: [ClubServiceService],
+    imports: [
+      ConfigModule.forRoot({
+        isGlobal: true,
+        load: [configuration], 
+        envFilePath: envFiles('club-service'),
+      })],
+  controllers: [],
+  providers: [],
 })
 export class ClubServiceModule {}
