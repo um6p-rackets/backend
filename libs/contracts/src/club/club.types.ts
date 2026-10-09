@@ -230,3 +230,11 @@ export type UserProfileData = {
   history: UserHistoryMatch[];
   club_ranks: UserClubRank[];
 };
+
+export type MatchRequestBody = {
+  mode: MatchMode; // 1 = singles, 2 = doubles
+  partner_id?: number; // member id, required for doubles, forbidden for singles
+  opponent_ids: number[]; // member ids, 1 for singles, 2 for doubles
+  requested_ref_id: number; // member id
+  scheduled_at: string; // ISO, must be in the future
+};

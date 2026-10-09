@@ -13,6 +13,10 @@ export const AUTH_PATTERNS = {
 
 // ================== CLUB SERVICE ==================
 
+export const CLUB_PATTERNS = {
+  GET_CLUBS: 'club.get-clubs',
+  GET_CLUB: 'club.get-club'
+} as const;
 
 
 // ================= NOTIFICATION SERVICE ==================
