@@ -26,6 +26,9 @@ ARG APP_NAME
 ENV NODE_ENV=production
 ENV EXEC_PATH=/usr/src/app/${APP_NAME}/main.js
 
+COPY tools/setup.sh /usr/local/bin/setup.sh
+RUN chmod +x /usr/local/bin/setup.sh
+
 COPY --chown=node:node package*.json ./
 
 # install production dependencies and clean npm cache to reduce image size, --omit=dev flag is used to skip dev dependencies
@@ -37,5 +40,7 @@ COPY --from=build --chown=node:node  /usr/src/app/dist/apps/${APP_NAME} ./${APP_
 USER node
 
 EXPOSE 3000
+
+ENTRYPOINT ["/usr/local/bin/setup.sh"]
 
 CMD ["sh", "-c", "exec node $EXEC_PATH"]

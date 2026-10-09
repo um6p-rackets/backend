@@ -25,6 +25,6 @@ async function bootstrap() {
 
   app.connectMicroservice(rmqOptions(rmqUrl, QUEUES.GATEWAY));
   await app.startAllMicroservices();
-  await app.listen(3001, '0.0.0.0');
+  await app.listen(3010, '0.0.0.0');
 }
 bootstrap();
