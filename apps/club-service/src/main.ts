@@ -1,8 +1,21 @@
 import { NestFactory } from '@nestjs/core';
+import { MicroserviceOptions } from '@nestjs/microservices';
+import { ValidationPipe } from '@nestjs/common';
 import { ClubServiceModule } from './club-service.module.js';
+import { QUEUES } from '@app/contracts';
+import { rmqOptions } from '@app/rmq';
+import { configuration } from '@app/common';
 
 async function bootstrap() {
-  const app = await NestFactory.create(ClubServiceModule);
-  await app.listen(process.env.port ?? 3000);
+  const { rabbitmq } = configuration();
+  if (!rabbitmq.url) throw new Error('RABBITMQ_URL is not set');
+
+  const app = await NestFactory.createMicroservice<MicroserviceOptions>(
+    ClubServiceModule,
+    rmqOptions(rabbitmq.url, QUEUES.CLUB),
+  );
+  app.useGlobalPipes(new ValidationPipe({ whitelist: true, transform: true }));
+  app.enableShutdownHooks();
+  await app.listen();
 }
-await bootstrap();
+bootstrap();

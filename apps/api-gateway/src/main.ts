@@ -15,7 +15,7 @@ async function bootstrap() {
   const app = await NestFactory.create<NestExpressApplication>(ApiGatewayModule);
 
   const configService = app.get(ConfigService);
-  const rmqUrl = configService.get<string>('RABBITMQ_URL')!; // The ! is a TypeScript non-null assertion operator, which tells the compiler that the value is not null or undefined.
+  const rmqUrl = configService.getOrThrow<string>('rabbitmq.url')!;
 
   app.set('trust proxy', 1);                 // behind nginx, needed for secure cookies
   app.setGlobalPrefix('api/v1');
