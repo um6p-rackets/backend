@@ -1,15 +1,15 @@
-export interface UserView {
-  userId: string;
-  login: string;
-  firstName: string;
-  lastName: string;
-  gender: boolean;
-  department: string;
-  phoneNumber: string;
-  email: string;
-  avatar: string;
-  joinedAt: string;
-}
+export type User = {
+  id: number; // bigserial PK
+  login: string; // varchar(255) UNIQUE
+  first_name: string; // varchar(255)
+  last_name: string; // varchar(255)
+  gender: boolean | null; // boolean
+  department: string | null; // text
+  phone_number: string | null; // varchar(50)
+  email: string; // varchar(255) UNIQUE
+  avatar: string | null; // text
+  joined_at: string; // timestamptz
+};
 
 export interface AuthTokens {
   accessToken: string;
@@ -17,32 +17,31 @@ export interface AuthTokens {
 }
 
 export interface AuthResult extends AuthTokens {
-	user: UserView;
+  user: User;
 }
 
 export interface JwtPayload {
-	sub: string;	// (*Subject*): Unique identifier for the user.
-	login: string;	
-	iat?: number;	// (*Issued At*): Unix timestamp of when the token was created.
-	exp?: number;	// (*Expiration Time*): Unix timestamp when the token expires.
+  sub: string; // (*Subject*): Unique identifier for the user.
+  login: string;
+  iat?: number; // (*Issued At*): Unix timestamp of when the token was created.
+  exp?: number; // (*Expiration Time*): Unix timestamp when the token expires.
 }
 
 export interface RefreshPayload {
-	refreshToken: string,
-	iat?: number;
-	exp?: number;
+  refreshToken: string;
+  iat?: number;
+  exp?: number;
 }
 
 export interface LogoutPayload {
-	userId: string;
-	refreshToken: string
+  userId: string;
+  refreshToken: string;
 }
 
 export interface GetUserPayload {
-	userId: string;
+  userId: string;
 }
 
 export interface GetUsersByIdsPayload {
-	userIds: string[];
+  userIds: string[];
 }
-
