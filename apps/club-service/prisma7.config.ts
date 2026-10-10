@@ -6,6 +6,6 @@ config({ path: "apps/club-service/.env.development" });
 
 export default defineConfig({
   schema: "prisma/schema.prisma",
-  migrations: { path: "prisma/migrations" },
+  migrations: { path: "prisma/migrations", seed: "tsx apps/club-service/prisma/seed.ts" },
   datasource: { url: configuration().database.url },
 });
