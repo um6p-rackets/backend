@@ -8,7 +8,7 @@ import { config as dotenvConfig } from 'dotenv';
 
 import { QUEUES } from '@app/contracts';
 import { rmqOptions } from '@app/rmq';
-import { configuration } from '@app/common';
+import { AllRpcExceptionsFilter, configuration } from '@app/common';
 
 async function bootstrap() {
   // 2. Manually load the local .env file before NestJS starts
@@ -28,6 +28,7 @@ async function bootstrap() {
   );
 
   app.useGlobalPipes(new ValidationPipe({ whitelist: true, transform: true }));
+  app.useGlobalFilters(new AllRpcExceptionsFilter());
   app.enableShutdownHooks();
 
   await app.listen();
