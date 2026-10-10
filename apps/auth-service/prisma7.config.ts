@@ -6,6 +6,6 @@ config({ path: "apps/auth-service/.env.development" });
 
 export default defineConfig({
   schema: "prisma/schema.prisma",
-  migrations: { path: "prisma/migrations" },
+  migrations: { path: "prisma/migrations", seed: "tsx apps/auth-service/prisma/seed.ts" },
   datasource: { url: configuration().database.url },
 });
