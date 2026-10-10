@@ -1,0 +1,156 @@
+generator client {
+  provider = "prisma-client"
+  output   = "../generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+model Club {
+  id          Int      @id @default(autoincrement())
+  name        String   @unique @db.VarChar(255)
+  description String?
+  avatar      String?
+  created_at  DateTime @default(now()) @db.Timestamptz(6)
+
+  members       Member[]
+  achievements  Achievement[]
+  announcements Announcement[]
+  week_sessions WeekSession[]
+  teams         Team[]
+  matches       Match[]
+  documents     ClubDocument[]
+
+  @@map("clubs")
+}
+
+model Member {
+  id        Int       @id @default(autoincrement())
+  club_id   Int
+  user_id   Int // auth service user id, no relation
+  role      Int       @default(0) // MemberRole: 0 member, 1 leader, 2 coach
+  joined_at DateTime  @default(now()) @db.Timestamptz(6)
+  left_at   DateTime? @db.Timestamptz(6) // null = active member
+
+  club             Club            @relation(fields: [club_id], references: [id], onDelete: Cascade)
+  announcements    Announcement[]
+  attends          SessionAttend[]
+  teams_as_player1 Team[]          @relation("TeamPlayer1")
+  teams_as_player2 Team[]          @relation("TeamPlayer2")
+  refereed_matches Match[]         @relation("MatchReferee")
+
+  @@unique([club_id, user_id])
+  @@index([user_id])
+  @@map("members")
+}
+
+model Achievement {
+  id          Int      @id @default(autoincrement())
+  club_id     Int
+  user_id     Int // auth service user id, no relation
+  name        String   @db.VarChar(255)
+  description String?
+  taken_at    DateTime @default(now()) @db.Timestamptz(6)
+
+  club Club @relation(fields: [club_id], references: [id], onDelete: Cascade)
+
+  @@index([user_id])
+  @@map("achievements")
+}
+
+model Announcement {
+  id           Int      @id @default(autoincrement())
+  club_id      Int
+  announcer_id Int
+  description  String
+  created_at   DateTime @default(now()) @db.Timestamptz(6)
+
+  club      Club   @relation(fields: [club_id], references: [id], onDelete: Cascade)
+  announcer Member @relation(fields: [announcer_id], references: [id])
+
+  @@index([club_id, created_at(sort: Desc)])
+  @@map("announcements")
+}
+
+model WeekSession {
+  id          Int      @id @default(autoincrement())
+  club_id     Int
+  day_of_week Int      @db.SmallInt // WeekDay: 0 Sunday ... 6 Saturday
+  start_time  DateTime @db.Time(6)
+  end_time    DateTime @db.Time(6)
+
+  club    Club            @relation(fields: [club_id], references: [id], onDelete: Cascade)
+  attends SessionAttend[]
+
+  @@map("week_sessions")
+}
+
+model SessionAttend {
+  id          Int      @id @default(autoincrement())
+  session_id  Int
+  member_id   Int
+  attend_date DateTime @db.Date
+  created_at  DateTime @default(now()) @db.Timestamptz(6)
+
+  session WeekSession @relation(fields: [session_id], references: [id], onDelete: Cascade)
+  member  Member      @relation(fields: [member_id], references: [id], onDelete: Cascade)
+
+  @@unique([session_id, member_id, attend_date])
+  @@map("session_attends")
+}
+
+model Team {
+  id         Int      @id @default(autoincrement())
+  club_id    Int
+  player1_id Int
+  player2_id Int? // null = singles
+  created_at DateTime @default(now()) @db.Timestamptz(6)
+
+  club    Club    @relation(fields: [club_id], references: [id], onDelete: Cascade)
+  player1 Member  @relation("TeamPlayer1", fields: [player1_id], references: [id])
+  player2 Member? @relation("TeamPlayer2", fields: [player2_id], references: [id])
+
+  matches_as_team1 Match[] @relation("MatchTeam1")
+  matches_as_team2 Match[] @relation("MatchTeam2")
+  won_matches      Match[] @relation("MatchWinner")
+
+  @@map("teams")
+}
+
+model Match {
+  id           Int      @id @default(autoincrement())
+  club_id      Int
+  team1_id     Int
+  team2_id     Int
+  winner_id    Int? // only set when status = 2
+  ref_id       Int?
+  team1_score  Int      @default(0)
+  team2_score  Int      @default(0)
+  team1_points Int      @default(0)
+  team2_points Int      @default(0)
+  mode         Int // MatchMode: 1 singles, 2 doubles
+  status       Int      @default(0) @db.SmallInt // MatchStatus: 0 pending, 1 confirmed, 2 finished
+  scheduled_at DateTime @db.Timestamptz(6)
+
+  club    Club    @relation(fields: [club_id], references: [id], onDelete: Cascade)
+  team1   Team    @relation("MatchTeam1", fields: [team1_id], references: [id])
+  team2   Team    @relation("MatchTeam2", fields: [team2_id], references: [id])
+  winner  Team?   @relation("MatchWinner", fields: [winner_id], references: [id])
+  referee Member? @relation("MatchReferee", fields: [ref_id], references: [id])
+
+  @@index([club_id, status, scheduled_at])
+  @@map("matches")
+}
+
+model ClubDocument {
+  id          Int     @id @default(autoincrement())
+  club_id     Int
+  title       String  @db.VarChar(255)
+  description String?
+  path        String
+
+  club Club @relation(fields: [club_id], references: [id], onDelete: Cascade)
+
+  @@map("club_documents")
+}
