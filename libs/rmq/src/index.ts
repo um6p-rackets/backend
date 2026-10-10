@@ -1,6 +1,6 @@
 import { RmqOptions, Transport } from '@nestjs/microservices';
 
-export function rmqOptions(url: string, queue: string, noAck = false): RmqOptions {
+export function rmqOptions(url: string, queue: string, noAck = true): RmqOptions {
   return {
     transport: Transport.RMQ,
     options: {
