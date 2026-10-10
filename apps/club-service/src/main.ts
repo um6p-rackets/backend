@@ -6,6 +6,8 @@ import { QUEUES } from '@app/contracts';
 import { rmqOptions } from '@app/rmq';
 import { AllRpcExceptionsFilter, configuration } from '@app/common';
 
+
+
 async function bootstrap() {
   const { rabbitmq } = configuration();
   if (!rabbitmq.url) throw new Error('RABBITMQ_URL is not set');
