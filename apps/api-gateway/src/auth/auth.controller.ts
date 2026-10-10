@@ -17,4 +17,19 @@ export class AuthController {
 		// firstValueFrom converts the RabbitMQ Observable into a standard Promise
 		return await firstValueFrom(response); 
   	}
+
+	@Get('test-custom')
+	async testCustom() {
+		return await firstValueFrom(this.authClient.send({ cmd: 'test_custom_error' }, {}));
+	}
+
+	@Get('test-http')
+	async testHttp() {
+		return await firstValueFrom(this.authClient.send({ cmd: 'test_http_error' }, {}));
+	}
+
+	@Get('test-fatal')
+	async testFatal() {
+		return await firstValueFrom(this.authClient.send({ cmd: 'test_fatal_error' }, {}));
+	}
 }

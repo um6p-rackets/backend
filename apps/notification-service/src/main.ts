@@ -4,7 +4,7 @@ import { ValidationPipe } from '@nestjs/common';
 import { NotificationServiceModule } from './notification-service.module.js';
 import { QUEUES } from '@app/contracts';
 import { rmqOptions } from '@app/rmq';
-import { configuration } from '@app/common';
+import { AllRpcExceptionsFilter, configuration } from '@app/common';
 
 async function bootstrap() {
   const { rabbitmq } = configuration();
@@ -15,6 +15,7 @@ async function bootstrap() {
     rmqOptions(rabbitmq.url, QUEUES.NOTIFICATION),
   );
   app.useGlobalPipes(new ValidationPipe({ whitelist: true, transform: true }));
+  app.useGlobalFilters(new AllRpcExceptionsFilter());
   app.enableShutdownHooks();
   await app.listen();
 }
