@@ -25,7 +25,11 @@
     "start:dev:notification": "nest start notification-service --watch",
     "start:dev:all": "concurrently -n gateway,auth,club,notif -c blue,green,yellow,magenta \"npm:start:dev:gateway\" \"npm:start:dev:auth\" \"npm:start:dev:club\" \"npm:start:dev:notification\"",
     "prisma:auth": "prisma --config apps/auth-service/prisma7.config.ts",
-    "prisma:studio:auth": "prisma studio --config apps/auth-service/prisma7.config.ts"
+    "prisma:studio:auth": "prisma studio --config apps/auth-service/prisma7.config.ts",
+    "prisma:club": "prisma --config apps/club-service/prisma7.config.ts",
+    "prisma:studio:club": "prisma studio --config apps/club-service/prisma7.config.ts"
+    
+
   },
   "dependencies": {
     "@nestjs/common": "^12.0.1",
