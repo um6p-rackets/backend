@@ -15,8 +15,8 @@ export class ClubServiceController {
   }
 
   @MessagePattern(CLUB_PATTERNS.GET_CLUB)
-  async getClub(data: { club_name: string }): Promise<Club> {
-    console.log(`[ClubService] Received request for club name: ${data.club_name}`);
-    return this.clubServiceService.getClubByName(data.club_name);
+  async getClub(data: { club_slug: string }): Promise<Club> {
+    console.log(`[ClubService] Received request for club slug: ${data.club_slug}`);
+    return this.clubServiceService.getClubBySlug(data.club_slug);
   }
 }

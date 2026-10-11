@@ -14,10 +14,12 @@ export class ClubServiceService {
           created_at: club.created_at.toISOString(),
         }));
   }
-  async getClubByName(clubName: string): Promise<Club> {
-    const club = await this.prisma.club.findUnique({ where: { name: clubName } });
+
+  async getClubBySlug(clubSlug: string): Promise<Club> {
+    console.log(`[ClubService] Fetching club with slug: ${clubSlug}`);
+    const club = await this.prisma.club.findUnique({ where: { slug: clubSlug } });
     if (!club) {
-      console.log(`[ClubService] Club with name "${clubName}" not found`);
+      console.log(`[ClubService] Club with slug "${clubSlug}" not found`);
       throw rpcError(404, 'Club not found', 'Not Found');
     }
     return {

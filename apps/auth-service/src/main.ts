@@ -4,7 +4,9 @@ import { MicroserviceOptions } from '@nestjs/microservices';
 import { ValidationPipe } from '@nestjs/common';
 
 // 1. Import dotenv and your raw configuration function
-import { config as dotenvConfig } from 'dotenv';
+// import { config as dotenvConfig } from 'dotenv';
+
+// IMPORTANT: you should never use dotenv in this status, because is devDependence, and it will not work in production mode
 
 import { QUEUES } from '@app/contracts';
 import { rmqOptions } from '@app/rmq';
