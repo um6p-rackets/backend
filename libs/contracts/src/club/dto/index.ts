@@ -13,3 +13,4 @@ export * from './update-session.dto.js';
 export * from './create-document.dto.js';
 export * from './create-achievement.dto.js';
 export * from './update-club.dto.js';
+export * from './club-slug-param.dto.js';

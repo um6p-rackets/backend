@@ -13,11 +13,11 @@ const COACH_ROLE = 2; // MemberRole.COACH
 
 // coach_user_id = the id of the coach created by the auth seed (1..5 on a fresh database)
 const clubs = [
-  { name: 'Tennis', description: 'Tennis club', coach_user_id: 1 },
-  { name: 'Padel', description: 'Padel club', coach_user_id: 2 },
-  { name: 'Badminton', description: 'Badminton club', coach_user_id: 3 },
-  { name: 'Squash', description: 'Squash club', coach_user_id: 4 },
-  { name: 'Table Tennis', description: 'Table tennis club', coach_user_id: 5 },
+  { name: 'Tennis', description: 'Tennis club', coach_user_id: 1 , slug: 'tennis', avatar: "import { ClubSlugParamDto } from '@app/contracts/club/dto/club-slug-param.dto.js';" },
+  { name: 'Padel', description: 'Padel club', coach_user_id: 2, slug: 'padel', avatar: "import { ClubSlugParamDto } from '@app/contracts/club/dto/club-slug-param.dto.js';" },
+  { name: 'Badminton', description: 'Badminton club', coach_user_id: 3, slug: 'badminton', avatar: "import { ClubSlugParamDto } from '@app/contracts/club/dto/club-slug-param.dto.js';" },
+  { name: 'Squash', description: 'Squash club', coach_user_id: 4, slug: 'squash', avatar: "import { ClubSlugParamDto } from '@app/contracts/club/dto/club-slug-param.dto.js';" },
+  { name: 'Table Tennis', description: 'Table tennis club', coach_user_id: 5, slug: 'table-tennis', avatar: "import { ClubSlugParamDto } from '@app/contracts/club/dto/club-slug-param.dto.js';" },
 ];
 
 async function main() {

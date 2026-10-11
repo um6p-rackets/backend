@@ -2,6 +2,7 @@ import { CLUB_PATTERNS, CLUB_SERVICE } from '@app/contracts';
 import { Controller, Get, Inject, Param, ServiceUnavailableException } from '@nestjs/common';
 import { ClientProxy } from '@nestjs/microservices';
 import { catchError, firstValueFrom, throwError, timeout, TimeoutError } from 'rxjs';
+import { ClubSlugParamDto } from '@app/contracts/club/dto/club-slug-param.dto.js';
 
 @Controller('clubs')
 export class ClubController {
@@ -23,9 +24,10 @@ export class ClubController {
     // firstValueFrom converts the RabbitMQ Observable into a standard Promise
     return await firstValueFrom(response);
   }
-	@Get(':club_name')
-	async getClub(@Param('club_name') clubName: string) {
-    const response = this.clubClient.send(CLUB_PATTERNS.GET_CLUB, { club_name: clubName });
-    return await firstValueFrom(response);
+	@Get(':slug')
+	async getClub(@Param() {slug}: ClubSlugParamDto) {
+    console.log(`[ClubController] Received request for club slug: ${slug}, and send request to Club Service`);
+    const response = this.clubClient.send(CLUB_PATTERNS.GET_CLUB, { club_slug: slug });
+    return response;
   }
 }
