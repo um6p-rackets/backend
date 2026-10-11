@@ -1,6 +1,6 @@
 // apps/club-service/prisma/seed.ts
 import { PrismaPg } from '@prisma/adapter-pg';
-import { PrismaClient } from '../generated/prisma/client';
+import { PrismaClient } from '../src/generated/prisma/client';
 import { configuration } from '../../../libs/common/src/config/configuration';
 
 const url = configuration().database.url;
