@@ -1,8 +1,10 @@
 import { CLUB_PATTERNS, CLUB_SERVICE } from '@app/contracts';
-import { Controller, Get, Inject, Param, ServiceUnavailableException } from '@nestjs/common';
+import { Controller, Get, Inject, Param, ServiceUnavailableException, UseGuards } from '@nestjs/common';
 import { ClientProxy } from '@nestjs/microservices';
 import { catchError, firstValueFrom, throwError, timeout, TimeoutError } from 'rxjs';
 import { ClubSlugParamDto } from '@app/contracts/club/dto/club-slug-param.dto.js';
+import { DevAuthGuard } from '../auth/dev-auth.guard.js';
+import { CurrentUser } from './current-user.decorator.js';
 
 @Controller('clubs')
 export class ClubController {
@@ -30,4 +32,13 @@ export class ClubController {
     const response = this.clubClient.send(CLUB_PATTERNS.GET_CLUB, { club_slug: slug });
     return response;
   }
+
+  @UseGuards(DevAuthGuard)
+  @Get(':slug/status')
+  async getClubStatus(@Param() {slug}: ClubSlugParamDto, @CurrentUser() user: { id: number }) {
+    console.log(`[ClubController] Received request for club status for slug: ${slug} and user_id: ${user.id}, and send request to Club Service`);
+    const response = this.clubClient.send(CLUB_PATTERNS.GET_CLUB_STATUS, { club_slug: slug, user_id: user.id });
+    return response;
+  }
+
 }
