@@ -65,6 +65,12 @@ export type WeekSession = {
   day_of_week: WeekDay; // smallint 0-6
   start_time: string; // time, e.g. "17:00:00"
   end_time: string; // time, e.g. "19:00:00"
+  capacity: number; // int > 0            NEW
+  title: string | null; // varchar(100)   NEW
+  location: string | null; // varchar(100) NEW
+  is_active: boolean; // false = retired slot, history kept   NEW
+  created_at: string; // timestamptz      NEW
+  updated_at: string; // timestamptz      NEW
 };
 
 export type SessionAttend = {
@@ -138,7 +144,6 @@ export type ClubMemberStatus = {
   is_member: boolean;
   member_id: number | null; // null if not a member
   role: MemberRole | null; // null if not a member
-  attended_session_ids: number[]; // today's sessions already checked in
 };
 
 // Small user card used inside other responses
@@ -167,7 +172,16 @@ export type MatchDetail = Match & {
 
 export type AnnouncementWithAuthor = Announcement & { announcer: Player };
 
-export type WeekSessionWithAttends = WeekSession & { attends_count: number };
+export type SessionState = 'past' | 'ongoing' | 'open' | 'full';
+
+// A template placed on one specific date (what the week view displays)
+export type SessionOccurrence = WeekSession & {
+  date: string; // "2026-10-12", the real date of this occurrence
+  attends_count: number; // count of attends for this session on this date
+  spots_left: number; // capacity - attends_count (never below 0)
+  is_joined: boolean; // is the current user already in
+  state: SessionState; // computed by the backend
+};
 
 // A club the user joined (replaces "favorite sport")
 export type JoinedClub = {
