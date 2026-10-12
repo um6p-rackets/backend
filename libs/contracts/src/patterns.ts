@@ -15,7 +15,11 @@ export const AUTH_PATTERNS = {
 
 export const CLUB_PATTERNS = {
   GET_CLUBS: 'club.get-clubs',
-  GET_CLUB: 'club.get-club'
+  GET_CLUB: 'club.get-club',
+  GET_CLUB_STATUS: 'club.get-club-status',
+  CLUB_JOIN: 'club.join',
+  GET_USER_MEMBERSHIPS: 'club.user-memberships',
+
 } as const;
 
 
