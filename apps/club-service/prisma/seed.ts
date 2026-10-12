@@ -74,6 +74,7 @@ async function main() {
     await seedMembers(club.id);
     await seedSessions(club.id);
     await seedAnnouncements(club.id, coach.id);
+    await seedTeamsAndMatches(club.id);
   }
   console.log(`Seeded ${clubs.length} clubs with their coaches`);
 }
@@ -134,6 +135,44 @@ async function seedAnnouncements(clubId: number, coachMemberId: number) {
         announcer_id: coachMemberId,
         description: 'Sessions start this Monday at 17:00.',
       },
+    ],
+  });
+}
+
+
+async function seedTeamsAndMatches(clubId: number) {
+  if (await prisma.match.count({ where: { club_id: clubId } })) return; // rerun-safe
+
+  const players = await prisma.member.findMany({
+    where: { club_id: clubId, role: 0 }, orderBy: { id: 'asc' },
+  });
+  const [referee] = await prisma.member.findMany({
+    where: { club_id: clubId, role: 1 }, orderBy: { id: 'asc' },
+  });
+
+  const newTeam = (p1: number, p2?: number) =>
+    prisma.team.create({ data: { club_id: clubId, player1_id: p1, player2_id: p2 ?? null } });
+
+  // 4 singles teams, 2 doubles teams
+  const [s1, s2, s3, s4] = await Promise.all(players.slice(0, 4).map((m) => newTeam(m.id)));
+  const [d1, d2] = await Promise.all([
+    newTeam(players[4].id, players[5].id),
+    newTeam(players[6].id, players[7].id),
+  ]);
+
+  const at = (days: number) => new Date(Date.now() + days * 86_400_000);
+  const base = { club_id: clubId, ref_id: referee.id };
+
+  await prisma.match.createMany({
+    data: [
+      // finished (status 2). Points are a placeholder: winner +10, loser -5
+      { ...base, team1_id: s1.id, team2_id: s2.id, winner_id: s1.id, team1_score: 21, team2_score: 15, team1_points: 10, team2_points: -5, mode: 1, status: 2, scheduled_at: at(-7) },
+      { ...base, team1_id: s3.id, team2_id: s4.id, winner_id: s4.id, team1_score: 18, team2_score: 21, team1_points: -5, team2_points: 10, mode: 1, status: 2, scheduled_at: at(-3) },
+      { ...base, team1_id: d1.id, team2_id: d2.id, winner_id: d1.id, team1_score: 21, team2_score: 19, team1_points: 10, team2_points: -5, mode: 2, status: 2, scheduled_at: at(-1) },
+      // confirmed, upcoming (status 1)
+      { ...base, team1_id: s1.id, team2_id: s3.id, mode: 1, status: 1, scheduled_at: at(2) },
+      // pending, waiting for the referee (status 0)
+      { ...base, team1_id: s2.id, team2_id: s4.id, mode: 1, status: 0, scheduled_at: at(5) },
     ],
   });
 }
