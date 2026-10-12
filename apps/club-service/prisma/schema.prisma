@@ -77,13 +77,21 @@ model Announcement {
 model WeekSession {
   id          Int      @id @default(autoincrement())
   club_id     Int
-  day_of_week Int      @db.SmallInt // WeekDay: 0 Sunday ... 6 Saturday
+  day_of_week Int      @db.SmallInt // 0 Sunday ... 6 Saturday
   start_time  DateTime @db.Time(6)
   end_time    DateTime @db.Time(6)
+
+  capacity    Int                      // NEW
+  title       String?  @db.VarChar(100) // NEW, optional ("Beginners")
+  location    String?  @db.VarChar(100) // NEW, optional ("Court 2")
+  is_active   Boolean  @default(true)   // NEW
+  created_at  DateTime @default(now()) @db.Timestamptz(6)
+  updated_at  DateTime @updatedAt @db.Timestamptz(6)
 
   club    Club            @relation(fields: [club_id], references: [id], onDelete: Cascade)
   attends SessionAttend[]
 
+  @@index([club_id, day_of_week])
   @@map("week_sessions")
 }
 
@@ -98,6 +106,8 @@ model SessionAttend {
   member  Member      @relation(fields: [member_id], references: [id], onDelete: Cascade)
 
   @@unique([session_id, member_id, attend_date])
+  @@index([session_id, attend_date]) // NEW
+  @@index([member_id, attend_date])  // NEW
   @@map("session_attends")
 }
 

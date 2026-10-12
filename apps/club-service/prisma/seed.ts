@@ -104,21 +104,13 @@ async function seedMembers(clubId: number) {
 }
 
 async function seedSessions(clubId: number) {
-  if (await prisma.weekSession.count({ where: { club_id: clubId } })) return; // only if empty
+  if (await prisma.weekSession.count({ where: { club_id: clubId } })) return;
   await prisma.weekSession.createMany({
     data: [
-      {
-        club_id: clubId,
-        day_of_week: 1,
-        start_time: time('17:00'),
-        end_time: time('19:00'),
-      },
-      {
-        club_id: clubId,
-        day_of_week: 3,
-        start_time: time('17:00'),
-        end_time: time('19:00'),
-      },
+      { club_id: clubId, day_of_week: 1, start_time: time('17:00'), end_time: time('19:00'),
+        capacity: 12, title: 'Beginners', location: 'Court 1' },
+      { club_id: clubId, day_of_week: 3, start_time: time('17:00'), end_time: time('19:00'),
+        capacity: 8, title: 'Advanced', location: 'Court 2' },
     ],
   });
 }

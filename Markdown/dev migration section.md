@@ -59,6 +59,7 @@ CHECK rules for club (Prisma can't express them, add them once):
 -- Checks Prisma can't express
 ALTER TABLE "week_sessions" ADD CONSTRAINT week_sessions_day_chk  CHECK (day_of_week BETWEEN 0 AND 6);
 ALTER TABLE "week_sessions" ADD CONSTRAINT week_sessions_time_chk CHECK (end_time > start_time);
+ALTER TABLE "week_sessions" ADD CONSTRAINT "week_sessions_capacity_check" CHECK ("capacity" > 0);
 ALTER TABLE "teams"   ADD CONSTRAINT teams_players_chk   CHECK (player1_id <> player2_id);
 ALTER TABLE "matches" ADD CONSTRAINT matches_status_chk  CHECK (status IN (0, 1, 2));
 ALTER TABLE "matches" ADD CONSTRAINT matches_teams_chk   CHECK (team1_id <> team2_id);
