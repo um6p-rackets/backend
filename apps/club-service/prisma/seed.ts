@@ -75,6 +75,8 @@ async function main() {
     await seedSessions(club.id);
     await seedAnnouncements(club.id, coach.id);
     await seedTeamsAndMatches(club.id);
+    await seedAttendance(club.id);
+    await seedAchievements(club.id);
   }
   console.log(`Seeded ${clubs.length} clubs with their coaches`);
 }
@@ -174,5 +176,48 @@ async function seedTeamsAndMatches(clubId: number) {
       // pending, waiting for the referee (status 0)
       { ...base, team1_id: s2.id, team2_id: s4.id, mode: 1, status: 0, scheduled_at: at(5) },
     ],
+  });
+}
+
+
+// the last `count` dates (before today) that fall on `dayOfWeek` (0 = Sunday)
+function lastDates(dayOfWeek: number, count: number): Date[] {
+  const out: Date[] = [];
+  const d = new Date();
+  d.setUTCHours(0, 0, 0, 0);
+  while (out.length < count) {
+    d.setUTCDate(d.getUTCDate() - 1);
+    if (d.getUTCDay() === dayOfWeek) out.push(new Date(d));
+  }
+  return out;
+}
+
+async function seedAttendance(clubId: number) {
+  const exists = await prisma.sessionAttend.count({ where: { member: { club_id: clubId } } });
+  if (exists) return;
+
+  const sessions = await prisma.weekSession.findMany({ where: { club_id: clubId } });
+  const members = await prisma.member.findMany({ where: { club_id: clubId }, orderBy: { id: 'asc' } });
+
+  const data = sessions.flatMap((s) =>
+    lastDates(s.day_of_week, 3).flatMap((attend_date, week) =>
+      // a few more people each week, so the attendance counts differ
+      members.slice(0, 6 + week).map((m) => ({ session_id: s.id, member_id: m.id, attend_date })),
+    ),
+  );
+  await prisma.sessionAttend.createMany({ data, skipDuplicates: true });
+}
+
+async function seedAchievements(clubId: number) {
+  if (await prisma.achievement.count({ where: { club_id: clubId } })) return;
+
+  const players = await prisma.member.findMany({
+    where: { club_id: clubId, role: 0 }, orderBy: { id: 'asc' }, take: 3,
+  });
+  const names = ['Season Champion', 'Most Improved', 'Perfect Attendance'];
+  await prisma.achievement.createMany({
+    data: players.map((p, i) => ({
+      club_id: clubId, user_id: p.user_id, name: names[i], description: `${names[i]} this season`,
+    })),
   });
 }
