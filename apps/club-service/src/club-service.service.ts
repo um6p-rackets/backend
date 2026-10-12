@@ -3,6 +3,7 @@ import { rpcError } from '@app/contracts/errors.js';
 import { Injectable } from '@nestjs/common';
 import { PrismaService } from './prisma/prisma.service.js';
 import { ClubAccessService } from './access/club-access.service.js';
+import { todayInAppTz } from '@app/common/dates.js';
 
 
 @Injectable()
@@ -44,7 +45,7 @@ export class ClubServiceService {
         };
       }
       const attends = await this.prisma.sessionAttend.findMany({
-        where: { member_id: member.id },
+        where: { member_id: member.id, attend_date: todayInAppTz()  },
         select: { session_id: true },
       });
       const attendedSessionIds = attends.map((attend) => attend.session_id);
