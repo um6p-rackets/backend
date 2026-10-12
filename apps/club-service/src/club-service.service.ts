@@ -1,4 +1,4 @@
-import { Club } from '@app/contracts/club/club.types.js';
+import { Club, ClubWithMembersCount } from '@app/contracts/club/club.types.js';
 import { rpcError } from '@app/contracts/errors.js';
 import { Injectable } from '@nestjs/common';
 import { PrismaService } from './prisma/prisma.service.js';
@@ -15,7 +15,7 @@ export class ClubServiceService {
         }));
   }
 
-  async getClubBySlug(clubSlug: string): Promise<Club> {
+  async getClubBySlug(clubSlug: string): Promise<ClubWithMembersCount> {
     console.log(`[ClubService] Fetching club with slug: ${clubSlug}`);
     const club = await this.prisma.club.findUnique({ where: { slug: clubSlug } });
     if (!club) {
@@ -25,6 +25,8 @@ export class ClubServiceService {
     return {
       ...club,
       created_at: club.created_at.toISOString(),
+      // random member counter for now, we will implement a real one later
+      members_count: Math.floor(Math.random() * 1000) + 1, // random number between 1 and 1000
     };
   }
 }
