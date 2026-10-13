@@ -3,7 +3,7 @@ import { rpcError } from '@app/contracts/errors.js';
 import { Injectable } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service.js';
 import { ClubAccessService } from '../access/club-access.service.js';
-import { weekRange, today, toDate } from '@app/common/dates.js';
+import { weekRange, today, toDate, addDays } from '@app/common/dates.js';
 import { sessionState } from './sessions-status.server.js';
 
 @Injectable()
@@ -95,16 +95,12 @@ export class SessionsService {
 
     const isCurrentWeek = weekStart <= to_day && toDate(to_day) < to;
 
-    const prevWeekStart = new Date(weekStart);
-    prevWeekStart.setDate(prevWeekStart.getDate() - 7);
-    const nextWeekStart = new Date(weekStart);
-    nextWeekStart.setDate(nextWeekStart.getDate() + 7);
 
     return {
       week_start: weekStart,
       is_current_week: isCurrentWeek,
-      prev_week_start: prevWeekStart.toISOString(),
-      next_week_start: nextWeekStart.toISOString(),
+      prev_week_start: addDays(weekStart, -7),
+      next_week_start: addDays(weekStart, 7),
       sessions: sessionViews,
     };
   }
