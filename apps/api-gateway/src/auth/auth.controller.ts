@@ -1,4 +1,4 @@
-import { AUTH_PATTERNS, AUTH_SERVICE, AuthResult, AuthTokens, RegisterDto, User } from '@app/contracts';
+import { AUTH_PATTERNS, AUTH_SERVICE, AuthResult, AuthTokens, LoginDto, RegisterDto, User } from '@app/contracts';
 import { Body, Controller, Get, HttpCode, Inject, Post, Req, Res, UnauthorizedException } from '@nestjs/common';
 import { ClientProxy } from '@nestjs/microservices';
 import { firstValueFrom } from 'rxjs';
@@ -38,7 +38,7 @@ export class AuthController {
 	@Throttle({ default: { limit: 5, ttl: 15 * 60_000 } })
 	@HttpCode(200)
 	@Post('login')
-	async login(@Body() dto: RegisterDto, @Res({ passthrough: true }) res: Response) {
+	async login(@Body() dto: LoginDto, @Res({ passthrough: true }) res: Response) {
 		const { user, ...tokens } = await rpc<AuthResult>(this.authClient, AUTH_PATTERNS.LOGIN, dto);
 		setAuthCookies(res, tokens);
 		return { user };
