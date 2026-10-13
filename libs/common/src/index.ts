@@ -3,3 +3,5 @@ export * from './filters/all-rpc-exceptions-filter.js';
 export * from './config/configuration.js';
 export * from './config/env.js';
 export * from './dates.js';
+export * from './auth/auth.constants.js';
+export * from './auth/authenticated-user.js';

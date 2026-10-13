@@ -13,9 +13,13 @@ export const configuration = () => {
   const rmqUrl = process.env.RABBITMQ_URL || 
     `amqp://${process.env.RABBITMQ_USER}:${encodeURIComponent(readSecret(process.env.RABBITMQ_PASSWORD_FILE))}@rabbitmq:5672`;
 
+  const jwtSecret = process.env.JWT_ACCESS_SECRET ||
+    readSecret(process.env.JWT_ACCESS_SECRET_FILE);
+
   return {
     database: { url: dbUrl },
     rabbitmq: { url: rmqUrl },
+    jwt: { accessSecret: jwtSecret }
   };
 };
 
