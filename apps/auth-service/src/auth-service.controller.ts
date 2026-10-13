@@ -2,7 +2,7 @@ import { Controller, UnauthorizedException } from '@nestjs/common';
 import { MessagePattern, Payload } from '@nestjs/microservices';
 import { AuthServiceService } from './auth-service.service.js';
 import { rpcError, AUTH_PATTERNS } from '@app/contracts';
-import { LoginDto } from '@app/contracts/auth/dto/login.dto.js'; // Adjust path if needed
+import { LoginDto } from '@app/contracts/auth/dto/login.dto.js';
 
 @Controller()
 export class AuthServiceController {
