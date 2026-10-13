@@ -6,9 +6,6 @@ import { PrismaService } from '../prisma/prisma.service.js';
 
 @Injectable()
 export class ClubAccessService {
-  static getClub(clubSlug: string) {
-    throw new Error('Method not implemented.');
-  }
   constructor(private readonly prisma: PrismaService) {}
 
   async getClub(slug: string) {

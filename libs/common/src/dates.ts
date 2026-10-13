@@ -1,30 +1,71 @@
 // libs/common/src/dates.ts
 export const APP_TIMEZONE = 'Africa/Casablanca';
 
-// today's date in Morocco, as a UTC-midnight Date (matches @db.Date columns)
-export function todayInAppTz(): Date {
-  const day = new Intl.DateTimeFormat('en-CA', {
-    timeZone: APP_TIMEZONE,
-  }).format(new Date()); // "2026-10-11"
-  // console.log(`[todayInAppTz] Today's date in ${APP_TIMEZONE} is: ${day}`);
-  return new Date(`${day}T00:00:00.000Z`);
+const OFFSET = '+01:00'; // Morocco
+const OFFSET_MS = 60 * 60_000;
+const DAY_MS = 86_400_000;
+
+// ---------- days ("YYYY-MM-DD") ----------
+
+// the Morocco day of a moment: 2026-10-12T16:30Z -> "2026-10-12"
+export const dayOf = (date: Date): string =>
+  new Date(date.getTime() + OFFSET_MS).toISOString().slice(0, 10);
+
+// today in Morocco
+export const today = (): string => dayOf(new Date());
+
+// "2026-10-12" + 7 -> "2026-10-19"
+export function addDays(day: string, n: number): string {
+  return new Date(Date.parse(`${day}T00:00:00Z`) + n * DAY_MS).toISOString().slice(0, 10);
 }
 
-// minutes since midnight in Morocco (e.g. 18:30 -> 1110)
-export function minutesNowInAppTz(): number {
-  const [h, m] = new Intl.DateTimeFormat('en-GB', {
-    timeZone: APP_TIMEZONE,
-    hour: '2-digit',
-    minute: '2-digit',
-    hourCycle: 'h23',
-  })
-    .format(new Date())
-    .split(':')
-    .map(Number);
+// 0 Sunday ... 6 Saturday (same as the WeekDay enum)
+export const weekdayOf = (day: string): number => new Date(`${day}T00:00:00Z`).getUTCDay();
+
+// Monday of the week that contains `day`
+export const mondayOf = (day: string): string => addDays(day, -((weekdayOf(day) + 6) % 7));
+
+// real calendar date, not only the right shape (rejects "2026-13-45")
+export function isValidDay(day: string): boolean {
+  return /^\d{4}-\d{2}-\d{2}$/.test(day) && new Date(`${day}T00:00:00Z`).toISOString().slice(0, 10) === day;
+}
+
+// ---------- moments (Date) ----------
+
+// the real moment of a Morocco day + time: ("2026-10-12", "17:30") -> Date
+export const toDate = (day: string, hhmm = '00:00'): Date => new Date(`${day}T${hhmm}:00${OFFSET}`);
+
+// start and end of a week. No `week` = the current week.
+export function weekRange(week?: string) {
+  const weekStart = mondayOf(week ?? today());
+  return {
+    weekStart, // "2026-10-12"
+    from: toDate(weekStart),
+    to: toDate(addDays(weekStart, 7)), // exclusive
+  };
+}
+
+// ---------- times ("HH:mm") ----------
+
+const toMinutes = (hhmm: string): number => {
+  const [h, m] = hhmm.split(':').map(Number);
   return h * 60 + m;
+};
+
+// "HH:mm" from a Prisma @db.Time value (the 1970-01-01 part is ignored)
+export const timeOfDay = (t: Date): string =>
+  `${String(t.getUTCHours()).padStart(2, '0')}:${String(t.getUTCMinutes()).padStart(2, '0')}`;
+
+// "HH:mm" -> Date for a @db.Time column
+export const toTime = (hhmm: string): Date => new Date(`1970-01-01T${hhmm}:00.000Z`);
+
+// minutes between two times, an earlier end means the next day
+// ("22:00","00:30" -> 150). Equal times return 0, so reject them in the service.
+export function durationMinutes(start: string, end: string): number {
+  const diff = toMinutes(end) - toMinutes(start);
+  return diff < 0 ? diff + 1440 : diff;
 }
 
-// minutes since midnight from a Prisma @db.Time value (ignore the 1970-01-01 date part)
-export function timeToMinutes(t: Date): number {
-  return t.getUTCHours() * 60 + t.getUTCMinutes();
-}
+// end moment of a session: start + duration
+export const addMinutes = (date: Date, minutes: number): Date =>
+  new Date(date.getTime() + minutes * 60_000);

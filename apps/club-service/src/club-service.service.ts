@@ -3,7 +3,6 @@ import { rpcError } from '@app/contracts/errors.js';
 import { Injectable } from '@nestjs/common';
 import { PrismaService } from './prisma/prisma.service.js';
 import { ClubAccessService } from './access/club-access.service.js';
-import { todayInAppTz } from '@app/common/dates.js';
 
 
 @Injectable()
