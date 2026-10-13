@@ -57,9 +57,15 @@ CHECK rules for club (Prisma can't express them, add them once):
 
 ```sql
 -- Checks Prisma can't express
-ALTER TABLE "week_sessions" ADD CONSTRAINT week_sessions_day_chk  CHECK (day_of_week BETWEEN 0 AND 6);
-ALTER TABLE "week_sessions" ADD CONSTRAINT week_sessions_time_chk CHECK (end_time > start_time);
-ALTER TABLE "week_sessions" ADD CONSTRAINT "week_sessions_capacity_check" CHECK ("capacity" > 0);
+ALTER TABLE "session_templates"
+  ADD CONSTRAINT "session_templates_capacity_check" CHECK ("capacity" > 0),
+  ADD CONSTRAINT "session_templates_weekday_check"  CHECK ("weekday" BETWEEN 0 AND 6),
+  ADD CONSTRAINT "session_templates_duration_check" CHECK ("duration_minutes" BETWEEN 1 AND 1440);
+
+ALTER TABLE "sessions"
+  ADD CONSTRAINT "sessions_capacity_check" CHECK ("capacity" > 0),
+  ADD CONSTRAINT "sessions_time_check"     CHECK ("end_at" > "start_at");
+
 ALTER TABLE "teams"   ADD CONSTRAINT teams_players_chk   CHECK (player1_id <> player2_id);
 ALTER TABLE "matches" ADD CONSTRAINT matches_status_chk  CHECK (status IN (0, 1, 2));
 ALTER TABLE "matches" ADD CONSTRAINT matches_teams_chk   CHECK (team1_id <> team2_id);
@@ -91,8 +97,8 @@ npm run prisma:studio:club
 
 ### Troubleshooting
 
-| Error | Fix |
-| :--- | :--- |
-| `P3014 ... permission denied to create database` | The service user needs `CREATEDB` (step 1) |
-| Drift or "migration was modified" | An applied migration was edited. Restore the file, make a new migration |
-| Types out of date | `npm run prisma:club -- generate` |
+| Error                                            | Fix                                                                     |
+| :----------------------------------------------- | :---------------------------------------------------------------------- |
+| `P3014 ... permission denied to create database` | The service user needs `CREATEDB` (step 1)                              |
+| Drift or "migration was modified"                | An applied migration was edited. Restore the file, make a new migration |
+| Types out of date                                | `npm run prisma:club -- generate`                                       |
