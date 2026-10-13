@@ -1,18 +1,13 @@
-import { minutesNowInAppTz, timeToMinutes, todayInAppTz } from '@app/common';
+import { SessionState } from "@app/contracts/club/club.types.js";
 
 export function sessionState(
-  sessionDate: Date,
-  session: { start_time: Date; end_time: Date },
-): 'past' | 'ongoing' | 'upcoming' {
-  const today = todayInAppTz(); // Date at UTC midnight
-  const nowMin = minutesNowInAppTz();
-  const start = timeToMinutes(session.start_time);
-  const end = timeToMinutes(session.end_time);
-  const d = sessionDate.getTime();
-  const t = today.getTime();
-  if (d < t) return 'past';
-  if (d > t) return 'upcoming';
-  if (nowMin >= end) return 'past';
-  if (nowMin >= start) return 'ongoing';
-  return 'upcoming';
+  session: { start_at: Date; end_at: Date; cancelled_at: Date | null; capacity: number },
+  attendsCount: number,
+  now: Date = new Date(),
+): SessionState {
+  if (session.cancelled_at) return 'cancelled';
+  if (session.end_at <= now) return 'past';
+  if (session.start_at <= now) return 'ongoing';
+  if (attendsCount >= session.capacity) return 'full';
+  return 'open';
 }
