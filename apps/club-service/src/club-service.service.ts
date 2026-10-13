@@ -41,20 +41,13 @@ export class ClubServiceService {
           is_member: false,
           member_id: null,
           role: null,
-          attended_session_ids: [],
         };
       }
-      const attends = await this.prisma.sessionAttend.findMany({
-        where: { member_id: member.id, attend_date: todayInAppTz()  },
-        select: { session_id: true },
-      });
-      const attendedSessionIds = attends.map((attend) => attend.session_id);
 
       return {
         is_member: true,
         member_id: member.id,
         role: member.role,
-        attended_session_ids: attendedSessionIds,
       };
   
   }

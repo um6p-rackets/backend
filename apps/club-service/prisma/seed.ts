@@ -103,16 +103,59 @@ async function seedMembers(clubId: number) {
   });
 }
 
+const TEMPLATES = [
+  {
+    weekday: 1,
+    start: '17:00',
+    duration_minutes: 120,
+    capacity: 12,
+    title: 'Beginners',
+    location: 'Court 1',
+  },
+  {
+    weekday: 3,
+    start: '17:00',
+    duration_minutes: 120,
+    capacity: 8,
+    title: 'Advanced',
+    location: 'Court 2',
+  },
+];
+
 async function seedSessions(clubId: number) {
-  if (await prisma.weekSession.count({ where: { club_id: clubId } })) return;
-  await prisma.weekSession.createMany({
-    data: [
-      { club_id: clubId, day_of_week: 1, start_time: time('17:00'), end_time: time('19:00'),
-        capacity: 12, title: 'Beginners', location: 'Court 1' },
-      { club_id: clubId, day_of_week: 3, start_time: time('17:00'), end_time: time('19:00'),
-        capacity: 8, title: 'Advanced', location: 'Court 2' },
-    ],
-  });
+  if (await prisma.sessionTemplate.count({ where: { club_id: clubId } }))
+    return;
+
+  for (const t of TEMPLATES) {
+    const template = await prisma.sessionTemplate.create({
+      data: {
+        club_id: clubId,
+        weekday: t.weekday,
+        start_time: time(t.start),
+        duration_minutes: t.duration_minutes,
+        capacity: t.capacity,
+        title: t.title,
+        location: t.location,
+      },
+    });
+
+    // 3 past sessions (for history) and 2 upcoming ones
+    const dates = [...lastDates(t.weekday, 3), ...nextDates(t.weekday, 2)];
+    await prisma.session.createMany({
+      data: dates.map((d) => {
+        const start_at = at(d, t.start);
+        return {
+          club_id: clubId,
+          template_id: template.id,
+          start_at,
+          end_at: new Date(start_at.getTime() + t.duration_minutes * 60_000),
+          title: t.title,
+          location: t.location,
+          capacity: t.capacity,
+        };
+      }),
+    });
+  }
 }
 
 async function seedAnnouncements(clubId: number, coachMemberId: number) {
@@ -133,22 +176,27 @@ async function seedAnnouncements(clubId: number, coachMemberId: number) {
   });
 }
 
-
 async function seedTeamsAndMatches(clubId: number) {
   if (await prisma.match.count({ where: { club_id: clubId } })) return; // rerun-safe
 
   const players = await prisma.member.findMany({
-    where: { club_id: clubId, role: 0 }, orderBy: { id: 'asc' },
+    where: { club_id: clubId, role: 0 },
+    orderBy: { id: 'asc' },
   });
   const [referee] = await prisma.member.findMany({
-    where: { club_id: clubId, role: 1 }, orderBy: { id: 'asc' },
+    where: { club_id: clubId, role: 1 },
+    orderBy: { id: 'asc' },
   });
 
   const newTeam = (p1: number, p2?: number) =>
-    prisma.team.create({ data: { club_id: clubId, player1_id: p1, player2_id: p2 ?? null } });
+    prisma.team.create({
+      data: { club_id: clubId, player1_id: p1, player2_id: p2 ?? null },
+    });
 
   // 4 singles teams, 2 doubles teams
-  const [s1, s2, s3, s4] = await Promise.all(players.slice(0, 4).map((m) => newTeam(m.id)));
+  const [s1, s2, s3, s4] = await Promise.all(
+    players.slice(0, 4).map((m) => newTeam(m.id)),
+  );
   const [d1, d2] = await Promise.all([
     newTeam(players[4].id, players[5].id),
     newTeam(players[6].id, players[7].id),
@@ -160,17 +208,82 @@ async function seedTeamsAndMatches(clubId: number) {
   await prisma.match.createMany({
     data: [
       // finished (status 2). Points are a placeholder: winner +10, loser -5
-      { ...base, team1_id: s1.id, team2_id: s2.id, winner_id: s1.id, team1_score: 21, team2_score: 15, team1_points: 10, team2_points: -5, mode: 1, status: 2, scheduled_at: at(-7) },
-      { ...base, team1_id: s3.id, team2_id: s4.id, winner_id: s4.id, team1_score: 18, team2_score: 21, team1_points: -5, team2_points: 10, mode: 1, status: 2, scheduled_at: at(-3) },
-      { ...base, team1_id: d1.id, team2_id: d2.id, winner_id: d1.id, team1_score: 21, team2_score: 19, team1_points: 10, team2_points: -5, mode: 2, status: 2, scheduled_at: at(-1) },
+      {
+        ...base,
+        team1_id: s1.id,
+        team2_id: s2.id,
+        winner_id: s1.id,
+        team1_score: 21,
+        team2_score: 15,
+        team1_points: 10,
+        team2_points: -5,
+        mode: 1,
+        status: 2,
+        scheduled_at: at(-7),
+      },
+      {
+        ...base,
+        team1_id: s3.id,
+        team2_id: s4.id,
+        winner_id: s4.id,
+        team1_score: 18,
+        team2_score: 21,
+        team1_points: -5,
+        team2_points: 10,
+        mode: 1,
+        status: 2,
+        scheduled_at: at(-3),
+      },
+      {
+        ...base,
+        team1_id: d1.id,
+        team2_id: d2.id,
+        winner_id: d1.id,
+        team1_score: 21,
+        team2_score: 19,
+        team1_points: 10,
+        team2_points: -5,
+        mode: 2,
+        status: 2,
+        scheduled_at: at(-1),
+      },
       // confirmed, upcoming (status 1)
-      { ...base, team1_id: s1.id, team2_id: s3.id, mode: 1, status: 1, scheduled_at: at(2) },
+      {
+        ...base,
+        team1_id: s1.id,
+        team2_id: s3.id,
+        mode: 1,
+        status: 1,
+        scheduled_at: at(2),
+      },
       // pending, waiting for the referee (status 0)
-      { ...base, team1_id: s2.id, team2_id: s4.id, mode: 1, status: 0, scheduled_at: at(5) },
+      {
+        ...base,
+        team1_id: s2.id,
+        team2_id: s4.id,
+        mode: 1,
+        status: 0,
+        scheduled_at: at(5),
+      },
     ],
   });
 }
 
+// the next `count` dates (after today) that fall on `dayOfWeek`
+function nextDates(dayOfWeek: number, count: number): Date[] {
+  const out: Date[] = [];
+  const d = new Date();
+  d.setUTCHours(0, 0, 0, 0);
+  while (out.length < count) {
+    d.setUTCDate(d.getUTCDate() + 1);
+    if (d.getUTCDay() === dayOfWeek) out.push(new Date(d));
+  }
+  return out;
+}
+
+// date + "HH:mm" in Casablanca time (UTC+1)
+const at = (d: Date, hhmm: string) =>
+  new Date(`${d.toISOString().slice(0, 10)}T${hhmm}:00+01:00`);
 
 // the last `count` dates (before today) that fall on `dayOfWeek` (0 = Sunday)
 function lastDates(dayOfWeek: number, count: number): Date[] {
@@ -185,17 +298,28 @@ function lastDates(dayOfWeek: number, count: number): Date[] {
 }
 
 async function seedAttendance(clubId: number) {
-  const exists = await prisma.sessionAttend.count({ where: { member: { club_id: clubId } } });
-  if (exists) return;
+  if (
+    await prisma.sessionAttend.count({
+      where: { session: { club_id: clubId } },
+    })
+  )
+    return;
 
-  const sessions = await prisma.weekSession.findMany({ where: { club_id: clubId } });
-  const members = await prisma.member.findMany({ where: { club_id: clubId }, orderBy: { id: 'asc' } });
+  // only past sessions get attendance
+  const sessions = await prisma.session.findMany({
+    where: { club_id: clubId, start_at: { lt: new Date() } },
+    orderBy: { start_at: 'asc' },
+  });
+  const members = await prisma.member.findMany({
+    where: { club_id: clubId },
+    orderBy: { id: 'asc' },
+  });
 
-  const data = sessions.flatMap((s) =>
-    lastDates(s.day_of_week, 3).flatMap((attend_date, week) =>
-      // a few more people each week, so the attendance counts differ
-      members.slice(0, 6 + week).map((m) => ({ session_id: s.id, member_id: m.id, attend_date })),
-    ),
+  const data = sessions.flatMap((s, i) =>
+    // 6 to 8 people, so the counts differ and never pass the capacity (8)
+    members
+      .slice(0, 6 + (i % 3))
+      .map((m) => ({ session_id: s.id, member_id: m.id })),
   );
   await prisma.sessionAttend.createMany({ data, skipDuplicates: true });
 }
@@ -204,12 +328,17 @@ async function seedAchievements(clubId: number) {
   if (await prisma.achievement.count({ where: { club_id: clubId } })) return;
 
   const players = await prisma.member.findMany({
-    where: { club_id: clubId, role: 0 }, orderBy: { id: 'asc' }, take: 3,
+    where: { club_id: clubId, role: 0 },
+    orderBy: { id: 'asc' },
+    take: 3,
   });
   const names = ['Season Champion', 'Most Improved', 'Perfect Attendance'];
   await prisma.achievement.createMany({
     data: players.map((p, i) => ({
-      club_id: clubId, user_id: p.user_id, name: names[i], description: `${names[i]} this season`,
+      club_id: clubId,
+      user_id: p.user_id,
+      name: names[i],
+      description: `${names[i]} this season`,
     })),
   });
 }

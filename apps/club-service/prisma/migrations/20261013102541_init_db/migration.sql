@@ -2,6 +2,7 @@
 CREATE TABLE "clubs" (
     "id" SERIAL NOT NULL,
     "name" VARCHAR(255) NOT NULL,
+    "slug" VARCHAR(255) NOT NULL,
     "description" TEXT,
     "avatar" TEXT,
     "created_at" TIMESTAMPTZ(6) NOT NULL DEFAULT CURRENT_TIMESTAMP,
@@ -45,14 +46,36 @@ CREATE TABLE "announcements" (
 );
 
 -- CreateTable
-CREATE TABLE "week_sessions" (
+CREATE TABLE "session_templates" (
     "id" SERIAL NOT NULL,
     "club_id" INTEGER NOT NULL,
-    "day_of_week" SMALLINT NOT NULL,
+    "weekday" SMALLINT NOT NULL,
     "start_time" TIME(6) NOT NULL,
-    "end_time" TIME(6) NOT NULL,
+    "duration_minutes" INTEGER NOT NULL,
+    "title" VARCHAR(100),
+    "location" VARCHAR(100),
+    "capacity" INTEGER NOT NULL,
+    "created_at" TIMESTAMPTZ(6) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updated_at" TIMESTAMPTZ(6) NOT NULL,
 
-    CONSTRAINT "week_sessions_pkey" PRIMARY KEY ("id")
+    CONSTRAINT "session_templates_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateTable
+CREATE TABLE "sessions" (
+    "id" SERIAL NOT NULL,
+    "club_id" INTEGER NOT NULL,
+    "template_id" INTEGER,
+    "start_at" TIMESTAMPTZ(6) NOT NULL,
+    "end_at" TIMESTAMPTZ(6) NOT NULL,
+    "title" VARCHAR(100),
+    "location" VARCHAR(100),
+    "capacity" INTEGER NOT NULL,
+    "cancelled_at" TIMESTAMPTZ(6),
+    "created_at" TIMESTAMPTZ(6) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updated_at" TIMESTAMPTZ(6) NOT NULL,
+
+    CONSTRAINT "sessions_pkey" PRIMARY KEY ("id")
 );
 
 -- CreateTable
@@ -60,7 +83,6 @@ CREATE TABLE "session_attends" (
     "id" SERIAL NOT NULL,
     "session_id" INTEGER NOT NULL,
     "member_id" INTEGER NOT NULL,
-    "attend_date" DATE NOT NULL,
     "created_at" TIMESTAMPTZ(6) NOT NULL DEFAULT CURRENT_TIMESTAMP,
 
     CONSTRAINT "session_attends_pkey" PRIMARY KEY ("id")
@@ -111,6 +133,9 @@ CREATE TABLE "club_documents" (
 CREATE UNIQUE INDEX "clubs_name_key" ON "clubs"("name");
 
 -- CreateIndex
+CREATE UNIQUE INDEX "clubs_slug_key" ON "clubs"("slug");
+
+-- CreateIndex
 CREATE INDEX "members_user_id_idx" ON "members"("user_id");
 
 -- CreateIndex
@@ -123,7 +148,19 @@ CREATE INDEX "achievements_user_id_idx" ON "achievements"("user_id");
 CREATE INDEX "announcements_club_id_created_at_idx" ON "announcements"("club_id", "created_at" DESC);
 
 -- CreateIndex
-CREATE UNIQUE INDEX "session_attends_session_id_member_id_attend_date_key" ON "session_attends"("session_id", "member_id", "attend_date");
+CREATE INDEX "session_templates_club_id_weekday_idx" ON "session_templates"("club_id", "weekday");
+
+-- CreateIndex
+CREATE INDEX "sessions_club_id_start_at_idx" ON "sessions"("club_id", "start_at");
+
+-- CreateIndex
+CREATE UNIQUE INDEX "sessions_template_id_start_at_key" ON "sessions"("template_id", "start_at");
+
+-- CreateIndex
+CREATE INDEX "session_attends_member_id_idx" ON "session_attends"("member_id");
+
+-- CreateIndex
+CREATE UNIQUE INDEX "session_attends_session_id_member_id_key" ON "session_attends"("session_id", "member_id");
 
 -- CreateIndex
 CREATE INDEX "matches_club_id_status_scheduled_at_idx" ON "matches"("club_id", "status", "scheduled_at");
@@ -141,10 +178,16 @@ ALTER TABLE "announcements" ADD CONSTRAINT "announcements_club_id_fkey" FOREIGN 
 ALTER TABLE "announcements" ADD CONSTRAINT "announcements_announcer_id_fkey" FOREIGN KEY ("announcer_id") REFERENCES "members"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
 
 -- AddForeignKey
-ALTER TABLE "week_sessions" ADD CONSTRAINT "week_sessions_club_id_fkey" FOREIGN KEY ("club_id") REFERENCES "clubs"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+ALTER TABLE "session_templates" ADD CONSTRAINT "session_templates_club_id_fkey" FOREIGN KEY ("club_id") REFERENCES "clubs"("id") ON DELETE CASCADE ON UPDATE CASCADE;
 
 -- AddForeignKey
-ALTER TABLE "session_attends" ADD CONSTRAINT "session_attends_session_id_fkey" FOREIGN KEY ("session_id") REFERENCES "week_sessions"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+ALTER TABLE "sessions" ADD CONSTRAINT "sessions_club_id_fkey" FOREIGN KEY ("club_id") REFERENCES "clubs"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "sessions" ADD CONSTRAINT "sessions_template_id_fkey" FOREIGN KEY ("template_id") REFERENCES "session_templates"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "session_attends" ADD CONSTRAINT "session_attends_session_id_fkey" FOREIGN KEY ("session_id") REFERENCES "sessions"("id") ON DELETE CASCADE ON UPDATE CASCADE;
 
 -- AddForeignKey
 ALTER TABLE "session_attends" ADD CONSTRAINT "session_attends_member_id_fkey" FOREIGN KEY ("member_id") REFERENCES "members"("id") ON DELETE CASCADE ON UPDATE CASCADE;
@@ -177,9 +220,16 @@ ALTER TABLE "matches" ADD CONSTRAINT "matches_ref_id_fkey" FOREIGN KEY ("ref_id"
 ALTER TABLE "club_documents" ADD CONSTRAINT "club_documents_club_id_fkey" FOREIGN KEY ("club_id") REFERENCES "clubs"("id") ON DELETE CASCADE ON UPDATE CASCADE;
 
 
--- Checks Prisma can't express
-ALTER TABLE "week_sessions" ADD CONSTRAINT week_sessions_day_chk  CHECK (day_of_week BETWEEN 0 AND 6);
-ALTER TABLE "week_sessions" ADD CONSTRAINT week_sessions_time_chk CHECK (end_time > start_time);
+
+ALTER TABLE "session_templates"
+  ADD CONSTRAINT "session_templates_capacity_check" CHECK ("capacity" > 0),
+  ADD CONSTRAINT "session_templates_weekday_check"  CHECK ("weekday" BETWEEN 0 AND 6),
+  ADD CONSTRAINT "session_templates_duration_check" CHECK ("duration_minutes" BETWEEN 1 AND 1440);
+
+ALTER TABLE "sessions"
+  ADD CONSTRAINT "sessions_capacity_check" CHECK ("capacity" > 0),
+  ADD CONSTRAINT "sessions_time_check"     CHECK ("end_at" > "start_at");
+
 ALTER TABLE "teams"   ADD CONSTRAINT teams_players_chk   CHECK (player1_id <> player2_id);
 ALTER TABLE "matches" ADD CONSTRAINT matches_status_chk  CHECK (status IN (0, 1, 2));
 ALTER TABLE "matches" ADD CONSTRAINT matches_teams_chk   CHECK (team1_id <> team2_id);
