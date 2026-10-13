@@ -23,11 +23,11 @@ export class ClubServiceService {
       console.log(`[ClubService] Club with slug "${clubSlug}" not found`);
       throw rpcError(404, 'Club not found', 'Not Found');
     }
+    const membersCount = await this.prisma.member.count({ where: { club_id: club.id } });
     return {
       ...club,
       created_at: club.created_at.toISOString(),
-      // random member counter for now, we will implement a real one later
-      members_count: Math.floor(Math.random() * 1000) + 1, // random number between 1 and 1000
+      members_count: membersCount, 
     };
   }
 
@@ -35,19 +35,11 @@ export class ClubServiceService {
   {
       const club = await this.clubAccessService.getClub(clubSlug);
       const member = await this.clubAccessService.findMember(club.id, userId);
-      if (!member) {
-        return {
-          is_member: false,
-          member_id: null,
-          role: null,
-        };
-      }
 
       return {
-        is_member: true,
-        member_id: member.id,
-        role: member.role,
+        is_member: !!member,
+        member_id: member ? member.id : null,
+        role: member ? member.role : null,
       };
-  
   }
 }

@@ -1,91 +1,87 @@
 import { CLUB_PATTERNS, CLUB_SERVICE } from '@app/contracts';
 import {
+  BadRequestException,
   Controller,
   Get,
   Inject,
   Param,
   Query,
-  ServiceUnavailableException,
-  UseGuards,
 } from '@nestjs/common';
 import { ClientProxy } from '@nestjs/microservices';
-import {
-  catchError,
-  firstValueFrom,
-  throwError,
-  timeout,
-  TimeoutError,
-} from 'rxjs';
-import { ClubSlugParamDto } from '@app/contracts/club/dto/club-slug-param.dto.js';
-import { DevAuthGuard } from '../auth/dev-auth.guard.js';
-import { CurrentUser } from './current-user.decorator.js';
-import { WeekQueryDto } from '@app/contracts/club/dto/week-query.dto.js';
 
+import { ClubSlugParamDto } from '@app/contracts/club/dto/club-slug-param.dto.js';
+import { CurrentUser } from '../common/decorators/current-user.decorator.js';
+import { WeekQueryDto } from '@app/contracts/club/dto/week-query.dto.js';
+import { addDays, type AuthenticatedUser, mondayOf, today } from '@app/common';
+import { Public } from '../common/decorators/public.decorator.js';
+import { rpc } from '../common/helpers/rpc.helper.js';
 @Controller('clubs')
 export class ClubController {
   constructor(@Inject(CLUB_SERVICE) private readonly clubClient: ClientProxy) {}
 
+  @Public()
   @Get()
   async getAllClubs() {
-    console.log(
-      `[ClubController] Received request for all clubs, and send request to Club Service`,
-    );
-    // Sends { cmd: 'get_all_clubs' } to the Club Service and waits for a reply
-    const response = this.clubClient.send(CLUB_PATTERNS.GET_CLUBS, {}).pipe(
-      timeout(5000),
-      catchError((e) =>
-        throwError(() =>
-          e instanceof TimeoutError
-            ? new ServiceUnavailableException('Club service is not responding')
-            : e,
-        ),
-      ),
-    );
-
-    // firstValueFrom converts the RabbitMQ Observable into a standard Promise
-    return await firstValueFrom(response);
+    console.log(`[ClubController] Received request for all clubs, and send request to Club Service`);
+    return await rpc(this.clubClient, CLUB_PATTERNS.GET_CLUBS, {});
   }
+
+  @Public()
   @Get(':slug')
   async getClub(@Param() { slug }: ClubSlugParamDto) {
-    console.log(
-      `[ClubController] Received request for club slug: ${slug}, and send request to Club Service`,
-    );
-    const response = this.clubClient.send(CLUB_PATTERNS.GET_CLUB, {
+    console.log(`[ClubController] Received request for club slug: ${slug}, and send request to Club Service`);
+    return await rpc(this.clubClient, CLUB_PATTERNS.GET_CLUB, {
       club_slug: slug,
     });
-    return response;
   }
 
-  @UseGuards(DevAuthGuard)
   @Get(':slug/status')
   async getClubStatus(
     @Param() { slug }: ClubSlugParamDto,
-    @CurrentUser() user: { id: number },
+    @CurrentUser() user: AuthenticatedUser,
   ) {
-    console.log(
-      `[ClubController] Received request for club status for slug: ${slug} and user_id: ${user.id}, and send request to Club Service`,
-    );
-    const response = this.clubClient.send(CLUB_PATTERNS.GET_CLUB_STATUS, {
+    console.log(`[ClubController] Received request for club status for slug: ${slug} and user_id: ${user.id}, and send request to Club Service`);
+    return await rpc(this.clubClient, CLUB_PATTERNS.GET_CLUB_STATUS, {
       club_slug: slug,
       user_id: user.id,
     });
-    return response;
   }
 
-  @UseGuards(DevAuthGuard)
   @Get(':slug/sessions')
   async getClubWeekSessions(
     @Param() { slug }: ClubSlugParamDto,
-    @CurrentUser() user: { id: number },
+    @CurrentUser() user: AuthenticatedUser,
     @Query() { week }: WeekQueryDto,
   ) {
-    console.log(
-      `[ClubController] Received request for club week sessions for slug: ${slug} and user_id: ${user.id}, and send request to Club Service, week: ${week}`,
-    );
-    const response = this.clubClient.send(
-      CLUB_PATTERNS.GET_CLUB_WEEK_SESSIONS,
-      { club_slug: slug, user_id: user.id, week_start_date: week },
-    );
-    return response;
+    console.log(`[ClubController] Received request for club week sessions for slug: ${slug} and user_id: ${user.id}, and send request to Club Service, week: ${week}`);
+    
+    // check if week is valid date and its not probelme if it wass not monday
+    if (!week || isNaN(Date.parse(week))) {
+      throw new BadRequestException('Invalid week date');
+    }
+
+    // check that the week day is not in far future more than current week + 1 week
+    const maxDay = addDays(mondayOf(today()), 2 * 7); // current week + 1 week
+
+    if (week >= maxDay) {
+      throw new BadRequestException(
+        `Week date cannot be in the future more than current week + 1 week, max allowed: ${maxDay}`,
+      );
+    }
+
+    // check that the week day is not in far past more than 1 year
+    const minDay = addDays(mondayOf(today()), -365); // current week - 1 year
+
+    if (week < minDay) {
+      throw new BadRequestException(
+        `Week date cannot be in the past more than 1 year, min allowed: ${minDay}`,
+      );
+    }
+    
+    return await rpc(this.clubClient, CLUB_PATTERNS.GET_CLUB_WEEK_SESSIONS, { 
+      club_slug: slug, 
+      user_id: user.id, 
+      week_start_date: week 
+    });
   }
 }
