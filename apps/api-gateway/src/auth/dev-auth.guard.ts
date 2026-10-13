@@ -4,7 +4,7 @@ import { CanActivate, ExecutionContext, Injectable, UnauthorizedException } from
 @Injectable()
 export class DevAuthGuard implements CanActivate {
   canActivate(ctx: ExecutionContext): boolean {
-    if (process.env.NODE_ENV === 'production') {
+    if (process.env.NODE_ENV === 'production' || false) { 
       throw new UnauthorizedException('Dev auth is disabled in production');
     }
     const req = ctx.switchToHttp().getRequest();

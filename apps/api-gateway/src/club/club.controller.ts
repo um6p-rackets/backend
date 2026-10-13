@@ -1,5 +1,6 @@
 import { CLUB_PATTERNS, CLUB_SERVICE } from '@app/contracts';
 import {
+  BadRequestException,
   Controller,
   Get,
   Inject,
@@ -20,6 +21,7 @@ import { ClubSlugParamDto } from '@app/contracts/club/dto/club-slug-param.dto.js
 import { DevAuthGuard } from '../auth/dev-auth.guard.js';
 import { CurrentUser } from './current-user.decorator.js';
 import { WeekQueryDto } from '@app/contracts/club/dto/week-query.dto.js';
+import { addDays, mondayOf, today } from '@app/common';
 
 @Controller('clubs')
 export class ClubController {
@@ -82,6 +84,29 @@ export class ClubController {
     console.log(
       `[ClubController] Received request for club week sessions for slug: ${slug} and user_id: ${user.id}, and send request to Club Service, week: ${week}`,
     );
+    //  check if week is valid date and its not probelme if it wass not monday
+    if (!week || isNaN(Date.parse(week))) {
+      throw new BadRequestException('Invalid week date');
+    }
+
+    // check that the week day is not in far future more than current week + 1 week
+    const maxDay = addDays(mondayOf(today()), 2*7); // current week + 1 week
+
+    if (week >= maxDay) {
+      throw new BadRequestException(
+        `Week date cannot be in the future more than current week + 1 week, max allowed: ${maxDay}`,
+      );
+    }
+
+    // check that the week day is not in far past more than 1 year
+    const minDay = addDays(mondayOf(today()), -365); // current week - 1 year
+
+    if (week < minDay) {
+      throw new BadRequestException(
+        `Week date cannot be in the past more than 1 year, min allowed: ${minDay}`,
+      );
+    }
+    
     const response = this.clubClient.send(
       CLUB_PATTERNS.GET_CLUB_WEEK_SESSIONS,
       { club_slug: slug, user_id: user.id, week_start_date: week },
