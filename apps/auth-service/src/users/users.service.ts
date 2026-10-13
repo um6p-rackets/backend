@@ -2,6 +2,7 @@ import { Injectable } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service.js';
 import { RpcException } from '@nestjs/microservices';
 import { toUser } from './user.mapper.js';
+import * as argon2 from 'argon2';
 
 @Injectable()
 export class UsersService {
@@ -49,6 +50,25 @@ export class UsersService {
     if (!user) return null;
     const { password_hash, ...rest } = user;
     return rest;
+  }
+
+  async verifyPassword(userId: number, plainTextPassword: string): Promise<boolean> {
+    // 1. Fetch the raw database row directly from Prisma to get the hash
+    const userRecord = await this.prisma.user.findUnique({ 
+      where: { id: userId } 
+    });
+
+    if (!userRecord || !userRecord.password_hash) {
+      return false;
+    }
+
+    // 2. Securely compare the provided password against the database hash
+    try {
+      return await argon2.verify(userRecord.password_hash, plainTextPassword);
+    } catch (error) {
+      // Catching errors prevents crashes if the hash format in the DB is corrupted
+      return false; 
+    }
   }
 
 }

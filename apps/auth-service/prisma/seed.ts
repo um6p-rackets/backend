@@ -17,6 +17,7 @@ const coaches = [
   { login: 'coach_badminton', first_name: 'Badminton', last_name: 'Coach', email: 'coach.badminton@example.com' },
   { login: 'coach_squash', first_name: 'Squash', last_name: 'Coach', email: 'coach.squash@example.com' },
   { login: 'coach_table_tennis', first_name: 'Table Tennis', last_name: 'Coach', email: 'coach.table-tennis@example.com' },
+  { login: 'coach_table_tennis2', first_name: 'Table Tennis2', last_name: 'Coach', email: 'coach.table-tennis2@example.com' },
 ];
 
 async function main() {
@@ -27,7 +28,7 @@ async function main() {
       create: {
         ...coach,
         // placeholder that can never match a real password, change it when login exists
-        password_hash: '!',
+        password_hash: 'abdellahnsila123#002',
       },
     });
   }
