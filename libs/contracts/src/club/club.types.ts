@@ -1,53 +1,17 @@
-// ==========================================
-// - timestamps are ISO strings
-// - `date` columns are "YYYY-MM-DD", `time` columns are "HH:mm:ss"
-// - IDs from another service are plain numbers
-// ==========================================
+// Club service types, shared by the backend and the frontend.
+// Timestamps are ISO strings. Ids from other services are plain numbers.
 
 import type { User } from '@app/contracts/auth/auth.types.js';
 
-// ---------- CLUB service ----------
-
-export type Club = {
-  id: number; // bigserial PK
-  name: string; // varchar(255) UNIQUE
-  slug: string; // varchar(255) UNIQUE, used in URLs
-  description: string | null; // text
-  avatar: string | null; // text
-  created_at: string; // timestamptz
-};
+// ==========================================
+// 1. Enums
+// ==========================================
 
 export enum MemberRole {
   MEMBER = 0,
   LEADER = 1,
   COACH = 2,
 }
-
-export type Member = {
-  id: number; // bigserial PK
-  club_id: number; // bigint FK -> clubs.id
-  user_id: number; // users.id (auth service)
-  role: MemberRole; // int
-  joined_at: string; // timestamptz
-  left_at: string | null; // timestamptz, null = active member
-};
-
-export type Achievement = {
-  id: number; // bigserial PK
-  club_id: number; // bigint FK -> clubs.id
-  user_id: number; // users.id (auth service)
-  name: string; // varchar(255)
-  description: string | null; // text
-  taken_at: string; // timestamptz
-};
-
-export type Announcement = {
-  id: number; // bigserial PK
-  club_id: number; // bigint FK -> clubs.id
-  announcer_id: number; // bigint FK -> members.id
-  description: string; // text
-  created_at: string; // timestamptz
-};
 
 export enum WeekDay {
   SUNDAY = 0,
@@ -59,77 +23,136 @@ export enum WeekDay {
   SATURDAY = 6,
 }
 
-export type WeekSession = {
-  id: number; // bigserial PK
-  club_id: number; // bigint FK -> clubs.id
-  day_of_week: WeekDay; // smallint 0-6
-  start_time: string; // time, e.g. "17:00:00"
-  end_time: string; // time, e.g. "19:00:00"
-  capacity: number; // int > 0            NEW
-  title: string | null; // varchar(100)   NEW
-  location: string | null; // varchar(100) NEW
-  is_active: boolean; // false = retired slot, history kept   NEW
-  created_at: string; // timestamptz      NEW
-  updated_at: string; // timestamptz      NEW
-};
-
-export type SessionAttend = {
-  id: number; // bigserial PK
-  session_id: number; // bigint FK -> week_sessions.id
-  member_id: number; // bigint FK -> members.id
-  attend_date: string; // date, e.g. "2026-10-05"
-  created_at: string; // timestamptz
-};
-
-export type Team = {
-  id: number; // bigserial PK
-  club_id: number; // bigint FK -> clubs.id
-  player1_id: number; // bigint FK -> members.id
-  player2_id: number | null; // bigint FK -> members.id (null = singles)
-  created_at: string; // timestamptz
-};
-
 export enum MatchMode {
   SINGLES = 1,
   DOUBLES = 2,
 }
 
 export enum MatchStatus {
-  PENDING = 0, // requested, waiting for the referee
-  CONFIRMED = 1, // accepted, not played yet (upcoming)
+  PENDING = 0, // waiting for the referee
+  CONFIRMED = 1, // accepted, not played yet
   FINISHED = 2, // result entered
 }
 
-export type Match = {
-  id: number; // bigserial PK
-  club_id: number; // bigint FK -> clubs.id
-  team1_id: number; // bigint FK -> teams.id
-  team2_id: number; // bigint FK -> teams.id
-  winner_id: number | null; // bigint FK -> teams.id (only set when status = FINISHED)
-  ref_id: number | null; // bigint FK -> members.id (null = no referee yet)
-  team1_score: number; // int
-  team2_score: number; // int
-  team1_points: number; // int (ladder points change)
-  team2_points: number; // int
-  mode: MatchMode; // int
-  status: MatchStatus; // smallint
-  scheduled_at: string; // timestamptz
+// ==========================================
+// 2. Database entities (club service)
+// ==========================================
+
+// ---------- Clubs ----------
+
+export type Club = {
+  id: number;
+  name: string;
+  slug: string; // unique, used in URLs
+  description: string | null;
+  avatar: string | null;
+  created_at: string;
+};
+
+export type Member = {
+  id: number;
+  club_id: number;
+  user_id: number; // auth service
+  role: MemberRole;
+  joined_at: string;
+  left_at: string | null; // null = active member
+};
+
+export type Announcement = {
+  id: number;
+  club_id: number;
+  announcer_id: number; // member id
+  description: string;
+  created_at: string;
+};
+
+export type Achievement = {
+  id: number;
+  club_id: number;
+  user_id: number; // auth service
+  name: string;
+  description: string | null;
+  taken_at: string;
 };
 
 export type ClubDocument = {
-  id: number; // bigserial PK
-  club_id: number; // bigint FK -> clubs.id
-  title: string; // varchar(255)
-  description: string | null; // text
-  path: string; // text (link to the document)
+  id: number;
+  club_id: number;
+  title: string;
+  description: string | null;
+  path: string; // link to the document
+};
+
+// ---------- Sessions ----------
+
+// The weekly plan. Only used to generate sessions.
+export type SessionTemplate = {
+  id: number;
+  club_id: number;
+  weekday: WeekDay;
+  start_time: string; // time of day, "17:30:00"
+  duration_minutes: number; // 1..1440, can cross midnight
+  title: string | null;
+  location: string | null;
+  capacity: number;
+  created_at: string;
+  updated_at: string;
+};
+
+// One real session. Keeps its own values, so history never changes.
+export type Session = {
+  id: number;
+  club_id: number;
+  template_id: number | null; // null = detached from its weekly plan
+  start_at: string;
+  end_at: string;
+  title: string | null;
+  location: string | null;
+  capacity: number;
+  cancelled_at: string | null; // null = active
+  created_at: string;
+  updated_at: string;
+};
+
+// A booking: one member in one session.
+export type SessionAttend = {
+  id: number;
+  session_id: number;
+  member_id: number;
+  created_at: string;
+};
+
+// ---------- Matches ----------
+
+export type Team = {
+  id: number;
+  club_id: number;
+  player1_id: number; // member id
+  player2_id: number | null; // member id, null = singles
+  created_at: string;
+};
+
+export type Match = {
+  id: number;
+  club_id: number;
+  team1_id: number;
+  team2_id: number;
+  winner_id: number | null; // set only when FINISHED
+  ref_id: number | null; // member id
+  team1_score: number;
+  team2_score: number;
+  team1_points: number; // ladder points gained or lost
+  team2_points: number;
+  mode: MatchMode;
+  status: MatchStatus;
+  scheduled_at: string;
 };
 
 // ==========================================
-// 2. View models (joined data returned by the API)
-// Built by the backend because there are no cross-service joins.
+// 3. Shared building blocks
 // ==========================================
 
-// Every paginated list returns this shape
+// Every paginated list returns this shape.
 export type Paginated<T> = {
   data: T[];
   page: number;
@@ -137,26 +160,58 @@ export type Paginated<T> = {
   total: number;
 };
 
-export type ClubWithMembersCount = Club & { members_count: number };
-
-// GET /:clubId/status, what the current user is in this club
-export type ClubMemberStatus = {
-  is_member: boolean;
-  member_id: number | null; // null if not a member
-  role: MemberRole | null; // null if not a member
-};
-
-// Small user card used inside other responses
+// Small user card used inside other responses (data from the auth service).
 export type UserSummary = Pick<
   User,
   'id' | 'login' | 'first_name' | 'last_name' | 'avatar' | 'department'
 >;
 
-// A club member with the user's info
+// A club member seen as a person.
+export type Player = UserSummary & { member_id: number };
+
+// ==========================================
+// 4. Club views
+// ==========================================
+
+export type ClubWithMembersCount = Club & { members_count: number };
+
+// GET /:slug/status: who the current user is in this club.
+export type ClubMemberStatus = {
+  is_member: boolean;
+  member_id: number | null;
+  role: MemberRole | null;
+};
+
 export type MemberWithUser = Member & { user: UserSummary };
 
-// A player in a team: a member + the user's info
-export type Player = UserSummary & { member_id: number };
+export type AnnouncementWithAuthor = Announcement & { announcer: Player };
+
+// ==========================================
+// 5. Session views
+// ==========================================
+
+// First match wins: cancelled, past (ended), ongoing (started), full, open.
+export type SessionState = 'cancelled' | 'past' | 'ongoing' | 'full' | 'open';
+
+export type SessionView = Session & {
+  attends_count: number;
+  spots_left: number; // never below 0
+  is_joined: boolean; // is the current user booked
+  state: SessionState;
+};
+
+// GET /clubs/:slug/sessions?week=YYYY-MM-DD
+export type WeekView = {
+  week_start: string; // Monday, "2026-10-12"
+  is_current_week: boolean;
+  prev_week_start: string; // past weeks are read-only
+  next_week_start: string | null; // null when already on next week (max one week ahead)
+  sessions: SessionView[];
+};
+
+// ==========================================
+// 6. Match views
+// ==========================================
 
 export type TeamWithPlayers = Team & {
   player1: Player;
@@ -170,20 +225,11 @@ export type MatchDetail = Match & {
   referee: Player | null;
 };
 
-export type AnnouncementWithAuthor = Announcement & { announcer: Player };
+// ==========================================
+// 7. Profile and leaderboard
+// The `user` part comes from the auth service, the rest from the club service.
+// ==========================================
 
-export type SessionState = 'past' | 'ongoing' | 'open' | 'full';
-
-// A template placed on one specific date (what the week view displays)
-export type SessionOccurrence = WeekSession & {
-  date: string; // "2026-10-12", the real date of this occurrence
-  attends_count: number; // count of attends for this session on this date
-  spots_left: number; // capacity - attends_count (never below 0)
-  is_joined: boolean; // is the current user already in
-  state: SessionState; // computed by the backend
-};
-
-// A club the user joined (replaces "favorite sport")
 export type JoinedClub = {
   club: Club;
   member_id: number;
@@ -191,25 +237,20 @@ export type JoinedClub = {
   joined_at: string;
 };
 
-// ==========================================
-// 3. User profile page
-// `user` comes from the auth service, everything else from the club service.
-// ==========================================
-
-// One finished match from the profile owner's point of view
+// One finished match, seen from the profile owner.
 export type UserHistoryMatch = {
   match_id: number;
   club_id: number;
-  club_name: string; // clubs.name (the sport)
-  club_slug: string; // for links like /clubs/badminton
+  club_name: string;
+  club_slug: string;
   mode: MatchMode;
   partner: Player | null; // doubles only
   opponents: Player[]; // 1 in singles, 2 in doubles
-  result: 'W' | 'L'; // winner_id === user's team id
+  result: 'W' | 'L';
   my_score: number;
   opponent_score: number;
-  points_change: number; // team points of the user's team
-  date: string; // matches.scheduled_at
+  points_change: number;
+  date: string;
 };
 
 export type UserClubRank = {
@@ -217,10 +258,10 @@ export type UserClubRank = {
   club_name: string;
   club_slug: string;
   rank: number;
-  points: number; // sum of points_change in this club
+  points: number;
 };
 
-// One row of a club leaderboard (GET /:clubId/leaderboard)
+// GET /:slug/leaderboard
 export type LeaderboardEntry = {
   rank: number;
   player: Player;
@@ -233,8 +274,8 @@ export type UserProfileStat = {
   total_matches: number;
   wins: number;
   losses: number;
-  win_rate: number; // 0..1, format as % in the UI
-  ladder_points: number; // sum of points_change across clubs
+  win_rate: number; // 0..1
+  ladder_points: number;
   current_win_streak: number;
   best_rank: UserClubRank | null;
 };
@@ -248,10 +289,41 @@ export type UserProfileData = {
   club_ranks: UserClubRank[];
 };
 
+// ==========================================
+// 8. Request bodies and queries
+// ==========================================
+
+// POST /clubs/:slug/sessions
+// Adds a weekly slot, with sessions for this week (if not ended) and next week.
+export type CreateSessionBody = {
+  weekday: WeekDay;
+  start_time: string; // "HH:mm"
+  end_time: string; // "HH:mm", earlier than start_time = ends the next day
+  title?: string | null;
+  location?: string | null;
+  capacity: number;
+};
+
+// PATCH /clubs/:slug/sessions/:sessionId
+export type UpdateSessionBody = {
+  start_time?: string; // "HH:mm", send together with end_time
+  end_time?: string; // "HH:mm", earlier than start_time = ends the next day
+  title?: string | null;
+  location?: string | null;
+  capacity?: number; // not below the bookings of any affected session
+  apply_to_future?: boolean; // false (default) = this session only, true = also later sessions and the weekly plan
+};
+
+// DELETE /clubs/:slug/sessions/:sessionId?apply_to_future=true|false
+export type DeleteSessionQuery = {
+  apply_to_future?: boolean; // false (default) = cancel this session only, true = also stop the weekly slot
+};
+
+// POST /clubs/:slug/matches/request
 export type MatchRequestBody = {
-  mode: MatchMode; // 1 = singles, 2 = doubles
-  partner_id?: number; // member id, required for doubles, forbidden for singles
+  mode: MatchMode;
+  partner_id?: number; // member id, required for doubles
   opponent_ids: number[]; // member ids, 1 for singles, 2 for doubles
   requested_ref_id: number; // member id
-  scheduled_at: string; // ISO, must be in the future
+  scheduled_at: string; // must be in the future
 };
