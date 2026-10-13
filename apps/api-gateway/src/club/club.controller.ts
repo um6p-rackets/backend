@@ -4,6 +4,7 @@ import {
   Get,
   Inject,
   Param,
+  Query,
   ServiceUnavailableException,
   UseGuards,
 } from '@nestjs/common';
@@ -72,18 +73,18 @@ export class ClubController {
   }
 
   @UseGuards(DevAuthGuard)
-  @Get(':slug/sessions?week=:week')
+  @Get(':slug/sessions')
   async getClubWeekSessions(
     @Param() { slug }: ClubSlugParamDto,
     @CurrentUser() user: { id: number },
-    @Param() { week }: WeekQueryDto,
+    @Query() { week }: WeekQueryDto,
   ) {
     console.log(
       `[ClubController] Received request for club week sessions for slug: ${slug} and user_id: ${user.id}, and send request to Club Service, week: ${week}`,
     );
     const response = this.clubClient.send(
       CLUB_PATTERNS.GET_CLUB_WEEK_SESSIONS,
-      { club_slug: slug, user_id: user.id, week: week },
+      { club_slug: slug, user_id: user.id, week_start_date: week },
     );
     return response;
   }
