@@ -3,7 +3,6 @@ import { ConfigModule } from '@nestjs/config';
 import { configuration, envFiles } from '@app/common';
 import { ClubServiceController } from './club-service.controller.js';
 import { ClubServiceService } from './club-service.service.js';
-import { PrismaService } from './prisma/prisma.service.js';
 import { PrismaModule } from './prisma/prisma.module.js';
 import { FakeUserDirectory } from './users/fake-user-directory.js';
 import { USER_DIRECTORY } from './users/user-directory.js';
