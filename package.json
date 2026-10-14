@@ -28,6 +28,8 @@
     "prisma:studio:auth": "prisma studio --config apps/auth-service/prisma7.config.ts",
     "prisma:club-service": "prisma --config apps/club-service/prisma7.config.ts",
     "prisma:studio:club": "prisma studio --config apps/club-service/prisma7.config.ts",
+    "db:migrate:dev:auth": "npm run prisma:auth-service -- migrate dev",
+    "db:migrate:dev:club": "npm run prisma:club-service -- migrate dev",
     "db:generate": "npm run prisma:auth-service -- generate && npm run prisma:club-service -- generate",
     "db:migrate": "npm run prisma:auth-service -- migrate deploy && npm run prisma:club-service -- migrate deploy",
     "db:status": "npm run prisma:auth-service -- migrate status && npm run prisma:club-service -- migrate status",
