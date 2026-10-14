@@ -12,9 +12,8 @@ import { ClientProxy } from '@nestjs/microservices';
 import { ClubSlugParamDto } from '@app/contracts/club/dto/club-slug-param.dto.js';
 import { CurrentUser } from '../common/decorators/current-user.decorator.js';
 import { WeekQueryDto } from '@app/contracts/club/dto/week-query.dto.js';
-import { addDays, type AuthenticatedUser, mondayOf, today } from '@app/common';
-import { Public } from '../common/decorators/public.decorator.js';
-import { rpc } from '../common/helpers/rpc.helper.js';
+import { addDays, mondayOf, today } from '@app/common';
+
 @Controller('clubs')
 export class ClubController {
   constructor(@Inject(CLUB_SERVICE) private readonly clubClient: ClientProxy) {}
@@ -53,15 +52,16 @@ export class ClubController {
     @CurrentUser() user: AuthenticatedUser,
     @Query() { week }: WeekQueryDto,
   ) {
-    console.log(`[ClubController] Received request for club week sessions for slug: ${slug} and user_id: ${user.id}, and send request to Club Service, week: ${week}`);
-    
-    // check if week is valid date and its not probelme if it wass not monday
+    console.log(
+      `[ClubController] Received request for club week sessions for slug: ${slug} and user_id: ${user.id}, and send request to Club Service, week: ${week}`,
+    );
+    //  check if week is valid date and its not probelme if it wass not monday
     if (!week || isNaN(Date.parse(week))) {
       throw new BadRequestException('Invalid week date');
     }
 
     // check that the week day is not in far future more than current week + 1 week
-    const maxDay = addDays(mondayOf(today()), 2 * 7); // current week + 1 week
+    const maxDay = addDays(mondayOf(today()), 2*7); // current week + 1 week
 
     if (week >= maxDay) {
       throw new BadRequestException(
@@ -78,10 +78,10 @@ export class ClubController {
       );
     }
     
-    return await rpc(this.clubClient, CLUB_PATTERNS.GET_CLUB_WEEK_SESSIONS, { 
-      club_slug: slug, 
-      user_id: user.id, 
-      week_start_date: week 
-    });
+    const response = this.clubClient.send(
+      CLUB_PATTERNS.GET_CLUB_WEEK_SESSIONS,
+      { club_slug: slug, user_id: user.id, week_start_date: week },
+    );
+    return response;
   }
 }
