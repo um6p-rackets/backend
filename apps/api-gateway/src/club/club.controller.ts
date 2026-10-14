@@ -57,8 +57,12 @@ export class ClubController {
     console.log(
       `[ClubController] Received request for club week sessions for slug: ${slug} and user_id: ${user.id}, and send request to Club Service, week: ${week}`,
     );
-    //  check if week is valid date and its not probelme if it wass not monday
-    if (!week || isNaN(Date.parse(week))) {
+    // if week is not provided, set it to current week monday
+    if (!week) {
+      week = mondayOf(today());
+    }
+    //  check if week is valid date
+    else if (isNaN(Date.parse(week))) {
       throw new BadRequestException('Invalid week date');
     }
 
