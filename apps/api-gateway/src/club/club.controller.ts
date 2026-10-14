@@ -12,7 +12,9 @@ import { ClientProxy } from '@nestjs/microservices';
 import { ClubSlugParamDto } from '@app/contracts/club/dto/club-slug-param.dto.js';
 import { CurrentUser } from '../common/decorators/current-user.decorator.js';
 import { WeekQueryDto } from '@app/contracts/club/dto/week-query.dto.js';
-import { addDays, mondayOf, today } from '@app/common';
+import { addDays, type AuthenticatedUser, mondayOf, today } from '@app/common';
+import { Public } from '../common/decorators/public.decorator.js';
+import { rpc } from '../common/helpers/rpc.helper.js';
 
 @Controller('clubs')
 export class ClubController {
