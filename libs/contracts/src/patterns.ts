@@ -21,6 +21,7 @@ export const CLUB_PATTERNS = {
   GET_CLUB_WEEK_SESSIONS: 'club.get-club-week-sessions',
   POST_CLUB_SESSION_ATTEND: 'club.post-club-session-attend',
   DELETE_CLUB_SESSION_ATTEND: 'club.delete-club-session-attend',
+  POST_CLUB_SESSION_CREATE: 'club.post-club-session-create',
 } as const;
 
 

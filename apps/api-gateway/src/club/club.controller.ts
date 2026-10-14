@@ -2,6 +2,7 @@ import { CLUB_PATTERNS, CLUB_SERVICE } from '@app/contracts';
 import {
   BadRequestException,
   Controller,
+  Delete,
   Get,
   Inject,
   Param,
@@ -16,6 +17,8 @@ import { WeekQueryDto } from '@app/contracts/club/dto/week-query.dto.js';
 import { addDays, type AuthenticatedUser, mondayOf, today } from '@app/common';
 import { Public } from '../common/decorators/public.decorator.js';
 import { rpc } from '../common/helpers/rpc.helper.js';
+import { Body } from '@nestjs/common';
+import { CreateSessionDto } from '@app/contracts/club/dto/create-session.dto.js';
 
 @Controller('clubs')
 export class ClubController {
@@ -104,6 +107,38 @@ export class ClubController {
     const response = this.clubClient.send(
       CLUB_PATTERNS.POST_CLUB_SESSION_ATTEND,
       { club_slug: slug, user_id: user.id, session_id: sessionId },
+    );
+    return response;
+  }
+
+  @Delete(':slug/sessions/:session_id/attend')
+  async unattendSession(
+    @Param() { slug }: ClubSlugParamDto,
+    @CurrentUser() user: AuthenticatedUser,
+    @Param('session_id') sessionId: string,
+  ) {
+    console.log(
+      `[ClubController] Received request to unattend session with id: ${sessionId} for club slug: ${slug} and user_id: ${user.id}, and send request to Club Service`,
+    );
+    const response = this.clubClient.send(
+      CLUB_PATTERNS.DELETE_CLUB_SESSION_ATTEND,
+      { club_slug: slug, user_id: user.id, session_id: sessionId },
+    );
+    return response;
+  }
+
+  @Post(':slug/sessions')
+  async createSession(
+    @Param() { slug }: ClubSlugParamDto,
+    @CurrentUser() user: AuthenticatedUser,
+    @Body() { week }: CreateSessionDto,
+  ) {
+    console.log(
+      `[ClubController] Received request to create session for club slug: ${slug} and user_id: ${user.id}, and send request to Club Service, week: ${week}`,
+    );
+    const response = this.clubClient.send(
+      CLUB_PATTERNS.POST_CLUB_SESSION_CREATE,
+      { club_slug: slug, user_id: user.id, week_start_date: week },
     );
     return response;
   }
