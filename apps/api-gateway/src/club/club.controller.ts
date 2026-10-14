@@ -5,6 +5,7 @@ import {
   Get,
   Inject,
   Param,
+  Post,
   Query,
 } from '@nestjs/common';
 import { ClientProxy } from '@nestjs/microservices';
@@ -90,4 +91,23 @@ export class ClubController {
     );
     return response;
   }
+
+  @Post(':slug/sessions/:session_id/attend')
+  async attendSession(
+    @Param() { slug }: ClubSlugParamDto,
+    @CurrentUser() user: AuthenticatedUser,
+    @Param('session_id') sessionId: string,
+  ) {
+    console.log(
+      `[ClubController] Received request to attend session with id: ${sessionId} for club slug: ${slug} and user_id: ${user.id}, and send request to Club Service`,
+    );
+    const response = this.clubClient.send(
+      CLUB_PATTERNS.POST_CLUB_SESSION_ATTEND,
+      { club_slug: slug, user_id: user.id, session_id: sessionId },
+    );
+    return response;
+  }
+
+
+
 }

@@ -14,5 +14,19 @@ export class SessionsController {
     return this.sessionsService.getClubWeekSessions(data.club_slug, data.week_start_date);
   }
 
-  
+  @MessagePattern(CLUB_PATTERNS.POST_CLUB_SESSION_ATTEND)
+  async attendSession(data: { club_slug: string; session_id: string; user_id: number }) {
+    console.log(
+      `[SessionsController] Received request to attend session with id: ${data.session_id} for club slug: ${data.club_slug} and user_id: ${data.user_id}`,
+    );
+    return this.sessionsService.attendSession(data.club_slug, data.session_id, data.user_id);
+  }
+
+  @MessagePattern(CLUB_PATTERNS.DELETE_CLUB_SESSION_ATTEND)
+  async unattendSession(data: { club_slug: string; session_id: string; user_id: number }) {
+    console.log(
+      `[SessionsController] Received request to unattend session with id: ${data.session_id} for club slug: ${data.club_slug} and user_id: ${data.user_id}`,
+    );
+    return this.sessionsService.unattendSession(data.club_slug, data.session_id, data.user_id);
+  }
 }

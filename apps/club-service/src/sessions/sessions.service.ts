@@ -110,4 +110,103 @@ export class SessionsService {
       sessions: sessionViews,
     };
   }
+
+  async attendSession(clubSlug: string, sessionId: string, userId: number) {
+    const { member, club } = await this.clubAccessService.requireRole(
+      clubSlug,
+      userId,
+      0,
+    );
+
+    // Check if the session exists and belongs to the club
+    const session = await this.prisma.session.findUnique({
+      where: {
+        id: parseInt(sessionId, 10),
+      },
+    });
+
+    if (!session || session.club_id !== club.id) {
+      throw rpcError(404, 'Session not found', 'Not Found');
+    }
+
+    // Check if the user is already attending the session
+    const existingAttend = await this.prisma.sessionAttend.findUnique({
+      where: {
+        session_id_member_id: {
+          member_id: member.id,
+          session_id: session.id,
+        },
+      },
+    });
+
+    if (existingAttend) {
+      throw rpcError(
+        400,
+        'User is already attending this session',
+        'Bad Request',
+      );
+    }
+
+    // Check if the session has available spots
+    const attendsCount = await this.prisma.sessionAttend.count({
+      where: {
+        session_id: session.id,
+      },
+    });
+
+    if (attendsCount >= session.capacity) {
+      throw rpcError(400, 'Session is full', 'Bad Request');
+    }
+
+    // Create a new session attend record
+    await this.prisma.sessionAttend.create({
+      data: {
+        member_id: member.id,
+        session_id: session.id,
+      },
+    });
+  }
+
+  async unattendSession(clubSlug: string, sessionId: string, userId: number) {
+    const { member, club } = await this.clubAccessService.requireRole(
+      clubSlug,
+      userId,
+      0,
+    );
+
+    // Check if the session exists and belongs to the club
+    const session = await this.prisma.session.findUnique({
+      where: {
+        id: parseInt(sessionId, 10),
+      },
+    });
+
+    if (!session || session.club_id !== club.id) {
+      throw rpcError(404, 'Session not found', 'Not Found');
+    }
+
+    // Check if the user is attending the session
+    const existingAttend = await this.prisma.sessionAttend.findUnique({
+      where: {
+        session_id_member_id: {
+          member_id: member.id,
+          session_id: session.id,
+        },
+      },
+    });
+
+    if (!existingAttend) {
+      throw rpcError(400, 'User is not attending this session', 'Bad Request');
+    }
+
+    // Delete the session attend record
+    await this.prisma.sessionAttend.delete({
+      where: {
+        session_id_member_id: {
+          member_id: member.id,
+          session_id: session.id,
+        },
+      },
+    });
+  }
 }
