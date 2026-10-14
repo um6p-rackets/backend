@@ -20,14 +20,14 @@ export class JwtAuthGuard implements CanActivate {
         const req = ctx.switchToHttp().getRequest();
 
         // 2. DEV BYPASS: Allow x-user-id header ONLY in development
-        if (process.env.NODE_ENV !== 'production' && req.headers['x-user-id']) {
-            const id = Number(req.headers['x-user-id']);
-            if (Number.isInteger(id) && id > 0) {
-                // Fake the user object to satisfy the AuthenticatedUser interface
-                req.user = { id, login: `dev_user_${id}` } satisfies AuthenticatedUser;
-                return true;
-            }
-        }
+        // if (process.env.NODE_ENV !== 'production' && req.headers['x-user-id']) {
+        //     const id = Number(req.headers['x-user-id']);
+        //     if (Number.isInteger(id) && id > 0) {
+        //         // Fake the user object to satisfy the AuthenticatedUser interface
+        //         req.user = { id, login: `dev_user_${id}` } satisfies AuthenticatedUser;
+        //         return true;
+        //     }
+        // }
 
         // 3. PRODUCTION FLOW: Extract and verify the JWT
         const token = req.cookies?.[ACCESS_COOKIE];
