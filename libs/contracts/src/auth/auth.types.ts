@@ -12,8 +12,8 @@ export type User = {
 };
 
 export interface AuthTokens {
-  accessToken: string;
-  refreshToken: string;
+  access_token: string;
+  refresh_token: string;
 }
 
 export interface AuthResult extends AuthTokens {
@@ -28,20 +28,20 @@ export interface JwtPayload {
 }
 
 export interface RefreshPayload {
-  refreshToken: string;
+  refresh_token: string;
   iat?: number;
   exp?: number;
 }
 
 export interface LogoutPayload {
   userId: string;
-  refreshToken: string;
+  refresh_token: string;
 }
 
 export interface GetUserPayload {
-  userId: string;
+  user_id: string;
 }
 
 export interface GetUsersByIdsPayload {
-  userIds: string[];
+  user_ids: string[];
 }

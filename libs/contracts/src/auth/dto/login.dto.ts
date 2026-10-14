@@ -1,7 +1,7 @@
 // auth/login.dto.ts
-import { IsString } from 'class-validator';
+import { IsEmail, IsString, MaxLength, MinLength } from 'class-validator';
 
 export class LoginDto {
-  @IsString() email: string;
-  @IsString() password: string;
+  @IsEmail() email: string;
+  @IsString() @MinLength(8) @MaxLength(128) password: string;
 }

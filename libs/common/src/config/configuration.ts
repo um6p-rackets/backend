@@ -16,10 +16,12 @@ export const configuration = () => {
   const jwtSecret = process.env.JWT_ACCESS_SECRET ||
     readSecret(process.env.JWT_ACCESS_SECRET_FILE);
 
+  const jwtExpiresIn = process.env.JWT_ACCESS_EXPIRES_IN || '15m'; // Default to 15 minutes if not set
+
   return {
     database: { url: dbUrl },
     rabbitmq: { url: rmqUrl },
-    jwt: { accessSecret: jwtSecret }
+    jwt: { accessSecret: jwtSecret, expiresIn: jwtExpiresIn }
   };
 };
 
