@@ -20,7 +20,13 @@ async function bootstrap() {
   app.set('trust proxy', 1);                 // behind nginx, needed for secure cookies
   app.setGlobalPrefix('api/v1');
   app.use(helmet(), cookieParser());
-  app.useGlobalPipes(new ValidationPipe({ whitelist: true, transform: true }));
+  app.useGlobalPipes(
+    new ValidationPipe({
+      whitelist: true,            // Automatically strip out properties that don't have decorators
+      forbidNonWhitelisted: true, // Throw a 400 Bad Request if non-whitelisted properties are found
+      transform: true,            // Automatically transform payloads to be objects typed according to their DTO classes
+    }),
+  );
   app.useGlobalFilters(new RpcToHttpFilter());
 
   app.connectMicroservice(rmqOptions(rmqUrl, QUEUES.GATEWAY));
