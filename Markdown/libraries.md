@@ -9,4 +9,5 @@
     npm install -D @types/cookie-parser
     npm i --save @nestjs/config
     npm install joi
+    npm i @nestjs/jwt @nestjs/throttler argon2
 ```

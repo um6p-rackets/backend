@@ -1,42 +1,50 @@
-import { Controller, Get, UnauthorizedException } from '@nestjs/common';
-import { AuthServiceService } from './auth-service.service.js';
+import { Controller } from '@nestjs/common';
 import { MessagePattern, Payload } from '@nestjs/microservices';
-import { rpcError } from '@app/contracts';
+import { AuthServiceService } from './auth-service.service.js';
+import { AUTH_PATTERNS } from '@app/contracts';
+import { LoginDto } from '@app/contracts/auth/dto/login.dto.js';
 
 @Controller()
 export class AuthServiceController {
-	constructor(private readonly authServiceService: AuthServiceService) {}
+  constructor(private readonly authServiceService: AuthServiceService) {}
 
-	@MessagePattern({cmd: 'get_user'})
-	getUser (@Payload() data: { userId: string }) {
 
-		console.log(`[AuthService] Received request for user ID: ${data.userId}`);
-		
-		return { 
-			id: data.userId, 
-			username: 'abnsila', 
-			role: 'admin',
-			status: 'active'
-		};
-	}
-
-// Test 1: Custom RPC Error
-  @MessagePattern({ cmd: 'test_custom_error' })
-  testCustomError() {
-    throw rpcError(400, 'This is a custom bad request from Auth', 'CustomValidationError');
+  @MessagePattern(AUTH_PATTERNS.REGISTER)
+  async register(@Payload() dto: any) {
+    console.log(`[AuthService] Received registration request for email: ${dto.email}`);
+    return await this.authServiceService.register(dto);
   }
 
-  // Test 2: Standard NestJS Exception
-  @MessagePattern({ cmd: 'test_http_error' })
-  testHttpError() {
-    throw new UnauthorizedException('You do not have permission to do this');
+
+  @MessagePattern(AUTH_PATTERNS.LOGIN)
+  async login(@Payload() dto: LoginDto) {
+    console.log(`[AuthService] Received login request for email: ${dto.email}`);
+    return await this.authServiceService.login(dto);
   }
 
-  // Test 3: Fatal Crash / Unhandled Exception
-  @MessagePattern({ cmd: 'test_fatal_error' })
-  testFatalError() {
-    // Simulating a database crash or undefined variable
-    const obj: any = null;
-    return obj.thisMethodDoesNotExist(); 
+  @MessagePattern(AUTH_PATTERNS.REFRESH)
+  async refresh(@Payload() data: { refreshToken: string }) {
+    console.log(`[AuthService] Received refresh request`);
+    return await this.authServiceService.refresh(data.refreshToken);
   }
+
+  @MessagePattern(AUTH_PATTERNS.LOGOUT)
+  async logout(@Payload() data: { userId: string; refreshToken: string }) {
+    console.log(`[AuthService] Received logout request for user ID: ${data.userId}`);
+    return await this.authServiceService.logout(data.userId, data.refreshToken);
+  }
+
+
+  @MessagePattern(AUTH_PATTERNS.GET_USER)
+  async getUser(@Payload() data: { userId: string }) {
+    console.log(`[AuthService] Received request for user ID: ${data.userId}`);
+    return await this.authServiceService.getUser(data.userId);
+  }
+
+  @MessagePattern(AUTH_PATTERNS.HEALTH)
+  async health() {
+    console.log(`[AuthService] Health check requested`);
+    return await this.authServiceService.health();
+  }
+
 }

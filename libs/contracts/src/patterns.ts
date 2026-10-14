@@ -1,6 +1,7 @@
 // ================== AUTH SERVICE ==================
 
 export const AUTH_PATTERNS = {
+    HEALTH: 'auth.health',
     REGISTER: 'auth.register',
     LOGIN: 'auth.login',
     REFRESH: 'auth.refresh',

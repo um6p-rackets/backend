@@ -2,6 +2,7 @@
 import { PrismaPg } from '@prisma/adapter-pg';
 import { PrismaClient } from '../src/generated/prisma/client';
 import { configuration } from "../../../libs/common/src/config/configuration";
+import * as argon2 from 'argon2';
 
 const url = configuration().database.url;
 console.log("DATABASE_URL:", url);
@@ -17,9 +18,13 @@ const coaches = [
   { login: 'coach_badminton', first_name: 'Badminton', last_name: 'Coach', email: 'coach.badminton@example.com' },
   { login: 'coach_squash', first_name: 'Squash', last_name: 'Coach', email: 'coach.squash@example.com' },
   { login: 'coach_table_tennis', first_name: 'Table Tennis', last_name: 'Coach', email: 'coach.table-tennis@example.com' },
+  { login: 'coach_table_tennis2', first_name: 'Table Tennis2', last_name: 'Coach', email: 'coach.table-tennis2@example.com' },
 ];
 
 async function main() {
+  const testPassword = 'abdellahnsila123#002';
+  const hashedPassword = await argon2.hash(testPassword);
+
   for (const coach of coaches) {
     await prisma.user.upsert({
       where: { login: coach.login }, // safe to run many times
@@ -27,7 +32,7 @@ async function main() {
       create: {
         ...coach,
         // placeholder that can never match a real password, change it when login exists
-        password_hash: '!',
+        password_hash: hashedPassword,
       },
     });
   }

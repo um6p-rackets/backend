@@ -28,7 +28,8 @@
     "prisma:studio:auth": "prisma studio --config apps/auth-service/prisma7.config.ts",
     "prisma:club-service": "prisma --config apps/club-service/prisma7.config.ts",
     "prisma:studio:club": "prisma studio --config apps/club-service/prisma7.config.ts",
-    
+    "db:migrate:dev:auth": "npm run prisma:auth-service -- migrate dev",
+    "db:migrate:dev:club": "npm run prisma:club-service -- migrate dev",
     "db:generate": "npm run prisma:auth-service -- generate && npm run prisma:club-service -- generate",
     "db:migrate": "npm run prisma:auth-service -- migrate deploy && npm run prisma:club-service -- migrate deploy",
     "db:status": "npm run prisma:auth-service -- migrate status && npm run prisma:club-service -- migrate status",
@@ -38,14 +39,17 @@
     "@nestjs/common": "^12.0.1",
     "@nestjs/config": "^12.0.1",
     "@nestjs/core": "^12.0.1",
+    "@nestjs/jwt": "^12.0.3",
     "@nestjs/mapped-types": "*",
     "@nestjs/microservices": "^12.1.2",
     "@nestjs/observe": "^0.3.0",
     "@nestjs/platform-express": "^12.0.1",
+    "@nestjs/throttler": "^6.7.1",
     "@prisma/adapter-pg": "^7.10.0",
     "@prisma/client": "^7.10.0",
     "amqp-connection-manager": "^5.0.0",
     "amqplib": "^2.2.0",
+    "argon2": "^0.45.1",
     "class-transformer": "^0.5.1",
     "class-validator": "^0.15.1",
     "cookie-parser": "^1.4.7",
@@ -57,7 +61,7 @@
   },
   "devDependencies": {
     "@nestjs/cli": "^12.0.0",
-    "@nestjs/mau": "^0.0.6",
+    "@nestjs/mau": "^0.2.8",
     "@nestjs/schematics": "^12.0.0",
     "@nestjs/testing": "^12.0.1",
     "@rspack/core": "^2.2.8",
@@ -83,6 +87,8 @@
   },
   "allowScripts": {
     "prisma@7.10.0": true,
-    "@prisma/engines@7.10.0": true
+    "@prisma/engines@7.10.0": true,
+    "esbuild@0.28.2": true,
+    "argon2@0.45.1": true
   }
 }
