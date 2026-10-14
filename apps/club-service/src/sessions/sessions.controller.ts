@@ -1,7 +1,5 @@
 import { Controller } from '@nestjs/common';
 import { MessagePattern } from '@nestjs/microservices';
-import { Club, ClubMemberStatus, ClubWithMembersCount } from '@app/contracts/club/club.types.js';
-import { ClubServiceService } from '../club-service.service.js';
 import { CLUB_PATTERNS } from '@app/contracts';
 import { SessionsService } from './sessions.service.js';
 
