@@ -1,0 +1,1 @@
+// Registers and exports PrismaService through NestJS dependency injection.
