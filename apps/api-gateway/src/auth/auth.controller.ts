@@ -18,14 +18,14 @@ export class AuthController {
 	) {}
 
 	@Public()
-	@Throttle({ default: { limit: 5, ttl: 15 * 60_000 } }) // 5 requests per 15 minutes
+	@Throttle({ default: { limit: 20, ttl: 15 * 60_000 } }) // 20 requests per 15 minutes
 	@Get('health')
 	health(){
 		return rpc(this.authClient, AUTH_PATTERNS.HEALTH, {});
 	}
 
 	@Public()
-	@Throttle({ default: { limit: 5, ttl: 15 * 60_000 } })
+	@Throttle({ default: { limit: 20, ttl: 15 * 60_000 } })
 	@Post('register')
 	async register(@Body() dto: RegisterDto, @Res({ passthrough: true }) res: Response) {
 		// We pass the return type <AuthResult> so the rpc helper remains strongly typed for other calls as well
@@ -35,7 +35,7 @@ export class AuthController {
 	}
 
 	@Public()
-	@Throttle({ default: { limit: 500, ttl: 15 * 60_000 } })
+	@Throttle({ default: { limit: 20, ttl: 15 * 60_000 } })
 	@HttpCode(200)
 	@Post('login')
 	async login(@Body() dto: LoginDto, @Res({ passthrough: true }) res: Response) {
