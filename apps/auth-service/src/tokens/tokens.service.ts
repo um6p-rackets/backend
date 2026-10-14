@@ -2,7 +2,7 @@ import { Injectable } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import { PrismaService } from '../prisma/prisma.service.js';
 import { randomBytes, createHash, randomUUID } from 'crypto';
-import { rpcError } from '@app/contracts';
+import { AuthTokens, rpcError } from '@app/contracts';
 
 @Injectable()
 export class TokensService {
@@ -12,12 +12,12 @@ export class TokensService {
   ) {}
 
   // 1. Initial Login
-  async issue(userId: number, login: string) {
+  async issue(userId: number, login: string): Promise<AuthTokens> {
     return this.generateAndSaveTokens(userId, login, randomUUID());
   }
 
   // 2. Refresh Token Rotation
-  async rotate(plainRefreshToken: string) {
+  async rotate(plainRefreshToken: string): Promise<AuthTokens> {
     const tokenHash = createHash('sha256').update(plainRefreshToken).digest('hex');
     
     // Find the token and join the user table to get the login string for the new JWT
@@ -65,11 +65,8 @@ export class TokensService {
   }
 
   // --- Private Helper ---
-  private async generateAndSaveTokens(userId: number, login: string, familyId: string) {
-    const accessToken = await this.jwt.signAsync(
-      { sub: String(userId), login },
-      { expiresIn: '15m' },
-    );
+  private async generateAndSaveTokens(userId: number, login: string, familyId: string): Promise<AuthTokens> {
+    const accessToken = await this.jwt.signAsync( { sub: String(userId), login } );
 
     const plainRefreshToken = randomBytes(48).toString('base64url');
     const tokenHash = createHash('sha256').update(plainRefreshToken).digest('hex');
@@ -84,9 +81,10 @@ export class TokensService {
         user_id: userId,
         expires_at: expiresAt,
         is_revoked: false,
+        created_at: new Date(),
       },
     });
 
-    return { accessToken, refreshToken: plainRefreshToken };
+    return { access_token: accessToken, refresh_token: plainRefreshToken };
   }
 }

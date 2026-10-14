@@ -1,25 +1,50 @@
-import { Controller, UnauthorizedException } from '@nestjs/common';
+import { Controller } from '@nestjs/common';
 import { MessagePattern, Payload } from '@nestjs/microservices';
 import { AuthServiceService } from './auth-service.service.js';
-import { rpcError, AUTH_PATTERNS } from '@app/contracts';
+import { AUTH_PATTERNS } from '@app/contracts';
 import { LoginDto } from '@app/contracts/auth/dto/login.dto.js';
 
 @Controller()
 export class AuthServiceController {
   constructor(private readonly authServiceService: AuthServiceService) {}
 
-  // 1. Add the Login Listener
+
+  @MessagePattern(AUTH_PATTERNS.REGISTER)
+  async register(@Payload() dto: any) {
+    console.log(`[AuthService] Received registration request for email: ${dto.email}`);
+    return await this.authServiceService.register(dto);
+  }
+
+
   @MessagePattern(AUTH_PATTERNS.LOGIN)
   async login(@Payload() dto: LoginDto) {
     console.log(`[AuthService] Received login request for email: ${dto.email}`);
-    // Pass it to the service layer to do the actual database/hash checking
     return await this.authServiceService.login(dto);
   }
 
+  @MessagePattern(AUTH_PATTERNS.REFRESH)
+  async refresh(@Payload() data: { refreshToken: string }) {
+    console.log(`[AuthService] Received refresh request`);
+    return await this.authServiceService.refresh(data.refreshToken);
+  }
+
+  @MessagePattern(AUTH_PATTERNS.LOGOUT)
+  async logout(@Payload() data: { userId: string; refreshToken: string }) {
+    console.log(`[AuthService] Received logout request for user ID: ${data.userId}`);
+    return await this.authServiceService.logout(data.userId, data.refreshToken);
+  }
+
+
   @MessagePattern(AUTH_PATTERNS.GET_USER)
-  getUser(@Payload() data: { userId: string }) {
+  async getUser(@Payload() data: { userId: string }) {
     console.log(`[AuthService] Received request for user ID: ${data.userId}`);
-    return { id: data.userId, username: 'abnsila', role: 'admin', status: 'active' };
+    return await this.authServiceService.getUser(data.userId);
+  }
+
+  @MessagePattern(AUTH_PATTERNS.HEALTH)
+  async health() {
+    console.log(`[AuthService] Health check requested`);
+    return await this.authServiceService.health();
   }
 
 }

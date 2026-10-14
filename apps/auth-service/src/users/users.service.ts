@@ -38,10 +38,22 @@ export class UsersService {
     password_hash: string;
   }) {
     try {
-      return await this.prisma.user.create({ data: { ...data, login: data.login.toLowerCase(), email: data.email.toLowerCase() } });
-    }
-    catch (error: any) {
-      if (error.code === 'P2002') throw new RpcException({ status: 409, message: 'Login or email already in use' });
+      // 1. Await the database creation
+      const user = await this.prisma.user.create({ 
+        data: { 
+          ...data, 
+          login: data.login.toLowerCase(), 
+          email: data.email.toLowerCase() 
+        } 
+      });
+      
+      // 2. Return the safe, mapped user (strips out password_hash)
+      return toUser(user); 
+      
+    } catch (error: any) {
+      if (error.code === 'P2002') {
+        throw new RpcException({ status: 409, message: 'Login or email already in use' });
+      }
       throw error;
     }
   }

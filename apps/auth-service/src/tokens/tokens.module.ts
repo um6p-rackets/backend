@@ -13,6 +13,7 @@ import { PrismaModule } from '../prisma/prisma.module.js';
       useFactory: (configService: ConfigService) => ({
         secret: configService.getOrThrow<string>('jwt.accessSecret'),
         verifyOptions: { algorithms: ['HS256'] },
+        signOptions: { expiresIn: configService.getOrThrow<string>('jwt.expiresIn') as any },
       }),
     }),
   ],
