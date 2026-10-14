@@ -1,17 +1,18 @@
 // libs/common/src/dates.ts
 export const APP_TIMEZONE = 'Africa/Casablanca';
 
-const OFFSET = '+01:00'; // Morocco
-const OFFSET_MS = 60 * 60_000;
-const DAY_MS = 86_400_000;
+   const UTC_OFFSET_HOURS = 0; // UTC+0 for Casablanca, Morocco , we return to UTC+0 in sep 20 2026, put it 1 to change it to UTC+1 ..
+   const OFFSET = `${UTC_OFFSET_HOURS < 0 ? '-' : '+'}${String(Math.abs(UTC_OFFSET_HOURS)).padStart(2, '0')}:00`;
+   const OFFSET_MS = UTC_OFFSET_HOURS * 60 * 60_000;
+   const DAY_MS = 86_400_000;
 
 // ---------- days ("YYYY-MM-DD") ----------
 
-// the Morocco day of a moment: 2026-10-12T16:30Z -> "2026-10-12"
+// day of a moment: 2026-10-12T16:30Z -> "2026-10-12"
 export const dayOf = (date: Date): string =>
   new Date(date.getTime() + OFFSET_MS).toISOString().slice(0, 10);
 
-// today in Morocco
+// today
 export const today = (): string => dayOf(new Date());
 
 // "2026-10-12" + 7 -> "2026-10-19"
@@ -32,7 +33,7 @@ export function isValidDay(day: string): boolean {
 
 // ---------- moments (Date) ----------
 
-// the real moment of a Morocco day + time: ("2026-10-12", "17:30") -> Date
+// the real moment day + time: ("2026-10-12", "17:30") -> Date
 export const toDate = (day: string, hhmm = '00:00'): Date => new Date(`${day}T${hhmm}:00${OFFSET}`);
 
 // start and end of a week. No `week` = the current week.
