@@ -20,6 +20,19 @@ export interface AuthResult extends AuthTokens {
   user: User;
 }
 
+export interface HealthResult {
+  version: string;
+  service: string;
+  status: string;
+  environment: string;
+  timestamp: string;
+}
+
+export interface LogoutResult {
+  success: boolean;
+  message: string;
+}
+
 export interface JwtPayload {
   sub: string; // (*Subject*): Unique identifier for the user.
   login: string;
@@ -34,7 +47,6 @@ export interface RefreshPayload {
 }
 
 export interface LogoutPayload {
-  userId: string;
   refresh_token: string;
 }
 
