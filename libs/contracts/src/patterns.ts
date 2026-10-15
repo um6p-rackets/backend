@@ -22,6 +22,8 @@ export const CLUB_PATTERNS = {
   POST_CLUB_SESSION_ATTEND: 'club.post-club-session-attend',
   DELETE_CLUB_SESSION_ATTEND: 'club.delete-club-session-attend',
   POST_CLUB_SESSION_CREATE: 'club.post-club-session-create',
+  PATCH_CLUB_SESSION_UPDATE: 'club.patch-club-session-update',
+  DELETE_CLUB_SESSION_DELETE: 'club.delete-club-session-delete',
 } as const;
 
 
