@@ -25,19 +25,10 @@ export class SessionsService {
       1,
       0,
     ); // user_id = 1, minRole = MEMBER (0)
-    if (!club) {
-      console.log(`[SessionsService] Club with slug "${clubSlug}" not found`);
-      throw rpcError(404, 'Club not found', 'Not Found');
-    }
-    if (!member) {
-      console.log(
-        `[SessionsService] User with ID 1 is not a member of club with slug "${clubSlug}"`,
-      );
-      throw rpcError(403, 'User is not a member of the club', 'Forbidden');
-    }
 
     const { weekStart, from, to } = weekRange(weekStartDate);
 
+    // Fetch sessions for the specified week
     const sessions = await this.prisma.session.findMany({
       where: {
         club_id: club.id,
@@ -68,8 +59,8 @@ export class SessionsService {
       attendsCounts.map((ac) => [ac.session_id, ac._count.session_id]),
     );
 
-    // get is joined for each session for the current user (user_id = 1)
-    // first check if user is member of the club
+    // get is joined for each session for the current user
+    // we need just session id so we select only session id 
     const sessionAttends = await this.prisma.sessionAttend.findMany({
       where: {
         member_id: member.id,
@@ -77,8 +68,12 @@ export class SessionsService {
           in: sessions.map((s) => s.id),
         },
       },
+      select: {
+        session_id: true,
+      },
     });
 
+    // create a set of session ids that the user has joined,
     const joinedSessionIds = new Set(sessionAttends.map((sa) => sa.session_id));
 
     const sessionViews: SessionView[] = sessions.map((session) => {
