@@ -15,7 +15,6 @@ export class AuthServiceController {
     return await this.authServiceService.register(dto);
   }
 
-
   @MessagePattern(AUTH_PATTERNS.LOGIN)
   async login(@Payload() dto: LoginDto) {
     console.log(`[AuthService] Received login request for email: ${dto.email}`);
@@ -31,7 +30,7 @@ export class AuthServiceController {
   @MessagePattern(AUTH_PATTERNS.LOGOUT)
   async logout(@Payload() data: { userId: string; refreshToken: string }) {
     console.log(`[AuthService] Received logout request for user ID: ${data.userId}`);
-    return await this.authServiceService.logout(data.userId, data.refreshToken);
+    return await this.authServiceService.logout(data.refreshToken);
   }
 
 

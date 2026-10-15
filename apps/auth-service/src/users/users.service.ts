@@ -2,13 +2,14 @@ import { Injectable } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service.js';
 import { RpcException } from '@nestjs/microservices';
 import { toUser } from './user.mapper.js';
+import { User } from '@app/contracts';
 import * as argon2 from 'argon2';
 
 @Injectable()
 export class UsersService {
   constructor(private readonly prisma: PrismaService) {}
 
-  async findByEmail(email: string) {
+  async findByEmail(email: string): Promise<User | null> {
     const v = email.trim().toLowerCase();
     const row = await this.prisma.user.findFirst({ where: { email: v }});
     
@@ -16,12 +17,12 @@ export class UsersService {
     return row ? toUser(row) : null;
   }
 
-  async findById(id: number) {
+  async findById(id: number): Promise<User | null> {
     const row = await this.prisma.user.findUnique({ where: { id } });
     return row ? toUser(row) : null;
   }
 
-  async findMany(ids: number[]) {
+  async findMany(ids: number[]): Promise<User[]> {
     const rows = await this.prisma.user.findMany({ where: { id: { in: ids } } });
     return rows.map(row => toUser(row)); // Map arrays cleanly
   }
@@ -36,7 +37,7 @@ export class UsersService {
     email: string;
     avatar: string | null;
     password_hash: string;
-  }) {
+  }): Promise<User> {
     try {
       // 1. Await the database creation
       const user = await this.prisma.user.create({ 
@@ -58,12 +59,6 @@ export class UsersService {
     }
   }
 
-  async toUser(user: any) {
-    if (!user) return null;
-    const { password_hash, ...rest } = user;
-    return rest;
-  }
-
   async verifyPassword(userId: number, plainTextPassword: string): Promise<boolean> {
     // 1. Fetch the raw database row directly from Prisma to get the hash
     const userRecord = await this.prisma.user.findUnique({ 
@@ -82,5 +77,4 @@ export class UsersService {
       return false; 
     }
   }
-
 }
