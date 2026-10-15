@@ -40,4 +40,19 @@ export class SessionsController {
   async updateSession(data: { club_slug: string; session_id: string; user_id: number; body: UpdateSessionBody }) {
     return this.sessionsService.updateSession(data.club_slug, data.session_id, data.user_id, data.body);
   }
+
+  @MessagePattern(CLUB_PATTERNS.DELETE_CLUB_SESSION_DELETE)
+  async deleteSession(data: {
+    club_slug: string;
+    session_id: string;
+    user_id: number;
+    apply_to_future: boolean;
+  }) {
+    return this.sessionsService.deleteSession(
+      data.club_slug,
+      data.session_id,
+      data.user_id,
+      data.apply_to_future,
+    );
+  }
 }

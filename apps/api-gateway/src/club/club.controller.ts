@@ -18,10 +18,13 @@ import { addDays, type AuthenticatedUser, mondayOf, today } from '@app/common';
 import { Public } from '../common/decorators/public.decorator.js';
 import { rpc } from '../common/helpers/rpc.helper.js';
 import { Body } from '@nestjs/common';
-import { CreateSessionDto } from '@app/contracts/club/dto/create-session.dto.js';
-import { UpdateSessionDto } from '@app/contracts/club/dto/update-session.dto.js';
-import { SessionParamDto } from '@app/contracts/club/dto/session-param.dto.js';
-import { ClubSlugParamDto } from '@app/contracts/club/dto/club-slug-param.dto.js';
+import {
+  DeleteSessionQueryDto,
+  ClubSlugParamDto,
+  SessionParamDto,
+  UpdateSessionDto,
+  CreateSessionDto,
+} from '@app/contracts/club/dto/index.js';
 
 @Controller('clubs')
 export class ClubController {
@@ -30,14 +33,18 @@ export class ClubController {
   @Public()
   @Get()
   async getAllClubs() {
-    console.log(`[ClubController] Received request for all clubs, and send request to Club Service`);
+    console.log(
+      `[ClubController] Received request for all clubs, and send request to Club Service`,
+    );
     return await rpc(this.clubClient, CLUB_PATTERNS.GET_CLUBS, {});
   }
 
   @Public()
   @Get(':slug')
   async getClub(@Param() { slug }: SessionParamDto) {
-    console.log(`[ClubController] Received request for club slug: ${slug}, and send request to Club Service`);
+    console.log(
+      `[ClubController] Received request for club slug: ${slug}, and send request to Club Service`,
+    );
     return await rpc(this.clubClient, CLUB_PATTERNS.GET_CLUB, {
       club_slug: slug,
     });
@@ -48,7 +55,9 @@ export class ClubController {
     @Param() { slug }: SessionParamDto,
     @CurrentUser() user: AuthenticatedUser,
   ) {
-    console.log(`[ClubController] Received request for club status for slug: ${slug} and user_id: ${user.id}, and send request to Club Service`);
+    console.log(
+      `[ClubController] Received request for club status for slug: ${slug} and user_id: ${user.id}, and send request to Club Service`,
+    );
     return await rpc(this.clubClient, CLUB_PATTERNS.GET_CLUB_STATUS, {
       club_slug: slug,
       user_id: user.id,
@@ -75,7 +84,7 @@ export class ClubController {
     }
 
     // check that the week day is not in far future more than current week + 1 week
-    const maxDay = addDays(mondayOf(today()), 2*7); // current week + 1 week
+    const maxDay = addDays(mondayOf(today()), 2 * 7); // current week + 1 week
 
     if (week >= maxDay) {
       throw new BadRequestException(
@@ -91,7 +100,7 @@ export class ClubController {
         `Week date cannot be in the past more than 1 year, min allowed: ${minDay}`,
       );
     }
-    
+
     const response = this.clubClient.send(
       CLUB_PATTERNS.GET_CLUB_WEEK_SESSIONS,
       { club_slug: slug, user_id: user.id, week_start_date: week },
@@ -133,7 +142,7 @@ export class ClubController {
   async createSession(
     @Param() { slug }: ClubSlugParamDto,
     @CurrentUser() user: AuthenticatedUser,
-    @Body() body : CreateSessionDto,
+    @Body() body: CreateSessionDto,
   ) {
     console.log(
       `[ClubController] Received request to create session for club slug: ${slug} and user_id: ${user.id}, and send request to Club Service with body: ${JSON.stringify(body)}`,
@@ -149,7 +158,7 @@ export class ClubController {
   async updateSession(
     @Param() { slug, session_id }: SessionParamDto,
     @CurrentUser() user: AuthenticatedUser,
-    @Body() body : UpdateSessionDto,
+    @Body() body: UpdateSessionDto,
   ) {
     console.log(
       `[ClubController] Received request to update session with id: ${session_id} for club slug: ${slug} and user_id: ${user.id}, and send request to Club Service with body: ${JSON.stringify(body)}`,
@@ -163,21 +172,17 @@ export class ClubController {
 
   @Delete(':slug/sessions/:session_id')
   async deleteSession(
-  @Param() { slug, session_id }: SessionParamDto,
+    @Param() { slug, session_id }: SessionParamDto,
     @CurrentUser() user: AuthenticatedUser,
+    @Query() { apply_to_future }: DeleteSessionQueryDto,
   ) {
     console.log(
-      `[ClubController] Received request to delete session with id: ${session_id} for club slug: ${slug} and user_id: ${user.id}, and send request to Club Service`,
+      `[ClubController] Received request to delete session with id: ${session_id} for club slug: ${slug} and user_id: ${user.id}, and send request to Club Service with apply_to_future: ${apply_to_future}`,
     );
     const response = this.clubClient.send(
       CLUB_PATTERNS.DELETE_CLUB_SESSION_DELETE,
-      { club_slug: slug, user_id: user.id, session_id: session_id },
+      { club_slug: slug, user_id: user.id, session_id: session_id, apply_to_future: apply_to_future ?? false },
     );
     return response;
   }
-
-
-
-
-
 }
