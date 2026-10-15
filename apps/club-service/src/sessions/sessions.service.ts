@@ -133,6 +133,16 @@ export class SessionsService {
       throw rpcError(404, 'Session not found', 'Not Found');
     }
 
+    // check if sessions is in past, if yes, throw error
+    if (session.start_at < toDate(today())) {
+      throw rpcError(400, 'Cannot attend a session in the past', 'Bad Request');
+    }
+
+    // check if session is cancelled, if yes, throw error
+    if (session.cancelled_at) {
+      throw rpcError(400, 'Cannot attend a cancelled session', 'Bad Request');
+    }
+
     // Check if the user is already attending the session
     const existingAttend = await this.prisma.sessionAttend.findUnique({
       where: {
@@ -169,6 +179,8 @@ export class SessionsService {
         session_id: session.id,
       },
     });
+
+    return { success: true, message: 'User successfully attended the session' };
   }
 
   async unattendSession(clubSlug: string, sessionId: string, userId: number) {
@@ -188,6 +200,25 @@ export class SessionsService {
     if (!session || session.club_id !== club.id) {
       throw rpcError(404, 'Session not found', 'Not Found');
     }
+
+    // check if sessions is in past, if yes, throw error
+    if (session.start_at < toDate(today())) {
+      throw rpcError(
+        400,
+        'Cannot unattend a session in the past',
+        'Bad Request',
+      );
+    }
+
+    // check if session is cancelled, if yes, throw error
+    if (session.cancelled_at) {
+      throw rpcError(
+        400,
+        'Cannot unattend a cancelled session',
+        'Bad Request',
+      );
+    }
+    
 
     // Check if the user is attending the session
     const existingAttend = await this.prisma.sessionAttend.findUnique({
@@ -212,6 +243,8 @@ export class SessionsService {
         },
       },
     });
+
+    return { success: true, message: 'User successfully unattended the session' };
   }
 
   async createSession(
