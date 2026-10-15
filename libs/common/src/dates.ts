@@ -16,18 +16,18 @@ export const dayOf = (date: Date): string =>
 export const today = (): string => dayOf(new Date());
 
 // now
-export const now = (): Date => new Date(Date.now() + OFFSET_MS);
+export const now = (): Date => new Date();
 
 // "2026-10-12" + 7 -> "2026-10-19"
 export function addDays(day: string, n: number): string {
   return new Date(Date.parse(`${day}T00:00:00Z`) + n * DAY_MS).toISOString().slice(0, 10);
 }
 
-// 0 Sunday ... 6 Saturday (same as the WeekDay enum)
-export const weekdayOf = (day: string): number => new Date(`${day}T00:00:00Z`).getUTCDay();
+// 0 Monday ... 6 Sunday (same as the WeekDay enum)
+export const weekdayOf = (day: string): number =>
+  (new Date(`${day}T00:00:00Z`).getUTCDay() + 6) % 7;
 
-// Monday of the week that contains `day`
-export const mondayOf = (day: string): string => addDays(day, -((weekdayOf(day) + 6) % 7));
+export const mondayOf = (day: string): string => addDays(day, -weekdayOf(day));
 
 // real calendar date, not only the right shape (rejects "2026-13-45")
 export function isValidDay(day: string): boolean {

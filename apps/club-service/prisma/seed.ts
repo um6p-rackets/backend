@@ -281,9 +281,9 @@ function nextDates(dayOfWeek: number, count: number): Date[] {
   return out;
 }
 
-// date + "HH:mm" in Casablanca time (UTC+1)
+// date + "HH:mm" in Casablanca time (UTC+0)
 const at = (d: Date, hhmm: string) =>
-  new Date(`${d.toISOString().slice(0, 10)}T${hhmm}:00+01:00`);
+  new Date(`${d.toISOString().slice(0, 10)}T${hhmm}:00+00:00`);
 
 // the last `count` dates (before today) that fall on `dayOfWeek` (0 = Sunday)
 function lastDates(dayOfWeek: number, count: number): Date[] {
