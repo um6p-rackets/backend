@@ -13,3 +13,5 @@ README.md
 .idea
 coverage
 **/generated
+
+sessions.http

@@ -1,0 +1,64 @@
+@API = http://localhost:3000/api/v1
+
+### 1. Login (run this first, cookies are saved for the next requests)
+POST {{API}}/auth/login
+Content-Type: application/json
+
+{
+  "email": "coach.tennis@example.com",
+  "password": "abdellahnsila123#002"
+}
+
+### 2. This week
+GET {{API}}/clubs/tennis/sessions
+
+### 3. Next week
+GET {{API}}/clubs/tennis/sessions?week=2026-10-19
+
+### 3b. Bad week (expect 400)
+GET {{API}}/clubs/tennis/sessions?week=abc
+
+### 3c. Too far ahead (expect 400)
+GET {{API}}/clubs/tennis/sessions?week=2026-11-02
+
+@SID = 4
+
+### 4a. Join (expect OK)
+POST {{API}}/clubs/tennis/sessions/{{SID}}/attend
+
+### 4b. Join again (expect 409, already joined)
+POST {{API}}/clubs/tennis/sessions/{{SID}}/attend
+
+### 4c. Check the week (is_joined true, spots_left minus 1)
+GET {{API}}/clubs/tennis/sessions?week=2026-10-19
+
+### 4d. Leave (expect OK)
+DELETE {{API}}/clubs/tennis/sessions/{{SID}}/attend
+
+### 4e. Leave again (expect an error, not joined)
+DELETE {{API}}/clubs/tennis/sessions/{{SID}}/attend
+
+### 4f. Join a past session (expect an error), use the id 1 from this week
+POST {{API}}/clubs/tennis/sessions/1/attend
+
+### 4g. leave session in past (expect an error), use the id 1 from this week
+DELETE {{API}}/clubs/tennis/sessions/1/attend
+
+### 5a. Create a Friday slot (today is Thu 15 Oct)
+POST {{API}}/clubs/tennis/sessions
+Content-Type: application/json
+
+{
+  "weekday": 4,
+  "start_time": "18:00",
+  "end_time": "19:30",
+  "capacity": 1,
+  "title": "Test",
+  "location": "Court 3"
+}
+
+### 5b. This week (expect Friday 16 Oct)
+GET {{API}}/clubs/tennis/sessions
+
+### 5c. Next week (expect Friday 23 Oct)
+GET {{API}}/clubs/tennis/sessions?week=2026-10-19
