@@ -22,4 +22,10 @@ export class CreateSessionDto implements CreateSessionBody {
 
   @Type(() => Number) @IsInt() @Min(1) @Max(1000)
   capacity: number;
+
+  @IsOptional() @Matches(/^\d{4}-\d{2}-\d{2}$/, { message: 'week_start must be YYYY-MM-DD' })
+  week_start?: string; // optional, "YYYY-MM-DD", the Monday of the week to create the session for. If not provided, defaults to the current week.
+
+  @IsOptional() @Type(() => Boolean)
+  repeat_weekly?: boolean; // false (default) = this week only, true = also next weeks
 }

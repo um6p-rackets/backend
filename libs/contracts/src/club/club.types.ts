@@ -302,6 +302,8 @@ export type CreateSessionBody = {
   title?: string | null;
   location?: string | null;
   capacity: number;
+  week_start?: string; // optional, "YYYY-MM-DD", the Monday of the week to create the session for. If not provided, defaults to the current week.
+  repeat_weekly?: boolean; // false (default) = this week only, true = also next weeks
 };
 
 // PATCH /clubs/:slug/sessions/:sessionId
