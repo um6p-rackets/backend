@@ -1,29 +1,33 @@
 // libs/common/src/dates.ts
 export const APP_TIMEZONE = 'Africa/Casablanca';
 
-const OFFSET = '+01:00'; // Morocco
-const OFFSET_MS = 60 * 60_000;
-const DAY_MS = 86_400_000;
+   const UTC_OFFSET_HOURS = 0; // UTC+0 for Casablanca, Morocco , we return to UTC+0 in sep 20 2026, put it 1 to change it to UTC+1 ..
+   const OFFSET = `${UTC_OFFSET_HOURS < 0 ? '-' : '+'}${String(Math.abs(UTC_OFFSET_HOURS)).padStart(2, '0')}:00`;
+   const OFFSET_MS = UTC_OFFSET_HOURS * 60 * 60_000;
+   const DAY_MS = 86_400_000;
 
 // ---------- days ("YYYY-MM-DD") ----------
 
-// the Morocco day of a moment: 2026-10-12T16:30Z -> "2026-10-12"
+// day of a moment: 2026-10-12T16:30Z -> "2026-10-12"
 export const dayOf = (date: Date): string =>
   new Date(date.getTime() + OFFSET_MS).toISOString().slice(0, 10);
 
-// today in Morocco
+// today
 export const today = (): string => dayOf(new Date());
+
+// now
+export const now = (): Date => new Date();
 
 // "2026-10-12" + 7 -> "2026-10-19"
 export function addDays(day: string, n: number): string {
   return new Date(Date.parse(`${day}T00:00:00Z`) + n * DAY_MS).toISOString().slice(0, 10);
 }
 
-// 0 Sunday ... 6 Saturday (same as the WeekDay enum)
-export const weekdayOf = (day: string): number => new Date(`${day}T00:00:00Z`).getUTCDay();
+// 0 Monday ... 6 Sunday (same as the WeekDay enum)
+export const weekdayOf = (day: string): number =>
+  (new Date(`${day}T00:00:00Z`).getUTCDay() + 6) % 7;
 
-// Monday of the week that contains `day`
-export const mondayOf = (day: string): string => addDays(day, -((weekdayOf(day) + 6) % 7));
+export const mondayOf = (day: string): string => addDays(day, -weekdayOf(day));
 
 // real calendar date, not only the right shape (rejects "2026-13-45")
 export function isValidDay(day: string): boolean {
@@ -32,8 +36,11 @@ export function isValidDay(day: string): boolean {
 
 // ---------- moments (Date) ----------
 
-// the real moment of a Morocco day + time: ("2026-10-12", "17:30") -> Date
+// the real moment day + time: ("2026-10-12", "17:30") -> Date
 export const toDate = (day: string, hhmm = '00:00'): Date => new Date(`${day}T${hhmm}:00${OFFSET}`);
+
+// to date from string
+export const toDateFromString = (s: string): Date => new Date(s);
 
 // start and end of a week. No `week` = the current week.
 export function weekRange(week?: string) {

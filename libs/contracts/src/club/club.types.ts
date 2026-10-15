@@ -14,13 +14,13 @@ export enum MemberRole {
 }
 
 export enum WeekDay {
-  SUNDAY = 0,
-  MONDAY = 1,
-  TUESDAY = 2,
-  WEDNESDAY = 3,
-  THURSDAY = 4,
-  FRIDAY = 5,
-  SATURDAY = 6,
+  MONDAY = 0,
+  TUESDAY = 1,
+  WEDNESDAY = 2,
+  THURSDAY = 3,
+  FRIDAY = 4,
+  SATURDAY = 5,
+  SUNDAY = 6,
 }
 
 export enum MatchMode {
@@ -302,6 +302,8 @@ export type CreateSessionBody = {
   title?: string | null;
   location?: string | null;
   capacity: number;
+  week_start?: string; // optional, "YYYY-MM-DD", the Monday of the week to create the session for. If not provided, defaults to the current week.
+  repeat_weekly?: boolean; // false (default) = this week only, true = also next weeks
 };
 
 // PATCH /clubs/:slug/sessions/:sessionId
@@ -312,6 +314,7 @@ export type UpdateSessionBody = {
   location?: string | null;
   capacity?: number; // not below the bookings of any affected session
   apply_to_future?: boolean; // false (default) = this session only, true = also later sessions and the weekly plan
+  template_id?: string;
 };
 
 // DELETE /clubs/:slug/sessions/:sessionId?apply_to_future=true|false
