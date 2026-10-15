@@ -15,6 +15,9 @@ export const dayOf = (date: Date): string =>
 // today
 export const today = (): string => dayOf(new Date());
 
+// now
+export const now = (): Date => new Date(Date.now() + OFFSET_MS);
+
 // "2026-10-12" + 7 -> "2026-10-19"
 export function addDays(day: string, n: number): string {
   return new Date(Date.parse(`${day}T00:00:00Z`) + n * DAY_MS).toISOString().slice(0, 10);
@@ -35,6 +38,9 @@ export function isValidDay(day: string): boolean {
 
 // the real moment day + time: ("2026-10-12", "17:30") -> Date
 export const toDate = (day: string, hhmm = '00:00'): Date => new Date(`${day}T${hhmm}:00${OFFSET}`);
+
+// to date from string
+export const toDateFromString = (s: string): Date => new Date(s);
 
 // start and end of a week. No `week` = the current week.
 export function weekRange(week?: string) {
