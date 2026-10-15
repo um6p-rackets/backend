@@ -3,18 +3,40 @@ import { PrismaService } from '../prisma/prisma.service.js';
 import { RpcException } from '@nestjs/microservices';
 import { toUser } from './user.mapper.js';
 import { User } from '@app/contracts';
+import type { User as PrismaUser } from '../generated/prisma/client.js';
 import * as argon2 from 'argon2';
+
+const DUMMY_HASH = '$argon2id$v=19$m=65536,t=3,p=4$c29tZXNhbHQ$R29vZEx1Y2tXaXRoVGhhdEFyZ29uMklkSGFzaA';
 
 @Injectable()
 export class UsersService {
   constructor(private readonly prisma: PrismaService) {}
 
-  async findByEmail(email: string): Promise<User | null> {
+  private async findRawByEmail(email: string): Promise<PrismaUser | null> {
     const v = email.trim().toLowerCase();
-    const row = await this.prisma.user.findFirst({ where: { email: v }});
-    
-    // Return null if not found, otherwise return the safely mapped User
+    return await this.prisma.user.findFirst({ where: { email: v } });
+  }
+
+  async findByEmail(email: string): Promise<User | null> {
+    const row = await this.findRawByEmail(email);
     return row ? toUser(row) : null;
+  }
+
+  async validateCredentials(email: string, password: string): Promise<User | null> {
+    const row = await this.findRawByEmail(email);
+    
+    // Select the hash to test: the real one if the user exists, or the dummy one if they don't
+    const hashToVerify = (row && row.password_hash) ? row.password_hash : DUMMY_HASH;
+    
+    // ALWAYS run verify to prevent side-channel timing attacks
+    const isPasswordValid = await argon2.verify(hashToVerify, password).catch(() => false);
+    
+    if (!row || !isPasswordValid) {
+      return null;
+    }
+
+    // Strip the hash safely before returning to the Auth Service
+    return toUser(row);
   }
 
   async findById(id: number): Promise<User | null> {

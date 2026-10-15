@@ -59,22 +59,15 @@ export class AuthServiceService {
 
   // login
   async login(dto: LoginDto): Promise<AuthResult> {
-    // 1. Find the user (returns the safe, mapped object via toUser)
-    const user = await this.usersService.findByEmail(dto.email);
+
+    const user = await this.usersService.validateCredentials(dto.email, dto.password);
     if (!user) {
       throw rpcError(401, 'Invalid credentials', 'Unauthorized');
     }
 
-    // 2. Verify the password 
-    const isPasswordValid = await this.usersService.verifyPassword(user.id, dto.password);
-    if (!isPasswordValid) {
-      throw rpcError(401, 'Invalid credentials', 'Unauthorized');
-    }
-
-    // 3. Issue the new JWT & Opaque Refresh Token pair
     const tokens = await this.tokensService.issue(user.id, user.login);
 
-    // 4. Return exact shape for the Gateway
+    // Return exact shape for the Gateway
     return {
       user,
       ...tokens,

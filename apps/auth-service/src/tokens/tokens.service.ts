@@ -30,12 +30,9 @@
         throw rpcError(401, 'Invalid refresh token', 'Unauthorized');
       }
 
+      // Security Check 1: If the token is already revoked, revoke the entire family and throw an error.
       if (tokenRecord.is_revoked) {
-        // SECURITY ALERT: Token reuse detected! Revoke the entire family.
-        await this.prisma.refreshToken.updateMany({
-          where: { family_id: tokenRecord.family_id },
-          data: { is_revoked: true },
-        });
+        await this.revokeTokenFamily(tokenRecord.family_id);
         throw rpcError(401, 'Token reuse detected. Please log in again.', 'Unauthorized');
       }
 
@@ -43,11 +40,24 @@
         throw rpcError(401, 'Refresh token expired', 'Unauthorized');
       }
 
-      // Mark the old token as revoked
-      await this.prisma.refreshToken.update({
-        where: { id: tokenRecord.id },
+      // Security Check 2: Revoke the token in an atomic operation to prevent race conditions.
+      // ATOMIC UPDATE (The Race Condition Fix)
+      // We attempt to revoke it, but ONLY if it is still currently false.
+      const { count } = await this.prisma.refreshToken.updateMany({
+        where: { 
+          id: tokenRecord.id, 
+          is_revoked: false 
+        },
         data: { is_revoked: true },
       });
+
+      // The Race Condition Alarm
+      if (count === 0) {
+        // We lost the race. Another parallel request revoked it milliseconds ago.
+        // This is an active attack.
+        await this.revokeTokenFamily(tokenRecord.family_id);
+        throw rpcError(401, 'Concurrent token reuse detected. Please log in again.', 'Unauthorized');
+      }
 
       // Issue a new token pair in the SAME family
       return this.generateAndSaveTokens(tokenRecord.user_id, tokenRecord.user.login, tokenRecord.family_id);
@@ -86,5 +96,12 @@
       });
 
       return { access_token: accessToken, refresh_token: plainRefreshToken };
+    }
+
+    private async revokeTokenFamily(familyId: string) {
+      await this.prisma.refreshToken.updateMany({
+        where: { family_id: familyId },
+        data: { is_revoked: true },
+      });
     }
   }
