@@ -1,9 +1,21 @@
-import { CreateSessionBody, SessionView, WeekView } from '@app/contracts/club/club.types.js';
+import {
+  CreateSessionBody,
+  SessionView,
+  UpdateSessionBody,
+  WeekView,
+} from '@app/contracts/club/club.types.js';
 import { rpcError } from '@app/contracts/errors.js';
 import { Injectable } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service.js';
 import { ClubAccessService } from '../access/club-access.service.js';
-import { weekRange, today, toDate, addDays, mondayOf } from '@app/common/dates.js';
+import {
+  weekRange,
+  today,
+  toDate,
+  addDays,
+  mondayOf,
+  now,
+} from '@app/common/dates.js';
 import { sessionState } from './sessions-status.server.js';
 
 @Injectable()
@@ -17,9 +29,6 @@ export class SessionsService {
     clubSlug: string,
     weekStartDate: string,
   ): Promise<WeekView> {
-    console.log(
-      `[SessionsService] Fetching sessions for club with slug: ${clubSlug} and week start date: ${weekStartDate}`,
-    );
     const { member, club } = await this.clubAccessService.requireRole(
       clubSlug,
       1,
@@ -60,7 +69,7 @@ export class SessionsService {
     );
 
     // get is joined for each session for the current user
-    // we need just session id so we select only session id 
+    // we need just session id so we select only session id
     const sessionAttends = await this.prisma.sessionAttend.findMany({
       where: {
         member_id: member.id,
@@ -205,14 +214,27 @@ export class SessionsService {
     });
   }
 
-  async createSession(clubSlug: string, userId: number, body: CreateSessionBody): Promise<WeekView> {
+  async createSession(
+    clubSlug: string,
+    userId: number,
+    body: CreateSessionBody,
+  ): Promise<WeekView> {
     const { club } = await this.clubAccessService.requireRole(
       clubSlug,
       userId,
       1, // LEADER or COACH
     ); // here we chack that is member and have role >= 1
 
-    const { weekday, start_time, end_time, title, location, capacity, repeat_weekly, week_start } = body;
+    const {
+      weekday,
+      start_time,
+      end_time,
+      title,
+      location,
+      capacity,
+      repeat_weekly,
+      week_start,
+    } = body;
 
     const monday = mondayOf(week_start ?? today());
 
@@ -230,11 +252,7 @@ export class SessionsService {
     const sessionStart = toDate(addDays(monday, weekday), start_time);
     const sessionEnd = toDate(addDays(monday, weekday), end_time);
     if (sessionStart < toDate(today())) {
-      throw rpcError(
-        400,
-        'Cannot create a session in the past',
-        'Bad Request',
-      );
+      throw rpcError(400, 'Cannot create a session in the past', 'Bad Request');
     }
 
     // check if exact same solot already exists for this club, if yes, throw error
@@ -270,9 +288,10 @@ export class SessionsService {
     });
 
     // take full date to calculate duration in minutes, because we need to know if the session is crossing midnight or not
-    const durationMinutes = (sessionEnd.getTime() - sessionStart.getTime()) / 60000;
+    const durationMinutes =
+      (sessionEnd.getTime() - sessionStart.getTime()) / 60000;
     // add session to template
-    // add to this week based on monday and next week if next week 
+    // add to this week based on monday and next week if next week
     if (repeat_weekly) {
       await this.prisma.sessionTemplate.create({
         data: {
@@ -289,7 +308,157 @@ export class SessionsService {
 
     return this.getClubWeekSessions(clubSlug, monday);
   }
-}
 
-// we found a problem with our body create session
-// we need to add something to know which week we want to create the session, because if we don't add it, we will always create the session for the current week, and if we want to create a session for the next week, we can't do it, so we need to add a week_start field to the body, and then we can use it to calculate the start and end datetime for the session based on the provided weekday and times.
+  async updateSession(
+    clubSlug: string,
+    sessionId: string,
+    userId: number,
+    body: UpdateSessionBody,
+  ): Promise<WeekView> {
+    const { club } = await this.clubAccessService.requireRole(
+      clubSlug,
+      userId,
+      1, // LEADER or COACH
+    );
+
+    const session = await this.prisma.session.findUnique({
+      where: {
+        id: parseInt(sessionId, 10),
+      },
+    });
+
+    if (!session || session.club_id !== club.id) {
+      throw rpcError(404, 'Session not found', 'Not Found');
+    }
+
+    // Update the session with the provided fields
+    const updatedSession = await this.prisma.session.update({
+      where: {
+        id: session.id,
+      },
+      data: {
+        start_at: body.start_time
+          ? toDate(
+              session.start_at.toISOString().split('T')[0],
+              body.start_time,
+            )
+          : undefined,
+        end_at: body.end_time
+          ? toDate(session.end_at.toISOString().split('T')[0], body.end_time)
+          : undefined,
+        title: body.title ?? undefined,
+        location: body.location ?? undefined,
+        capacity: body.capacity ?? undefined,
+        updated_at: now(),
+      },
+    });
+
+    // If apply_to_future is true and a template_id is provided, update future sessions
+    if (body.apply_to_future && body.template_id) {
+      const templateId = parseInt(body.template_id, 10);
+      await this.prisma.session.updateMany({
+        where: {
+          template_id: templateId,
+          start_at: {
+            gt: updatedSession.start_at,
+          },
+        },
+        data: {
+          start_at: body.start_time
+            ? toDate(
+                updatedSession.start_at.toISOString().split('T')[0],
+                body.start_time,
+              )
+            : undefined,
+          end_at: body.end_time
+            ? toDate(
+                updatedSession.end_at.toISOString().split('T')[0],
+                body.end_time,
+              )
+            : undefined,
+          title: body.title ?? undefined,
+          location: body.location ?? undefined,
+          capacity: body.capacity ?? undefined,
+          updated_at: now(),
+        },
+      });
+      // apply changes to the template if template_id is provided
+      const durationMinutes =
+        (updatedSession.end_at.getTime() - updatedSession.start_at.getTime()) /
+        60000;
+      await this.prisma.sessionTemplate.update({
+        where: {
+          id: templateId,
+        },
+        data: {
+          start_time: body.start_time ?? undefined,
+          duration_minutes:
+            body.start_time && body.end_time ? durationMinutes : undefined,
+          title: body.title ?? undefined,
+          location: body.location ?? undefined,
+          capacity: body.capacity ?? undefined,
+          updated_at: now(),
+        },
+      });
+    }
+
+    return this.getClubWeekSessions(
+      clubSlug,
+      mondayOf(updatedSession.start_at.toISOString().split('T')[0]),
+    );
+  }
+
+  async deleteSession(
+    clubSlug: string,
+    sessionId: string,
+    userId: number,
+    applyToFuture: boolean,
+  ): Promise<WeekView> {
+    const { club } = await this.clubAccessService.requireRole(
+      clubSlug,
+      userId,
+      1, // LEADER or COACH
+    );
+
+    const session = await this.prisma.session.findUnique({
+      where: {
+        id: parseInt(sessionId, 10),
+      },
+    });
+
+    if (!session || session.club_id !== club.id) {
+      throw rpcError(404, 'Session not found', 'Not Found');
+    }
+
+    // Delete the session
+    await this.prisma.session.delete({
+      where: {
+        id: session.id,
+      },
+    });
+
+    // If apply_to_future is true and a template_id is provided, delete future sessions
+    if (applyToFuture && session.template_id) {
+      const templateId = session.template_id;
+      await this.prisma.session.deleteMany({
+        where: {
+          template_id: templateId,
+          start_at: {
+            gt: session.start_at,
+          },
+        },
+      });
+      // delete the template if template_id is provided
+      await this.prisma.sessionTemplate.delete({
+        where: {
+          id: templateId,
+        },
+      });
+    }
+
+    return this.getClubWeekSessions(
+      clubSlug,
+      mondayOf(session.start_at.toISOString().split('T')[0]),
+    );
+  }
+}

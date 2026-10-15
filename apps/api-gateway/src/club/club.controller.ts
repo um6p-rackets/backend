@@ -6,6 +6,7 @@ import {
   Get,
   Inject,
   Param,
+  Patch,
   Post,
   Query,
 } from '@nestjs/common';
@@ -19,6 +20,7 @@ import { Public } from '../common/decorators/public.decorator.js';
 import { rpc } from '../common/helpers/rpc.helper.js';
 import { Body } from '@nestjs/common';
 import { CreateSessionDto } from '@app/contracts/club/dto/create-session.dto.js';
+import { UpdateSessionDto } from '@app/contracts/club/dto/update-session.dto.js';
 
 @Controller('clubs')
 export class ClubController {
@@ -140,6 +142,39 @@ export class ClubController {
     const response = this.clubClient.send(
       CLUB_PATTERNS.POST_CLUB_SESSION_CREATE,
       { club_slug: slug, user_id: user.id, body: body },
+    );
+    return response;
+  }
+
+  @Patch(':slug/sessions/:session_id')
+  async updateSession(
+    @Param() { slug }: ClubSlugParamDto,
+    @CurrentUser() user: AuthenticatedUser,
+    @Param('session_id') sessionId: string,
+    @Body() body : UpdateSessionDto,
+  ) {
+    console.log(
+      `[ClubController] Received request to update session with id: ${sessionId} for club slug: ${slug} and user_id: ${user.id}, and send request to Club Service with body: ${JSON.stringify(body)}`,
+    );
+    const response = this.clubClient.send(
+      CLUB_PATTERNS.PATCH_CLUB_SESSION_UPDATE,
+      { club_slug: slug, user_id: user.id, session_id: sessionId, body: body },
+    );
+    return response;
+  }
+
+  @Delete(':slug/sessions/:session_id')
+  async deleteSession(
+    @Param() { slug }: ClubSlugParamDto,
+    @CurrentUser() user: AuthenticatedUser,
+    @Param('session_id') sessionId: string,
+  ) {
+    console.log(
+      `[ClubController] Received request to delete session with id: ${sessionId} for club slug: ${slug} and user_id: ${user.id}, and send request to Club Service`,
+    );
+    const response = this.clubClient.send(
+      CLUB_PATTERNS.DELETE_CLUB_SESSION_DELETE,
+      { club_slug: slug, user_id: user.id, session_id: sessionId },
     );
     return response;
   }

@@ -2,7 +2,7 @@ import { Controller } from '@nestjs/common';
 import { MessagePattern } from '@nestjs/microservices';
 import { CLUB_PATTERNS } from '@app/contracts';
 import { SessionsService } from './sessions.service.js';
-import { CreateSessionBody } from '@app/contracts/club/club.types.js'
+import { CreateSessionBody, UpdateSessionBody } from '@app/contracts/club/club.types.js'
 
 @Controller()
 export class SessionsController {
@@ -34,5 +34,10 @@ export class SessionsController {
   @MessagePattern(CLUB_PATTERNS.POST_CLUB_SESSION_CREATE)
   async createSession(data: { club_slug: string; user_id: number; body: CreateSessionBody }) {
     return this.sessionsService.createSession(data.club_slug, data.user_id, data.body);
+  }
+
+  @MessagePattern(CLUB_PATTERNS.PATCH_CLUB_SESSION_UPDATE)
+  async updateSession(data: { club_slug: string; session_id: string; user_id: number; body: UpdateSessionBody }) {
+    return this.sessionsService.updateSession(data.club_slug, data.session_id, data.user_id, data.body);
   }
 }
