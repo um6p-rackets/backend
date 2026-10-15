@@ -15,6 +15,8 @@ import {
   addDays,
   mondayOf,
   now,
+  addMinutes,
+  durationMinutes,
 } from '@app/common/dates.js';
 import { sessionState } from './sessions-status.server.js';
 
@@ -212,13 +214,8 @@ export class SessionsService {
 
     // check if session is cancelled, if yes, throw error
     if (session.cancelled_at) {
-      throw rpcError(
-        400,
-        'Cannot unattend a cancelled session',
-        'Bad Request',
-      );
+      throw rpcError(400, 'Cannot unattend a cancelled session', 'Bad Request');
     }
-    
 
     // Check if the user is attending the session
     const existingAttend = await this.prisma.sessionAttend.findUnique({
@@ -244,7 +241,10 @@ export class SessionsService {
       },
     });
 
-    return { success: true, message: 'User successfully unattended the session' };
+    return {
+      success: true,
+      message: 'User successfully unattended the session',
+    };
   }
 
   async createSession(
@@ -281,14 +281,22 @@ export class SessionsService {
       );
     }
 
-    // check if the session is in the past, if yes, throw error
+    const minutes = durationMinutes(start_time, end_time);
+    if (minutes === 0) {
+      throw rpcError(
+        400,
+        'end_time must be different from start_time',
+        'Bad Request',
+      );
+    }
+
     const sessionStart = toDate(addDays(monday, weekday), start_time);
-    const sessionEnd = toDate(addDays(monday, weekday), end_time);
-    if (sessionStart < toDate(today())) {
+    const sessionEnd = addMinutes(sessionStart, minutes); // handles crossing midnight
+
+    if (sessionStart < new Date()) {
       throw rpcError(400, 'Cannot create a session in the past', 'Bad Request');
     }
 
-    // check if exact same solot already exists for this club, if yes, throw error
     const existingSession = await this.prisma.session.findFirst({
       where: {
         club_id: club.id,
@@ -298,7 +306,7 @@ export class SessionsService {
         title: title ?? null,
       },
     });
-
+    
     if (existingSession) {
       throw rpcError(
         400,
@@ -307,37 +315,34 @@ export class SessionsService {
       );
     }
 
-    await this.prisma.session.create({
-      data: {
-        club_id: club.id,
-        template_id: null, // Assuming no template for now
-        start_at: sessionStart,
-        end_at: sessionEnd,
-        title: title ?? null,
-        location: location ?? null,
-        capacity,
-        cancelled_at: null,
-      },
-    });
-
-    // take full date to calculate duration in minutes, because we need to know if the session is crossing midnight or not
-    const durationMinutes =
-      (sessionEnd.getTime() - sessionStart.getTime()) / 60000;
-    // add session to template
-    // add to this week based on monday and next week if next week
-    if (repeat_weekly) {
-      await this.prisma.sessionTemplate.create({
+    await this.prisma.$transaction(async (tx) => {
+      await tx.session.create({
         data: {
           club_id: club.id,
-          weekday,
-          start_time,
-          duration_minutes: durationMinutes,
+          template_id: null,
+          start_at: sessionStart,
+          end_at: sessionEnd,
           title: title ?? null,
           location: location ?? null,
           capacity,
+          cancelled_at: null,
         },
       });
-    }
+
+      if (repeat_weekly) {
+        await tx.sessionTemplate.create({
+          data: {
+            club_id: club.id,
+            weekday,
+            start_time: start_time, // example: "18:00"
+            duration_minutes: minutes,
+            title: title ?? null,
+            location: location ?? null,
+            capacity,
+          },
+        });
+      }
+    });
 
     return this.getClubWeekSessions(clubSlug, monday);
   }

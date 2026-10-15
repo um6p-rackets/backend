@@ -78,8 +78,8 @@ model Announcement {
 model SessionTemplate {
   id               Int      @id @default(autoincrement())
   club_id          Int
-  weekday          Int      @db.SmallInt // WeekDay: 0 Sunday ... 6 Saturday
-  start_time       DateTime @db.Time(6)
+  weekday          Int      @db.SmallInt // WeekDay: 0 Monday ... 6 Sunday
+  start_time       String   @db.VarChar(5) // "HH:mm"
   duration_minutes Int // 1..1440, can cross midnight
   title            String?  @db.VarChar(100)
   location         String?  @db.VarChar(100)

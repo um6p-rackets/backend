@@ -131,7 +131,7 @@ async function seedSessions(clubId: number) {
       data: {
         club_id: clubId,
         weekday: t.weekday,
-        start_time: time(t.start),
+        start_time: t.start,
         duration_minutes: t.duration_minutes,
         capacity: t.capacity,
         title: t.title,
