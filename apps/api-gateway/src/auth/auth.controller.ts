@@ -26,14 +26,13 @@ export class AuthController {
     ) {}
 
     @Public()
-    @Throttle({ default: { limit: REQUEST_LIMIT, ttl: REQUEST_TTL } }) // REQUEST_LIMIT requests per REQUEST_TTL seconds
     @Get('health')
     async health(): Promise<HealthResult> {
         return rpc<HealthResult>(this.authClient, AUTH_PATTERNS.HEALTH, {});
     }
 
     @Public()
-    @Throttle({ default: { limit: REQUEST_LIMIT, ttl: REQUEST_TTL } })
+    @Throttle({ default: { limit: REQUEST_LIMIT, ttl: REQUEST_TTL } }) // REQUEST_LIMIT requests per REQUEST_TTL seconds
     @Post('register')
     async register(@Body() dto: RegisterDto, @Res({ passthrough: true }) res: Response): Promise<{ user: User }> {
         const { user, ...tokens } = await rpc<AuthResult>(this.authClient, AUTH_PATTERNS.REGISTER, dto);
@@ -61,8 +60,16 @@ export class AuthController {
         const refreshToken = req.cookies?.[REFRESH_COOKIE];
         if (!refreshToken) throw new UnauthorizedException();
         
-        const tokens = await rpc<AuthTokens>(this.authClient, AUTH_PATTERNS.REFRESH, { refreshToken });
-        setAuthCookies(res, tokens);
+        try {
+            const tokens = await rpc<AuthTokens>(this.authClient, AUTH_PATTERNS.REFRESH, { refreshToken });
+            setAuthCookies(res, tokens);
+        } catch (err) {
+            // If the backend throws a 401 (e.g., token reuse detected or expired),
+            // FORCE the browser to delete the tokens so they can't access /me anymore.
+            // The hacker still holds an Access Token that is mathematically valid for x time ): , but they can't refresh it anymore, and the Access Token will expire soon (:
+            clearAuthCookies(res);
+            throw err;
+        }
     }
 
     @HttpCode(200)
