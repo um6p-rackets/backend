@@ -52,6 +52,7 @@ export class ClubController {
     });
   }
 
+  // sessions
   @Get(':slug/sessions')
   async getClubWeekSessions(
     @Param() { slug }: ClubSlugParamDto,
@@ -131,14 +132,14 @@ export class ClubController {
   async createSession(
     @Param() { slug }: ClubSlugParamDto,
     @CurrentUser() user: AuthenticatedUser,
-    @Body() { week }: CreateSessionDto,
+    @Body() body : CreateSessionDto,
   ) {
     console.log(
-      `[ClubController] Received request to create session for club slug: ${slug} and user_id: ${user.id}, and send request to Club Service, week: ${week}`,
+      `[ClubController] Received request to create session for club slug: ${slug} and user_id: ${user.id}, and send request to Club Service with body: ${JSON.stringify(body)}`,
     );
     const response = this.clubClient.send(
       CLUB_PATTERNS.POST_CLUB_SESSION_CREATE,
-      { club_slug: slug, user_id: user.id, week_start_date: week },
+      { club_slug: slug, user_id: user.id, body: body },
     );
     return response;
   }
