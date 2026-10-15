@@ -30,6 +30,11 @@ POST {{API}}/auth/logout
 ### 1c. /me (expect 401, not logged in)
 GET {{API}}/auth/me
 
+
+### 1d. Refresh token (expect 200)
+POST {{API}}/auth/refresh
+
+
 ### 2. This week
 GET {{API}}/clubs/tennis/sessions
 
