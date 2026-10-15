@@ -1,18 +1,5 @@
 @API = http://localhost:3000/api/v1
 
-# import { IsEmail, IsString, MinLength, MaxLength, IsBoolean, IsOptional } from 'class-validator';
-
-# export class RegisterDto {
-#   @IsString() @MaxLength(255) login: string;
-#   @IsEmail() email: string;
-#   @IsString() @MinLength(8) @MaxLength(128) password: string;
-#   @IsString() @MaxLength(255) first_name: string;
-#   @IsString() @MaxLength(255) last_name: string;
-  
-#   @IsOptional() @IsBoolean() gender?: boolean;
-#   @IsOptional() @IsString() department?: string;
-#   @IsOptional() @IsString() @MaxLength(50) phone_number?: string;
-# }
 ### 0 register a new user (expect 201)
 POST {{API}}/auth/register
 Content-Type: application/json
@@ -83,12 +70,14 @@ POST {{API}}/clubs/tennis/sessions
 Content-Type: application/json
 
 {
-  "weekday": 4,
+  "weekday": 1,
   "start_time": "18:00",
   "end_time": "19:30",
   "capacity": 1,
   "title": "Test",
-  "location": "Court 3"
+  "location": "Court 3",
+  "week_start": "2026-10-19",
+  "repeat_weekly": true
 }
 
 ### 5b. This week (expect Friday 16 Oct)
