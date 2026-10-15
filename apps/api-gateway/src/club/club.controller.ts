@@ -12,7 +12,6 @@ import {
 } from '@nestjs/common';
 import { ClientProxy } from '@nestjs/microservices';
 
-import { ClubSlugParamDto } from '@app/contracts/club/dto/club-slug-param.dto.js';
 import { CurrentUser } from '../common/decorators/current-user.decorator.js';
 import { WeekQueryDto } from '@app/contracts/club/dto/week-query.dto.js';
 import { addDays, type AuthenticatedUser, mondayOf, today } from '@app/common';
@@ -21,6 +20,8 @@ import { rpc } from '../common/helpers/rpc.helper.js';
 import { Body } from '@nestjs/common';
 import { CreateSessionDto } from '@app/contracts/club/dto/create-session.dto.js';
 import { UpdateSessionDto } from '@app/contracts/club/dto/update-session.dto.js';
+import { SessionParamDto } from '@app/contracts/club/dto/session-param.dto.js';
+import { ClubSlugParamDto } from '@app/contracts/club/dto/club-slug-param.dto.js';
 
 @Controller('clubs')
 export class ClubController {
@@ -35,7 +36,7 @@ export class ClubController {
 
   @Public()
   @Get(':slug')
-  async getClub(@Param() { slug }: ClubSlugParamDto) {
+  async getClub(@Param() { slug }: SessionParamDto) {
     console.log(`[ClubController] Received request for club slug: ${slug}, and send request to Club Service`);
     return await rpc(this.clubClient, CLUB_PATTERNS.GET_CLUB, {
       club_slug: slug,
@@ -44,7 +45,7 @@ export class ClubController {
 
   @Get(':slug/status')
   async getClubStatus(
-    @Param() { slug }: ClubSlugParamDto,
+    @Param() { slug }: SessionParamDto,
     @CurrentUser() user: AuthenticatedUser,
   ) {
     console.log(`[ClubController] Received request for club status for slug: ${slug} and user_id: ${user.id}, and send request to Club Service`);
@@ -100,32 +101,30 @@ export class ClubController {
 
   @Post(':slug/sessions/:session_id/attend')
   async attendSession(
-    @Param() { slug }: ClubSlugParamDto,
+    @Param() { slug, session_id }: SessionParamDto,
     @CurrentUser() user: AuthenticatedUser,
-    @Param('session_id') sessionId: string,
   ) {
     console.log(
-      `[ClubController] Received request to attend session with id: ${sessionId} for club slug: ${slug} and user_id: ${user.id}, and send request to Club Service`,
+      `[ClubController] Received request to attend session with id: ${session_id} for club slug: ${slug} and user_id: ${user.id}, and send request to Club Service`,
     );
     const response = this.clubClient.send(
       CLUB_PATTERNS.POST_CLUB_SESSION_ATTEND,
-      { club_slug: slug, user_id: user.id, session_id: sessionId },
+      { club_slug: slug, user_id: user.id, session_id: session_id },
     );
     return response;
   }
 
   @Delete(':slug/sessions/:session_id/attend')
   async unattendSession(
-    @Param() { slug }: ClubSlugParamDto,
+    @Param() { slug, session_id }: SessionParamDto,
     @CurrentUser() user: AuthenticatedUser,
-    @Param('session_id') sessionId: string,
   ) {
     console.log(
-      `[ClubController] Received request to unattend session with id: ${sessionId} for club slug: ${slug} and user_id: ${user.id}, and send request to Club Service`,
+      `[ClubController] Received request to unattend session with id: ${session_id} for club slug: ${slug} and user_id: ${user.id}, and send request to Club Service`,
     );
     const response = this.clubClient.send(
       CLUB_PATTERNS.DELETE_CLUB_SESSION_ATTEND,
-      { club_slug: slug, user_id: user.id, session_id: sessionId },
+      { club_slug: slug, user_id: user.id, session_id: session_id },
     );
     return response;
   }
@@ -148,36 +147,36 @@ export class ClubController {
 
   @Patch(':slug/sessions/:session_id')
   async updateSession(
-    @Param() { slug }: ClubSlugParamDto,
+    @Param() { slug, session_id }: SessionParamDto,
     @CurrentUser() user: AuthenticatedUser,
-    @Param('session_id') sessionId: string,
     @Body() body : UpdateSessionDto,
   ) {
     console.log(
-      `[ClubController] Received request to update session with id: ${sessionId} for club slug: ${slug} and user_id: ${user.id}, and send request to Club Service with body: ${JSON.stringify(body)}`,
+      `[ClubController] Received request to update session with id: ${session_id} for club slug: ${slug} and user_id: ${user.id}, and send request to Club Service with body: ${JSON.stringify(body)}`,
     );
     const response = this.clubClient.send(
       CLUB_PATTERNS.PATCH_CLUB_SESSION_UPDATE,
-      { club_slug: slug, user_id: user.id, session_id: sessionId, body: body },
+      { club_slug: slug, user_id: user.id, session_id: session_id, body: body },
     );
     return response;
   }
 
   @Delete(':slug/sessions/:session_id')
   async deleteSession(
-    @Param() { slug }: ClubSlugParamDto,
+  @Param() { slug, session_id }: SessionParamDto,
     @CurrentUser() user: AuthenticatedUser,
-    @Param('session_id') sessionId: string,
   ) {
     console.log(
-      `[ClubController] Received request to delete session with id: ${sessionId} for club slug: ${slug} and user_id: ${user.id}, and send request to Club Service`,
+      `[ClubController] Received request to delete session with id: ${session_id} for club slug: ${slug} and user_id: ${user.id}, and send request to Club Service`,
     );
     const response = this.clubClient.send(
       CLUB_PATTERNS.DELETE_CLUB_SESSION_DELETE,
-      { club_slug: slug, user_id: user.id, session_id: sessionId },
+      { club_slug: slug, user_id: user.id, session_id: session_id },
     );
     return response;
   }
+
+
 
 
 
