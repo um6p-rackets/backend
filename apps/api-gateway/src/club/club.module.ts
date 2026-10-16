@@ -2,8 +2,7 @@ import { Module } from '@nestjs/common';
 import { ClientsModule } from '@nestjs/microservices';
 import { ConfigService } from '@nestjs/config';
 
-import { QUEUES } from '@app/contracts/queues.js';
-import { CLUB_SERVICE } from '@app/contracts';
+import { CLUB_SERVICE, QUEUES } from '@app/contracts';
 import { rmqOptions } from '@app/rmq';
 import { ClubController } from './club.controller.js';
 
