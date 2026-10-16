@@ -44,4 +44,4 @@ GET {{API}}/auth/me
 POST {{API}}/auth/refresh
 
 ### 2. members (expect 200)
-GET {{API}}/clubs/tennis/members?limit=50&page=1&role=0
+GET {{API}}/clubs/tennis/members?limit=2&page=3&role=0
