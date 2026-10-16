@@ -17,4 +17,9 @@ export class MembersController {
   async addClubMember(data: { club_slug: string; user_id: number, body: AddMemberDto }) {
     return this.membersService.addClubMember(data.club_slug, data.user_id, data.body);
   }
+
+  @MessagePattern(CLUB_PATTERNS.PATCH_CLUB_MEMBER_ROLE_UPDATE)
+  async updateClubMemberRole(data: { club_slug: string; user_id: number, body: { role: 0 | 1 }, member_id: number }) {
+    return this.membersService.updateClubMemberRole(data.club_slug, data.user_id, data.body, data.member_id);
+  }
 }

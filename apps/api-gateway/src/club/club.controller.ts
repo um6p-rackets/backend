@@ -26,6 +26,7 @@ import {
   CreateSessionDto,
   MembersQueryDto,
   AddMemberDto,
+  UpdateMemberRoleParamDto,
 } from '@app/contracts/club/dto/index.js';
 
 @Controller('clubs')
@@ -229,6 +230,28 @@ export class ClubController {
       user_id: user.id,
       body,
     });
+    return response;
+  }
+
+  // PATCH /clubs/:slug/members/:memberId/role
+  @Patch(':slug/members/:member_id/role')
+  async updateClubMemberRole(
+    @Param() { slug, member_id }: UpdateMemberRoleParamDto,
+    @CurrentUser() user: AuthenticatedUser,
+    @Body() body: { role: 0 | 1 },
+  ) {
+    console.log(
+      `[ClubController] Received request to update member role for club slug: ${slug} and user_id: ${user.id}, and send request to Club Service with body: ${JSON.stringify(body)}`,
+    );
+    const response = this.clubClient.send(
+      CLUB_PATTERNS.PATCH_CLUB_MEMBER_ROLE_UPDATE,
+      {
+        club_slug: slug,
+        user_id: user.id,
+        body,
+        member_id: parseInt(member_id, 10),
+      },
+    );
     return response;
   }
 }

@@ -8,6 +8,7 @@ import {
   Member,
   MemberWithUser,
   Paginated,
+  MemberRole,
 } from '@app/contracts/club/club.types.js';
 import { AddMemberDto } from '@app/contracts/club/dto/index.js';
 
@@ -229,6 +230,79 @@ export class MembersService {
       ...newMember,
       joined_at: toFullString(newMember.joined_at),
       left_at: newMember.left_at ? toFullString(newMember.left_at) : null,
+    };
+  }
+
+  async updateClubMemberRole(
+    club_slug: string,
+    user_id: number,
+    body: { role: 0 | 1 },
+    member_id: number,
+  ): Promise<Member> {
+    const { club, member } = await this.clubAccessService.requireRole(
+      club_slug,
+      user_id,
+      2, // Require at least admin role to update member roles
+    );
+
+    if (body.role >= member.role) {
+      throw rpcError(
+        400,
+        `You can't update role to a higher or equal role than your own.`,
+        'Bad Request',
+      );
+    }
+    // Check if the member exists in the club
+    const existingMember = await this.prisma.member.findFirst({
+      where: {
+        id: member_id,
+        club_id: club.id,
+        left_at: null,
+      },
+    });
+    
+    if (!existingMember) {
+      throw rpcError(
+        404,
+        `Member with id ${member_id} not found in club ${club_slug}`,
+        'Not Found',
+      );
+    }
+    
+    // check if member role already has the same role as the new role
+    if (existingMember.role === body.role) {
+      throw rpcError(
+        400,
+        `Member with id ${member_id} already has the role ${body.role}`,
+        'Bad Request',
+      );
+    }
+
+    // you can't less role of a member who has a higher or equal role than you
+    if (existingMember.role >= member.role) {
+      throw rpcError(
+        400,
+        `You can't change the role of a member who has a higher or equal role than your own.`,
+        'Bad Request',
+      );
+    }
+
+    
+
+    // Update the member's role
+    const updatedMember = await this.prisma.member.update({
+      where: {
+        id: member_id,
+      },
+      data: {
+        role: body.role,
+      },
+    });
+
+    return {
+      ...updatedMember,
+      joined_at: toFullString(updatedMember.joined_at),
+      left_at: updatedMember.left_at ? toFullString(updatedMember.left_at) : null,
     };
   }
 }
