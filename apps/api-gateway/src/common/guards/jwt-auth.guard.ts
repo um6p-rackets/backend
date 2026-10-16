@@ -35,7 +35,12 @@ export class JwtAuthGuard implements CanActivate {
 
         try {
             const payload = await this.jwt.verifyAsync<JwtPayload>(token, { algorithms: ['HS256'] });
-            req.user = { id: Number(payload.sub), login: payload.login } satisfies AuthenticatedUser;
+            const id = Number(payload.sub);
+            // JwtAuthGuard still accepts the OAuth cookie token as an access token we don't want to accept it
+            if (!Number.isInteger(id) || id <= 0 || !payload.login || (payload as any).aud) {
+                throw new Error('not an access token');
+            }
+            req.user = { id, login: payload.login } satisfies AuthenticatedUser
             return true;
         } catch (err) {
             throw new UnauthorizedException('Invalid or expired authentication token');
