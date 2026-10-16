@@ -5,26 +5,17 @@ export const configuration = () => {
     return filePath && existsSync(filePath) ? readFileSync(filePath, 'utf8').trim() : '';
   };
 
-  // 1. If present in local .env, use it.
-  // 2. Otherwise (in Docker), build it from secrets.
   const dbUrl = process.env.DATABASE_URL || 
     `postgresql://${process.env.DB_USER}:${encodeURIComponent(readSecret(process.env.DB_PASSWORD_FILE))}@database:5432/${process.env.DB_NAME}?schema=${process.env.DB_SCHEMA}`;
 
   const rmqUrl = process.env.RABBITMQ_URL || 
     `amqp://${process.env.RABBITMQ_USER}:${encodeURIComponent(readSecret(process.env.RABBITMQ_PASSWORD_FILE))}@rabbitmq:5672`;
 
-  const jwtSecret = process.env.JWT_ACCESS_SECRET ||
-    readSecret(process.env.JWT_ACCESS_SECRET_FILE);
-
-  const jwtExpiresIn = process.env.JWT_ACCESS_EXPIRES_IN || '15m'; // Default to 15 minutes if not set
-
   return {
     database: { url: dbUrl },
     rabbitmq: { url: rmqUrl },
-    jwt: { accessSecret: jwtSecret, expiresIn: jwtExpiresIn }
   };
 };
-
 
 // Notes:
 // - This configuration function is designed to be used in both local development and Docker environments.
