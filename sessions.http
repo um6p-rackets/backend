@@ -24,6 +24,15 @@ Content-Type: application/json
   "password": "abdellahnsila123#002"
 }
 
+### 1a. Login with diffrent user account
+POST {{API}}/auth/login
+Content-Type: application/json
+
+{
+  "email": "coach.table-tennis2@example.com",
+  "password": "abdellahnsila123#002"
+}
+
 ### 1b. Log out (expect 200)
 POST {{API}}/auth/logout
 
@@ -47,7 +56,7 @@ GET {{API}}/clubs/tennis/sessions?week=abc
 ### 3c. Too far ahead (expect 400)
 GET {{API}}/clubs/tennis/sessions?week=2026-11-02
 
-@SID = 4
+@SID = 91
 
 ### 4a. Join (expect OK)
 POST {{API}}/clubs/tennis/sessions/{{SID}}/attend
@@ -75,13 +84,13 @@ POST {{API}}/clubs/tennis/sessions
 Content-Type: application/json
 
 {
-  "weekday": 1,
-  "start_time": "18:00",
-  "end_time": "19:30",
+  "weekday": 6,
+  "start_time": "23:00",
+  "end_time": "00:30",
   "capacity": 1,
-  "title": "Test",
-  "location": "Court 3",
-  "week_start": "2026-10-19",
+  "title": "test capacity",
+  "location": "Court 4",
+  "week_start": "2026-10-12",
   "repeat_weekly": true
 }
 
@@ -89,4 +98,32 @@ Content-Type: application/json
 GET {{API}}/clubs/tennis/sessions
 
 ### 5c. Next week (expect Friday 23 Oct)
+GET {{API}}/clubs/tennis/sessions?week=2026-10-19
+
+
+@NEW = 90
+
+### 6a. Rename only this session (expect success)
+PATCH {{API}}/clubs/tennis/sessions/{{NEW}}
+Content-Type: application/json
+
+{
+  "title": "Renamsadfsadfed",
+  "apply_to_future": true,
+  "location": "sport departement",
+  "start_time": "23:00",
+  "end_time": "22:30",
+  "capacity": 14
+}
+
+### 6b. Check next week
+GET {{API}}/clubs/tennis/sessions?week=2026-10-19
+
+### 7a. Delete session (expect success)
+DELETE {{API}}/clubs/tennis/sessions/{{NEW}}
+
+### 7b. Check next week (first time)
+GET {{API}}/clubs/tennis/sessions?week=2026-10-19
+
+### 7c. Check next week again (second time)
 GET {{API}}/clubs/tennis/sessions?week=2026-10-19

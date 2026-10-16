@@ -17,6 +17,8 @@ import {
   now,
   addMinutes,
   durationMinutes,
+  timeOfDay,
+  dayOf,
 } from '@app/common/dates.js';
 import { sessionState } from './sessions-status.server.js';
 
@@ -30,13 +32,15 @@ export class SessionsService {
   async getClubWeekSessions(
     clubSlug: string,
     weekStartDate: string,
+    userId: number,
   ): Promise<WeekView> {
     const { member, club } = await this.clubAccessService.requireRole(
       clubSlug,
-      1,
+      userId,
       0,
     ); // user_id = 1, minRole = MEMBER (0)
-
+    // generate next week sessions
+    await this.generateNextWeekSessions(club.id);
     const { weekStart, from, to } = weekRange(weekStartDate);
 
     // Fetch sessions for the specified week
@@ -100,7 +104,7 @@ export class SessionsService {
         attends_count: attendsCount,
         spots_left: Math.max(0, session.capacity - attendsCount),
         is_joined: joinedSessionIds.has(session.id), // Placeholder for current user check
-        state: sessionState(session, 0),
+        state: sessionState(session, attendsCount),
       };
     });
 
@@ -304,6 +308,7 @@ export class SessionsService {
         end_at: sessionEnd,
         location: location ?? null,
         title: title ?? null,
+        cancelled_at: null,
       },
     });
     
@@ -316,10 +321,45 @@ export class SessionsService {
     }
 
     await this.prisma.$transaction(async (tx) => {
+      let templateId: number | null = null;
+      if (repeat_weekly) {
+        // check if a template is already exists for this club with the same weekday, start_time, and duration_minutes
+        
+        await tx.sessionTemplate.findFirst({
+          where: {
+            club_id: club.id,
+            weekday,
+            start_time,
+            location: location ?? null,
+            title: title ?? null,
+            duration_minutes: minutes,
+          },
+        }).then(template => {
+          if (template) {
+            templateId = template.id;
+          }
+        });
+
+        if (!templateId) {
+          // create a new template for the session
+          const template = await tx.sessionTemplate.create({
+            data: {
+              club_id: club.id,
+              weekday,
+              start_time, // example: "18:00"
+              duration_minutes: minutes,
+              title: title ?? null,
+              location: location ?? null,
+              capacity,
+            },
+          });
+          templateId = template.id;
+        }
+      }
       await tx.session.create({
         data: {
           club_id: club.id,
-          template_id: null,
+          template_id: templateId,
           start_at: sessionStart,
           end_at: sessionEnd,
           title: title ?? null,
@@ -329,22 +369,10 @@ export class SessionsService {
         },
       });
 
-      if (repeat_weekly) {
-        await tx.sessionTemplate.create({
-          data: {
-            club_id: club.id,
-            weekday,
-            start_time: start_time, // example: "18:00"
-            duration_minutes: minutes,
-            title: title ?? null,
-            location: location ?? null,
-            capacity,
-          },
-        });
-      }
+      
     });
 
-    return this.getClubWeekSessions(clubSlug, monday);
+    return this.getClubWeekSessions(clubSlug, monday, userId);
   }
 
   async updateSession(
@@ -369,21 +397,40 @@ export class SessionsService {
       throw rpcError(404, 'Session not found', 'Not Found');
     }
 
+    // we have a probleme here
+    // imagine that the sessions start_time is 23:00 to 00:30
+    // in that case and because we took the day using split the end time is less then start time
+
+    let stime = timeOfDay(session.start_at);
+    let etime = timeOfDay(session.end_at);
+    if (body.start_time)
+      stime = body.start_time;
+    if (body.end_time)
+      etime = body.end_time;
+
+    const minutes = durationMinutes(stime, etime);
+    if (minutes === 0) {
+      throw rpcError(
+        400,
+        'end_time must be different from start_time',
+        'Bad Request',
+      );
+    }
+
+    const sessionStart = toDate(dayOf(session.start_at), stime);
+    const sessionEnd = addMinutes(sessionStart, minutes); // handles crossing midnight
+
+    if (sessionStart < new Date()) {
+      throw rpcError(400, 'Cannot create a session in the past', 'Bad Request');
+    }
     // Update the session with the provided fields
     const updatedSession = await this.prisma.session.update({
       where: {
         id: session.id,
       },
       data: {
-        start_at: body.start_time
-          ? toDate(
-              session.start_at.toISOString().split('T')[0],
-              body.start_time,
-            )
-          : undefined,
-        end_at: body.end_time
-          ? toDate(session.end_at.toISOString().split('T')[0], body.end_time)
-          : undefined,
+        start_at: sessionStart,
+        end_at: sessionEnd,
         title: body.title ?? undefined,
         location: body.location ?? undefined,
         capacity: body.capacity ?? undefined,
@@ -392,8 +439,8 @@ export class SessionsService {
     });
 
     // If apply_to_future is true and a template_id is provided, update future sessions
-    if (body.apply_to_future && body.template_id) {
-      const templateId = parseInt(body.template_id, 10);
+    if (body.apply_to_future && session.template_id) {
+      const templateId = session.template_id;
       await this.prisma.session.updateMany({
         where: {
           template_id: templateId,
@@ -443,6 +490,7 @@ export class SessionsService {
     return this.getClubWeekSessions(
       clubSlug,
       mondayOf(updatedSession.start_at.toISOString().split('T')[0]),
+      userId
     );
   }
 
@@ -468,22 +516,30 @@ export class SessionsService {
       throw rpcError(404, 'Session not found', 'Not Found');
     }
 
-    // Delete the session
-    await this.prisma.session.delete({
+    // set cancelled_at for the session instead of deleting it
+    await this.prisma.session.update({
       where: {
         id: session.id,
+      },
+      data: {
+        cancelled_at: now(),
       },
     });
 
     // If apply_to_future is true and a template_id is provided, delete future sessions
     if (applyToFuture && session.template_id) {
       const templateId = session.template_id;
-      await this.prisma.session.deleteMany({
+
+      // set cancelled_at for future sessions instead of deleting them
+      await this.prisma.session.updateMany({
         where: {
           template_id: templateId,
           start_at: {
             gt: session.start_at,
           },
+        },
+        data: {
+          cancelled_at: now(),
         },
       });
       // delete the template if template_id is provided
@@ -497,6 +553,62 @@ export class SessionsService {
     return this.getClubWeekSessions(
       clubSlug,
       mondayOf(session.start_at.toISOString().split('T')[0]),
+      userId
     );
+  }
+
+  // private method, that called by getClubWeekSessions to generate next week sessions based on the templates of the club
+  private async generateNextWeekSessions(club_id: number) {
+    
+    // get template of the club
+    const templates = await this.prisma.sessionTemplate.findMany({
+      where: {
+        club_id: club_id,
+      },
+      
+    });
+
+    const nextweekMonday = mondayOf(addDays(today(), 7));
+
+    await this.prisma.$transaction(async (tx) => {
+      for (const template of templates) {
+        const sessionStart = toDate(
+          addDays(nextweekMonday, template.weekday),
+          template.start_time,
+        );
+        const sessionEnd = addMinutes(sessionStart, template.duration_minutes);
+
+        // check if the session already exists
+        // template id and club id 
+        // but also we need to check if the start_at is greater than or equal to nextweekMonday and less than nextweekMonday + 7 days
+        const existingSession = await tx.session.findFirst({
+          where: {
+            template_id: template.id,
+            club_id: club_id,
+            start_at: {
+              gte: sessionStart,
+              lt: toDate(addDays(nextweekMonday, 7), template.start_time),
+            },
+          },
+        });
+        console.log("[generateNextWeekSessions] existingSession: ", !!existingSession);
+        console.log("[generateNextWeekSessions] template id: ", template.id, " club_id: ", club_id);
+
+        if (!existingSession) {
+          await tx.session.create({
+            data: {
+              club_id: club_id,
+              template_id: template.id,
+              start_at: sessionStart,
+              end_at: sessionEnd,
+              title: template.title ?? null,
+              location: template.location ?? null,
+              capacity: template.capacity,
+              cancelled_at: null,
+            },
+          });
+        }
+      }
+    });
   }
 }
