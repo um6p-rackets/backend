@@ -14,15 +14,20 @@ import { ClientProxy } from '@nestjs/microservices';
 import { rpc } from '../common/helpers/rpc.helper.js';
 import { Public } from '../common/decorators/public.decorator.js';
 import { Throttle } from '@nestjs/throttler';
-import { clearAuthCookies, setAuthCookies } from './cookies.js';
+import { clearAuthCookies, setAuthCookies, setCookie, clearCookie } from './cookies.js';
 import type { Request, Response } from 'express';
-import { type AuthenticatedUser, REFRESH_COOKIE, REQUEST_LIMIT, REQUEST_TTL } from '@app/common';
+import { type AuthenticatedUser, OAUTH_COOKIE, OAUTH_TTL_SECONDS, REFRESH_COOKIE, REQUEST_LIMIT, REQUEST_TTL } from '@app/common';
 import { CurrentUser } from '../common/decorators/current-user.decorator.js';
+import { GoogleOAuthService } from './google-oauth.service.js';
+import googleOauthConfig from '../common/config/google-oauth.config.js';
+import { type ConfigType } from '@nestjs/config';
 
 @Controller('auth')
 export class AuthController {
     constructor(
         @Inject(AUTH_SERVICE) private readonly authClient: ClientProxy,
+        private readonly googleOAuthService: GoogleOAuthService,
+        @Inject(googleOauthConfig.KEY) private cfg: ConfigType<typeof googleOauthConfig>,
     ) {}
 
     @Public()
@@ -89,4 +94,30 @@ export class AuthController {
     async me(@CurrentUser() user: AuthenticatedUser): Promise<User> {
         return rpc<User>(this.authClient, AUTH_PATTERNS.GET_USER, { userId: String(user.id) });
     }
+
+
+    // @Public()
+    // @Throttle({ default: { limit: REQUEST_LIMIT, ttl: REQUEST_TTL } })
+    // @Get('google/login')
+    // async googleLogin(@Res() res: Response): Promise<void> {
+    //     const { url, token } = await this.googleOAuthService.getAuthorizationUrl();
+    //     setCookie(res, OAUTH_COOKIE, token, OAUTH_TTL_SECONDS, '/');
+    //     res.redirect(url);
+    // }
+
+    // @Public()
+    // @Throttle({ default: { limit: REQUEST_LIMIT, ttl: REQUEST_TTL } })
+    // @Get('google/callback')
+    // async googleCallback(@Req() req: Request, @Res({ passthrough: true }) res: Response): Promise<void> {
+    //     try {
+    //         const profile = await this.googleOAuthService.verifyCallback(req.query, req.cookies?.[OAUTH_COOKIE]);
+    //         const { user, ...tokens } = await rpc<AuthResult>(this.authClient, AUTH_PATTERNS.OAUTH_LOGIN, profile);
+    //         clearCookie(res, OAUTH_COOKIE, '/');
+    //         setAuthCookies(res, tokens);
+    //         res.redirect(this.cfg.frontendRedirectUrl);
+    //     } catch (err) {
+    //         clearCookie(res, OAUTH_COOKIE, '/');
+    //         res.redirect(`${this.cfg.frontendRedirectUrl}/login?error=oauth_failed`);
+    //     }
+    // }
 }

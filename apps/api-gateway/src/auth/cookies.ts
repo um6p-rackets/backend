@@ -10,6 +10,14 @@ const base = (maxAgeSec: number, path: string): CookieOptions => ({
   maxAge: maxAgeSec * 1000,
 });
 
+export function setCookie(res: Response, name: string, value: string, maxAgeSec: number, path: string) {
+  res.cookie(name, value, base(maxAgeSec, path));
+}
+
+export function clearCookie(res: Response, name: string, path: string) {
+  res.clearCookie(name, { path });
+}
+
 export function setAuthCookies(res: Response, t: AuthTokens) {
   res.cookie(ACCESS_COOKIE, t.access_token, base(ACCESS_TTL_SECONDS, '/'));
   res.cookie(REFRESH_COOKIE, t.refresh_token, base(REFRESH_TTL_SECONDS, '/api/v1/auth'));

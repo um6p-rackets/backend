@@ -1,5 +1,7 @@
 @API = http://localhost:3000/api/v1
 
+################################################ Auth #######################################
+
 ### 0 register a new user (expect 201)
 POST {{API}}/auth/register
 Content-Type: application/json
@@ -42,6 +44,15 @@ GET {{API}}/auth/me
 
 ### 1d. Refresh token (expect 200)
 POST {{API}}/auth/refresh
+
+################################################# Users #######################################
+
+## get user by login
+GET {{API}}/auth/user/testettt
+
+
+### get many users by ids
+GET {{API}}/auth/users/by-ids?userIds=1,2,3
 
 
 ### 2. This week
