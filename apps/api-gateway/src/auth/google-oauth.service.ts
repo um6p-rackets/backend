@@ -52,24 +52,22 @@ export class GoogleOAuthService {
     }
 
     async verifyCallback(
-        query: { code: string; state: string; error?: string },
-        oauthCookieToken: string,
+        query: { code?: unknown; state?: unknown },
+        cookieToken?: unknown,
     ): Promise<GoogleProfile> {
-
-        // 1. Check if the user clicked "Cancel" on the Google consent screen
-        if (query.error) {
-            throw new UnauthorizedException(`Google OAuth error: ${query.error}`);
+        // Query params can be arrays or objects (?code[]=x): accept strings only.
+        if (
+        typeof query.code !== 'string' || !query.code ||
+        typeof query.state !== 'string' || !query.state ||
+        typeof cookieToken !== 'string' || !cookieToken
+        ) {
+        throw new UnauthorizedException('Missing OAuth code, state, or cookie');
         }
-
-        // 2. Ensure we have the required pieces
-        if (!query.code || !query.state || !oauthCookieToken) {
-            throw new UnauthorizedException('Missing OAuth code, state, or cookie');
-        }
-
+    
         // 3. Verify the JWT token from the cookie to retrieve the original state, nonce, and code verifier
         let saved: OAuthTx;
         try {
-        saved = await this.jwt.verifyAsync<OAuthTx>(oauthCookieToken, {
+        saved = await this.jwt.verifyAsync<OAuthTx>(cookieToken, {
             audience: OAUTH_AUDIENCE,
         });
         } catch {

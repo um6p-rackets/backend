@@ -1,7 +1,7 @@
 import { Controller } from '@nestjs/common';
 import { MessagePattern, Payload } from '@nestjs/microservices';
 import { AuthServiceService } from './auth-service.service.js';
-import { AUTH_PATTERNS } from '@app/contracts';
+import { AUTH_PATTERNS, GoogleProfile } from '@app/contracts';
 import { LoginDto } from '@app/contracts/auth/dto/login.dto.js';
 
 @Controller()
@@ -33,6 +33,11 @@ export class AuthServiceController {
     return await this.authServiceService.logout(data.refreshToken);
   }
 
+  @MessagePattern(AUTH_PATTERNS.OAUTH_LOGIN)
+  async oAuthLogin(@Payload() profile: GoogleProfile) {
+    console.log(`[AuthService] Received OAuth login request`);
+    return await this.authServiceService.oAuthLogin(profile);
+  }
 
   // /me
   @MessagePattern(AUTH_PATTERNS.GET_USER)
