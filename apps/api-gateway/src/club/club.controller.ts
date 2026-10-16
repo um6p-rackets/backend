@@ -16,7 +16,7 @@ import { CurrentUser } from '../common/decorators/current-user.decorator.js';
 import { WeekQueryDto } from '@app/contracts/club/dto/week-query.dto.js';
 import { addDays, type AuthenticatedUser, mondayOf, today } from '@app/common';
 import { Public } from '../common/decorators/public.decorator.js';
-import { rpc } from '../common/helpers/rpc.helper.js';
+import { rpc } from '../../../../libs/common/src/helpers/rpc.helper.js';
 import { Body } from '@nestjs/common';
 import {
   DeleteSessionQueryDto,
@@ -182,7 +182,12 @@ export class ClubController {
     );
     const response = this.clubClient.send(
       CLUB_PATTERNS.DELETE_CLUB_SESSION_DELETE,
-      { club_slug: slug, user_id: user.id, session_id: session_id, apply_to_future: apply_to_future ?? false },
+      {
+        club_slug: slug,
+        user_id: user.id,
+        session_id: session_id,
+        apply_to_future: apply_to_future ?? false,
+      },
     );
     return response;
   }
@@ -197,10 +202,14 @@ export class ClubController {
     console.log(
       `[ClubController] Received request to get members for club slug: ${slug} and user_id: ${user.id}, and send request to Club Service with query parameters: ${JSON.stringify({ page, limit, role, login })}`,
     );
-    const response = this.clubClient.send(
-      CLUB_PATTERNS.GET_CLUB_MEMBERS,
-      { club_slug: slug, user_id: user.id, page, limit, role, login },
-    );
+    const response = this.clubClient.send(CLUB_PATTERNS.GET_CLUB_MEMBERS, {
+      club_slug: slug,
+      user_id: user.id,
+      page,
+      limit,
+      role,
+      login,
+    });
     return response;
   }
 }
