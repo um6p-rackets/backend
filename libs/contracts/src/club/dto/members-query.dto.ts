@@ -9,5 +9,5 @@ export class MembersQueryDto extends PaginationQueryDto {
   role?: MemberRole;
 
   @IsOptional() @IsString() @MaxLength(100)
-  search?: string;
+  login?: string;
 }

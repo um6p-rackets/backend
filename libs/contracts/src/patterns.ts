@@ -27,6 +27,9 @@ export const CLUB_PATTERNS = {
   POST_CLUB_SESSION_CREATE: 'club.post-club-session-create',
   PATCH_CLUB_SESSION_UPDATE: 'club.patch-club-session-update',
   DELETE_CLUB_SESSION_DELETE: 'club.delete-club-session-delete',
+  // ================== MEMBERS SERVICE ==================
+  GET_CLUB_MEMBERS: 'club.get-club-members',
+  
 } as const;
 
 

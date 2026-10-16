@@ -37,6 +37,18 @@ async function main() {
     });
   }
   console.log(`Seeded ${coaches.length} coach users`);
+
+  for (const user of allUsers) {
+  await prisma.user.upsert({
+    where: { login: user.login },
+    update: {},
+    create: {
+      ...user,
+      password_hash: hashedPassword,
+    },
+  });
+}
+console.log(`Seeded ${allUsers.length} users`);
 }
 
 main()
@@ -45,3 +57,21 @@ main()
     process.exit(1);
   })
   .finally(() => prisma.$disconnect());
+
+
+
+// Regular users: emails user6@gmail.com ... user25@gmail.com
+const baseLogins = ['ilorez', 'nsila', 'ablabib', 'hamaza'];
+
+const users = Array.from({ length: 50 }, (_, i) => {
+  const n = i + 6; // emails start at user6
+  const login = baseLogins[i] ?? `player${n}`;
+  return {
+    login,
+    first_name: login.charAt(0).toUpperCase() + login.slice(1),
+    last_name: `User${n}`,
+    email: `user${n}@gmail.com`,
+  };
+});
+
+const allUsers = [...coaches, ...users];

@@ -18,6 +18,10 @@ export const today = (): string => dayOf(new Date());
 // now
 export const now = (): Date => new Date();
 
+// from date to full string date: 2026-10-12T16:30Z -> "2026-10-12T16:30"
+export const toFullString = (date: Date): string =>
+  new Date(date.getTime() + OFFSET_MS).toISOString().slice(0, 16);
+
 // "2026-10-12" + 7 -> "2026-10-19"
 export function addDays(day: string, n: number): string {
   return new Date(Date.parse(`${day}T00:00:00Z`) + n * DAY_MS).toISOString().slice(0, 10);

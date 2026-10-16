@@ -4,10 +4,10 @@ import { configuration, envFiles } from '@app/common';
 import { ClubServiceController } from './club-service.controller.js';
 import { ClubServiceService } from './club-service.service.js';
 import { PrismaModule } from './prisma/prisma.module.js';
-import { FakeUserDirectory } from './users/fake-user-directory.js';
-import { USER_DIRECTORY } from './users/user-directory.js';
-import { ClubAccessService } from './access/club-access.service.js';
 import { SessionsModule } from './sessions/sessions.module.js';
+import { ClubAccessModule } from './access/club-access.module.js';
+import { MembersModule } from './members/members.module.js';
+import { AuthClientModule } from './global-clients/auth-client.module.js';
 
 @Module({
   imports: [
@@ -18,19 +18,16 @@ import { SessionsModule } from './sessions/sessions.module.js';
     }),
     PrismaModule,
     SessionsModule,
+    ClubAccessModule,
+    MembersModule,
+    AuthClientModule,
   ],
   controllers: [ClubServiceController],
   providers: [
     {
       provide: ClubServiceService, // by default the provider token is the class name, i write it here just to explain
       useClass: ClubServiceService,
-    },
-    {
-      provide: USER_DIRECTORY, // because we are using an interface, we need to provide a token for the provider, so we can inject it later
-      // because the interface doesn't exist at runtime, we can't use it as a provider token, so we use a symbol instead, (the interface vanishes on javascript)
-      useClass: FakeUserDirectory,
-    },
-    ClubAccessService,
+    }
   ]
 })
 export class ClubServiceModule {}
