@@ -24,7 +24,7 @@ import { JwtAuthGuard } from './common/guards/jwt-auth.guard.js';
         JWT_ACCESS_EXPIRES_IN: Joi.string().required(),
         GOOGLE_CLIENT_ID: Joi.string().required(),
         GOOGLE_CLIENT_SECRET: Joi.string().required(),
-        GOOGLE_CALLBACK_URL: Joi.string().uri().required(),
+        GOOGLE_REDIRECT_URI: Joi.string().uri().required(),
         FRONTEND_REDIRECT_URL: Joi.string().uri().required(),
       }),
     }),

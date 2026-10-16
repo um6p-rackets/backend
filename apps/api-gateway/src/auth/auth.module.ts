@@ -5,6 +5,7 @@ import { ConfigService } from '@nestjs/config';
 import { AUTH_SERVICE, QUEUES } from '@app/contracts';
 import { rmqOptions } from '@app/rmq';
 import { AuthController } from './auth.controller.js';
+import { GoogleOAuthService } from './google-oauth.service.js';
 
 @Module({
 	imports: [
@@ -22,5 +23,6 @@ import { AuthController } from './auth.controller.js';
 		]),
 	],
 	controllers: [AuthController],
+	providers: [GoogleOAuthService],
 })
 export class AuthModule {}
