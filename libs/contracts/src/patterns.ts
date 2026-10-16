@@ -30,6 +30,9 @@ export const CLUB_PATTERNS = {
   DELETE_CLUB_SESSION_DELETE: 'club.delete-club-session-delete',
   // ================== MEMBERS SERVICE ==================
   GET_CLUB_MEMBERS: 'club.get-club-members',
+  POST_CLUB_MEMBER_ADD: 'club.post-club-member-add',
+  DELETE_CLUB_MEMBER_REMOVE: 'club.delete-club-member-remove',
+  PATCH_CLUB_MEMBER_ROLE_UPDATE: 'club.patch-club-member-role-update',
   
 } as const;
 

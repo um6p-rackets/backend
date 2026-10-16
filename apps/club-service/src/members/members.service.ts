@@ -4,7 +4,12 @@ import { PrismaService } from '../prisma/prisma.service.js';
 import { rpc, toFullString } from '@app/common';
 import { AUTH_PATTERNS, AUTH_SERVICE, rpcError, User } from '@app/contracts';
 import { ClientProxy } from '@nestjs/microservices';
-import { MemberWithUser, Paginated } from '@app/contracts/club/club.types.js';
+import {
+  Member,
+  MemberWithUser,
+  Paginated,
+} from '@app/contracts/club/club.types.js';
+import { AddMemberDto } from '@app/contracts/club/dto/index.js';
 
 @Injectable()
 export class MembersService {
@@ -31,13 +36,17 @@ export class MembersService {
 
       if (login) {
         // send request to auth service to get user by login
-        const user: (User|null) = await rpc<User|null>(
+        const user: User | null = await rpc<User | null>(
           this.authClient,
           AUTH_PATTERNS.GET_USER_BY_LOGIN,
           { login },
         );
         if (!user) {
-          throw rpcError(404, `User with login ${login} not found`, "Not Found");
+          throw rpcError(
+            404,
+            `User with login ${login} not found`,
+            'Not Found',
+          );
         }
         const member = await this.prisma.member.findFirst({
           where: {
@@ -47,7 +56,11 @@ export class MembersService {
           },
         });
         if (!member) {
-          throw rpcError(404, `User ${login} is not a member of club ${club_slug}`, "Not Found");
+          throw rpcError(
+            404,
+            `User ${login} is not a member of club ${club_slug}`,
+            'Not Found',
+          );
         }
         const member_with_user_summery: MemberWithUser = {
           id: member.id,
@@ -76,7 +89,7 @@ export class MembersService {
         if (!limit) limit = 10;
         if (!page) page = 1;
         if (!role) role = 0;
-        console.log("I am here man + 1");
+        console.log('I am here man + 1');
         const members = await this.prisma.member.findMany({
           where: {
             club_id: club.id,
@@ -102,14 +115,18 @@ export class MembersService {
           AUTH_PATTERNS.GET_USERS_BY_IDS,
           { userIds: ids },
         );
-        if ( users.length != members.length) {
-          console.error(`MembersService.getClubMembers: Mismatch in number of members and users. Members: ${members.length}, Users: ${users.length}`);
+        if (users.length != members.length) {
+          console.error(
+            `MembersService.getClubMembers: Mismatch in number of members and users. Members: ${members.length}, Users: ${users.length}`,
+          );
         }
-        const members_with_user_summery: (MemberWithUser|null)[] = members.map(
-          (member) => {
+        const members_with_user_summery: (MemberWithUser | null)[] =
+          members.map((member) => {
             const user = users.find((user) => user.id === member.user_id);
             if (!user) {
-              console.error(`MembersService.getClubMembers: User not found for member with user_id: ${member.user_id}`);
+              console.error(
+                `MembersService.getClubMembers: User not found for member with user_id: ${member.user_id}`,
+              );
               return null;
             }
             return {
@@ -128,9 +145,10 @@ export class MembersService {
                 avatar: user.avatar,
               },
             };
-          },
-        );
-        const filtered_members = members_with_user_summery.filter((member) => member !== null) as MemberWithUser[];
+          });
+        const filtered_members = members_with_user_summery.filter(
+          (member) => member !== null,
+        ) as MemberWithUser[];
         return {
           data: filtered_members,
           total: totalMembers,
@@ -139,5 +157,78 @@ export class MembersService {
         };
       }
     }
+  }
+
+  async addClubMember(
+    club_slug: string,
+    user_id: number,
+    body: AddMemberDto,
+  ): Promise<Member> {
+    const { club, member } = await this.clubAccessService.requireRole(
+      club_slug,
+      user_id,
+      1, // Require at least admin role to add members
+    );
+    if (body.role && body.role > 1) {
+      throw rpcError(
+        400,
+        `You can't update role to a higher or equal role than your own.`,
+        'Bad Request',
+      );
+    }
+    if (member && member.role == 1 && body.role == 1) {
+      throw rpcError(
+        400,
+        `Only Coach can add another leader to the club.`,
+        'Bad Request',
+      );
+    }
+
+    // Check if the user is already a member of the club
+    const existingMember = await this.prisma.member.findFirst({
+      where: {
+        club_id: club.id,
+        user_id: body.user_id,
+        left_at: null,
+      },
+    });
+
+    if (existingMember) {
+      throw rpcError(
+        400,
+        `User with id ${body.user_id} is already a member of club ${club_slug}`,
+        'Bad Request',
+      );
+    }
+
+    // Check if the user exists in the auth service
+    const user: User | null = await rpc<User | null>(
+      this.authClient,
+      AUTH_PATTERNS.GET_USER_BY_ID,
+      { userId: body.user_id },
+    );
+    if (!user) {
+      throw rpcError(
+        404,
+        `User with id ${body.user_id} not found in auth service`,
+        'Not Found',
+      );
+    }
+
+    // Add the new member to the club
+    const newMember = await this.prisma.member.create({
+      data: {
+        club_id: club.id,
+        user_id: body.user_id,
+        role: body.role ?? 0, // Default role to MEMBER if not provided
+        joined_at: new Date(),
+      },
+    });
+
+    return {
+      ...newMember,
+      joined_at: toFullString(newMember.joined_at),
+      left_at: newMember.left_at ? toFullString(newMember.left_at) : null,
+    };
   }
 }

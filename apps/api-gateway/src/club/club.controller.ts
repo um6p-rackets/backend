@@ -25,6 +25,7 @@ import {
   UpdateSessionDto,
   CreateSessionDto,
   MembersQueryDto,
+  AddMemberDto,
 } from '@app/contracts/club/dto/index.js';
 
 @Controller('clubs')
@@ -209,6 +210,24 @@ export class ClubController {
       limit,
       role,
       login,
+    });
+    return response;
+  }
+
+  // POST /clubs/:slug/members
+  @Post(':slug/members')
+  async addClubMember(
+    @Param() { slug }: ClubSlugParamDto,
+    @CurrentUser() user: AuthenticatedUser,
+    @Body() body: AddMemberDto,
+  ) {
+    console.log(
+      `[ClubController] Received request to add member for club slug: ${slug} and user_id: ${user.id}, and send request to Club Service with body: ${JSON.stringify(body)}`,
+    );
+    const response = this.clubClient.send(CLUB_PATTERNS.POST_CLUB_MEMBER_ADD, {
+      club_slug: slug,
+      user_id: user.id,
+      body,
     });
     return response;
   }
