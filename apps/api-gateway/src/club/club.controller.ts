@@ -24,6 +24,7 @@ import {
   SessionParamDto,
   UpdateSessionDto,
   CreateSessionDto,
+  MembersQueryDto,
 } from '@app/contracts/club/dto/index.js';
 
 @Controller('clubs')
@@ -182,6 +183,23 @@ export class ClubController {
     const response = this.clubClient.send(
       CLUB_PATTERNS.DELETE_CLUB_SESSION_DELETE,
       { club_slug: slug, user_id: user.id, session_id: session_id, apply_to_future: apply_to_future ?? false },
+    );
+    return response;
+  }
+
+  // GET /clubs/:slug/members?page=&limit=&role=&search=
+  @Get(':slug/members')
+  async getClubMembers(
+    @Param() { slug }: ClubSlugParamDto,
+    @CurrentUser() user: AuthenticatedUser,
+    @Query() { page, limit, role, login }: MembersQueryDto,
+  ) {
+    console.log(
+      `[ClubController] Received request to get members for club slug: ${slug} and user_id: ${user.id}, and send request to Club Service with query parameters: ${JSON.stringify({ page, limit, role, login })}`,
+    );
+    const response = this.clubClient.send(
+      CLUB_PATTERNS.GET_CLUB_MEMBERS,
+      { club_slug: slug, user_id: user.id, page, limit, role, login },
     );
     return response;
   }
