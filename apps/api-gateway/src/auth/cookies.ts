@@ -1,4 +1,4 @@
-import { ACCESS_COOKIE, ACCESS_TTL_SECONDS, REFRESH_COOKIE, REFRESH_TTL_SECONDS } from "@app/common";
+import { ACCESS_COOKIE, ACCESS_TTL_SECONDS, COOKIE_PATH, REFRESH_COOKIE, REFRESH_TTL_SECONDS } from "@app/common";
 import { AuthTokens } from "@app/contracts";
 import { CookieOptions, Response } from "express";
 
@@ -20,10 +20,10 @@ export function clearCookie(res: Response, name: string, path: string) {
 
 export function setAuthCookies(res: Response, t: AuthTokens) {
   res.cookie(ACCESS_COOKIE, t.access_token, base(ACCESS_TTL_SECONDS, '/'));
-  res.cookie(REFRESH_COOKIE, t.refresh_token, base(REFRESH_TTL_SECONDS, '/api/v1/auth'));
+  res.cookie(REFRESH_COOKIE, t.refresh_token, base(REFRESH_TTL_SECONDS, COOKIE_PATH));
 }
 
 export function clearAuthCookies(res: Response) {
   res.clearCookie(ACCESS_COOKIE, { path: '/' });
-  res.clearCookie(REFRESH_COOKIE, { path: '/api/v1/auth' });   // path must match
+  res.clearCookie(REFRESH_COOKIE, { path: COOKIE_PATH });   // path must match
 }
