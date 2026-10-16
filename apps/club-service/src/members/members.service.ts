@@ -9,7 +9,7 @@ export class MembersService {
   constructor(private readonly prisma: PrismaService, private readonly clubAccessService: ClubAccessService) {}
 
   async getClubMembers(club_slug: string, user_id: number, limit?: number, page?: number, login?: string, role?: number) {
-    const { club, member } = await this.clubAccessService.requireRole(club_slug, user_id, 0);
+    const { club } = await this.clubAccessService.requireRole(club_slug, user_id, 0);
     if (!limit) limit = 10;
     if (!page) page = 1;
     if (!role) role = 0;

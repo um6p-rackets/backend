@@ -8,6 +8,7 @@ import { FakeUserDirectory } from './users/fake-user-directory.js';
 import { USER_DIRECTORY } from './users/user-directory.js';
 import { SessionsModule } from './sessions/sessions.module.js';
 import { ClubAccessModule } from './access/club-access.module.js';
+import { MembersModule } from './members/members.module.js';
 
 @Module({
   imports: [
@@ -18,7 +19,8 @@ import { ClubAccessModule } from './access/club-access.module.js';
     }),
     PrismaModule,
     SessionsModule,
-    ClubAccessModule
+    ClubAccessModule,
+    MembersModule,
   ],
   controllers: [ClubServiceController],
   providers: [

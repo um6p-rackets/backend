@@ -1,0 +1,47 @@
+@API = http://localhost:3000/api/v1
+
+### 0 register a new user (expect 201)
+POST {{API}}/auth/register
+Content-Type: application/json
+
+{
+  "email": "testettt@gmail.com",
+  "password": "abdellahnsila123#002",
+  "login": "testettt",
+  "first_name": "test",
+  "last_name": "test",
+  "gender": true,
+  "department": "1337",
+  "phone_number": "123456789"
+}
+
+### 1. Login (run this first, cookies are saved for the next requests)
+POST {{API}}/auth/login
+Content-Type: application/json
+
+{
+  "email": "coach.tennis@example.com",
+  "password": "abdellahnsila123#002"
+}
+
+### 1a. Login with diffrent user account
+POST {{API}}/auth/login
+Content-Type: application/json
+
+{
+  "email": "coach.table-tennis2@example.com",
+  "password": "abdellahnsila123#002"
+}
+
+### 1b. Log out (expect 200)
+POST {{API}}/auth/logout
+
+### 1c. /me (expect 401, not logged in)
+GET {{API}}/auth/me
+
+
+### 1d. Refresh token (expect 200)
+POST {{API}}/auth/refresh
+
+### 2. members (expect 200)
+GET {{API}}/clubs/tennis/members?limit=50&page=1&role=0
