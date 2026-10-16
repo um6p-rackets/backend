@@ -7,6 +7,7 @@ import { PrismaModule } from './prisma/prisma.module.js';
 import { SessionsModule } from './sessions/sessions.module.js';
 import { ClubAccessModule } from './access/club-access.module.js';
 import { MembersModule } from './members/members.module.js';
+import { AuthClientModule } from './global-clients/auth-client.module.js';
 
 @Module({
   imports: [
@@ -19,6 +20,7 @@ import { MembersModule } from './members/members.module.js';
     SessionsModule,
     ClubAccessModule,
     MembersModule,
+    AuthClientModule,
   ],
   controllers: [ClubServiceController],
   providers: [
