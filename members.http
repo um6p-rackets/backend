@@ -45,3 +45,80 @@ POST {{API}}/auth/refresh
 
 ### 2. members (expect 200)
 GET {{API}}/clubs/tennis/members?limit=2&page=3&role=0
+
+
+
+######################## test member add #############################
+
+@USER_ID = 24
+
+### 3a. Login as the coach (leader+)
+POST {{API}}/auth/login
+Content-Type: application/json
+
+{
+  "email": "coach.tennis@example.com",
+  "password": "abdellahnsila123#002"
+}
+
+### 3b. Add the user as a member (expect success)
+POST {{API}}/clubs/tennis/members
+Content-Type: application/json
+
+{
+  "user_id": {{USER_ID}}
+}
+
+### 3c. Add the same user again (expect an error, already a member)
+POST {{API}}/clubs/tennis/members
+Content-Type: application/json
+
+{
+  "user_id": {{USER_ID}}
+}
+
+### 3d. The list should now include the user, with role 0
+GET {{API}}/clubs/tennis/members?role=0
+
+### 3e. Invalid user_id (expect 400)
+POST {{API}}/clubs/tennis/members
+Content-Type: application/json
+
+{
+  "user_id": 0
+}
+
+### 3f. Invalid role (expect 400)
+POST {{API}}/clubs/tennis/members
+Content-Type: application/json
+
+{
+  "user_id": {{USER_ID}},
+  "role": 1
+}
+
+### 3g. User that does not exist in auth (expect 404)
+POST {{API}}/clubs/tennis/members
+Content-Type: application/json
+
+{
+  "user_id": 999898
+}
+
+### 3h. Login as the new plain member
+POST {{API}}/auth/login
+Content-Type: application/json
+
+{
+  "email": "user7@gmail.com",
+  "password": "abdellahnsila123#002"
+}
+
+### 3i. A plain member adds someone (expect 403)
+POST {{API}}/clubs/tennis/members
+Content-Type: application/json
+
+{
+  "user_id": 2
+}
+
