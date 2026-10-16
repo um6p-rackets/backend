@@ -314,7 +314,6 @@ export type UpdateSessionBody = {
   location?: string | null;
   capacity?: number; // not below the bookings of any affected session
   apply_to_future?: boolean; // false (default) = this session only, true = also later sessions and the weekly plan
-  template_id?: string;
 };
 
 // DELETE /clubs/:slug/sessions/:sessionId?apply_to_future=true|false
