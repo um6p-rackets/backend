@@ -9,6 +9,7 @@ export const AUTH_PATTERNS = {
     OAUTH_CALLBACK: 'auth.oauth.callback',
     LOGOUT: 'auth.logout',
     GET_USER: 'auth.user.get',
+    GET_USER_BY_ID: 'auth.user.get_by_id',
     GET_USER_BY_LOGIN: 'auth.user.get_by_login',
     GET_USERS_BY_IDS: 'auth.users.get_many_by_ids',
     UPDATE_USER: 'auth.user.update',
