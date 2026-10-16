@@ -22,6 +22,12 @@ export class UsersService {
     return row ? toUser(row) : null;
   }
 
+  async findByLogin(login: string): Promise<User | null> {
+    const v = login.trim().toLowerCase();
+    const row = await this.prisma.user.findFirst({ where: { login: v } });
+    return row ? toUser(row) : null;
+  }
+
   async validateCredentials(email: string, password: string): Promise<User | null> {
     const row = await this.findRawByEmail(email);
     
@@ -47,6 +53,12 @@ export class UsersService {
   async findMany(ids: number[]): Promise<User[]> {
     const rows = await this.prisma.user.findMany({ where: { id: { in: ids } } });
     return rows.map(row => toUser(row)); // Map arrays cleanly
+  }
+
+  async findManyByIds(ids: string[]): Promise<User[]> {
+    const numericIds = ids.map(id => parseInt(id, 10)).filter(id => !isNaN(id));
+    const rows = await this.prisma.user.findMany({ where: { id: { in: numericIds } } });
+    return rows.map(row => toUser(row));
   }
 
   async create(data: {

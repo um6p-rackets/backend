@@ -103,4 +103,20 @@ export class AuthServiceService {
     }
     return user;
   }
+
+  async getUserByLogin(login: string): Promise<User> {
+    const user = await this.usersService.findByLogin(login);
+    if (!user) {
+      throw rpcError(404, 'User not found', 'Not Found');
+    }
+    return user;
+  }
+
+  async getUsersByIds(userIds: string[]): Promise<User[]> {
+    const users = await this.usersService.findManyByIds(userIds);
+    if (!users || users.length === 0) {
+      throw rpcError(404, 'Users not found', 'Not Found');
+    }
+    return users;
+  }
 }
