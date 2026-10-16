@@ -5,8 +5,11 @@ export const AUTH_PATTERNS = {
     REGISTER: 'auth.register',
     LOGIN: 'auth.login',
     REFRESH: 'auth.refresh',
+    OAUTH_LOGIN: 'auth.oauth.login',
+    OAUTH_CALLBACK: 'auth.oauth.callback',
     LOGOUT: 'auth.logout',
     GET_USER: 'auth.user.get',
+    GET_USER_BY_LOGIN: 'auth.user.get_by_login',
     GET_USERS_BY_IDS: 'auth.users.get_many_by_ids',
     UPDATE_USER: 'auth.user.update',
 }
