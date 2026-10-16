@@ -122,3 +122,79 @@ Content-Type: application/json
   "user_id": 2
 }
 
+############# ######################## test member role update #############################
+
+@MEMBER_ID = 4
+
+### 4a. Login as the coach (leader+)
+POST {{API}}/auth/login
+Content-Type: application/json
+
+{
+  "email": "coach.tennis@example.com",
+  "password": "abdellahnsila123#002"
+}
+
+### 4b. List members, copy the "id" of testettt into @MEMBER_ID above
+GET {{API}}/clubs/tennis/members?role=0
+
+### 4c. Promote to leader (expect success)
+PATCH {{API}}/clubs/tennis/members/{{MEMBER_ID}}/role
+Content-Type: application/json
+
+{
+  "role": 1
+}
+
+### 4d. The user should now be in the leaders list
+GET {{API}}/clubs/tennis/members?role=1
+
+### 4e. Demote back to member (expect success)
+PATCH {{API}}/clubs/tennis/members/{{MEMBER_ID}}/role
+Content-Type: application/json
+
+{
+  "role": 0
+}
+
+### 4f. Role 2 = coach (expect 400, the DTO only allows 0 or 1)
+PATCH {{API}}/clubs/tennis/members/{{MEMBER_ID}}/role
+Content-Type: application/json
+
+{
+  "role": 2
+}
+
+### 4g. Member id that does not exist (expect 404)
+PATCH {{API}}/clubs/tennis/members/99999/role
+Content-Type: application/json
+
+{
+  "role": 1
+}
+
+### 4h. Change the coach's own role (expect an error, a coach can't be changed)
+### use the coach's member id from the 4b list with role=2
+PATCH {{API}}/clubs/tennis/members/1/role
+Content-Type: application/json
+
+{
+  "role": 0
+}
+
+### 4i. Login as the plain member
+POST {{API}}/auth/login
+Content-Type: application/json
+
+{
+  "email": "user7@gmail.com",
+  "password": "abdellahnsila123#002"
+}
+
+### 4j. A plain member changes a role (expect 403)
+PATCH {{API}}/clubs/tennis/members/{{MEMBER_ID}}/role
+Content-Type: application/json
+
+{
+  "role": 1
+}
