@@ -51,6 +51,7 @@ export class SessionsService {
           gte: from,
           lt: to,
         },
+        cancelled_at: null, // Exclude cancelled sessions
       },
       orderBy: {
         start_at: 'asc',

@@ -101,7 +101,7 @@ GET {{API}}/clubs/tennis/sessions
 GET {{API}}/clubs/tennis/sessions?week=2026-10-19
 
 
-@NEW = 90
+@NEW = 92
 
 ### 6a. Rename only this session (expect success)
 PATCH {{API}}/clubs/tennis/sessions/{{NEW}}
