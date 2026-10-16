@@ -8,11 +8,11 @@ import { CreateSessionBody, UpdateSessionBody } from '@app/contracts/club/club.t
 export class SessionsController {
   constructor(private readonly sessionsService: SessionsService) {}
   @MessagePattern(CLUB_PATTERNS.GET_CLUB_WEEK_SESSIONS)
-  async getClubWeekSessions(data: { club_slug: string; week_start_date: string }) {
+  async getClubWeekSessions(data: { club_slug: string; week_start_date: string, user_id: number }) {
     console.log(
       `[SessionsController] Received request for club slug: ${data.club_slug} and week start date: ${data.week_start_date}`,
     );
-    return this.sessionsService.getClubWeekSessions(data.club_slug, data.week_start_date);
+    return this.sessionsService.getClubWeekSessions(data.club_slug, data.week_start_date, data.user_id);
   }
 
   @MessagePattern(CLUB_PATTERNS.POST_CLUB_SESSION_ATTEND)
