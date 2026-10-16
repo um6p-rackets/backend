@@ -25,12 +25,14 @@
     "start:dev:notification": "nest start notification-service --watch",
     "start:dev:all": "concurrently -n gateway,auth,club,notif -c blue,green,yellow,magenta \"npm:start:dev:gateway\" \"npm:start:dev:auth\" \"npm:start:dev:club\" \"npm:start:dev:notification\"",
     "prisma:auth-service": "prisma --config apps/auth-service/prisma7.config.ts",
+    "prisma:notification-service": "prisma --config apps/notification-service/prisma7.config.ts",
     "prisma:studio:auth": "prisma studio --config apps/auth-service/prisma7.config.ts",
     "prisma:club-service": "prisma --config apps/club-service/prisma7.config.ts",
     "prisma:studio:club": "prisma studio --config apps/club-service/prisma7.config.ts",
     
-    "db:generate": "npm run prisma:auth-service -- generate && npm run prisma:club-service -- generate",
-    "db:migrate": "npm run prisma:auth-service -- migrate deploy && npm run prisma:club-service -- migrate deploy",
+    "db:generate": "npm run prisma:auth-service -- generate && npm run prisma:club-service -- generate && npm run prisma:notification-service -- generate",
+    "db:migrate": "npm run prisma:auth-service -- migrate deploy && npm run prisma:club-service -- migrate deploy && npm run prisma:notification-service -- migrate deploy",
+    "db:migrate:dev:notification": "npm run prisma:notification-service -- migrate dev --name schema_update && npm run prisma:notification-service -- generate",
     "db:status": "npm run prisma:auth-service -- migrate status && npm run prisma:club-service -- migrate status",
     "db:seed": "npm run prisma:auth-service -- db seed && npm run prisma:club-service -- db seed"
   },
