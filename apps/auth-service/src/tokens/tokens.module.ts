@@ -1,20 +1,17 @@
 import { Module } from '@nestjs/common';
 import { JwtModule } from '@nestjs/jwt';
-import { ConfigService } from '@nestjs/config';
+import { ConfigType } from '@nestjs/config';
 import { TokensService } from './tokens.service.js';
 import { PrismaModule } from '../prisma/prisma.module.js';
+import { jwtConfig } from '@app/common';
 
 @Module({
   imports: [
     PrismaModule,
     JwtModule.registerAsync({
       global: true,
-      inject: [ConfigService],
-      useFactory: (configService: ConfigService) => ({
-        secret: configService.getOrThrow<string>('jwt.accessSecret'),
-        verifyOptions: { algorithms: ['HS256'] },
-        signOptions: { expiresIn: configService.getOrThrow<string>('jwt.expiresIn') as any },
-      }),
+      inject: [jwtConfig.KEY],
+      useFactory: (config: ConfigType<typeof jwtConfig>) => config,
     }),
   ],
   providers: [TokensService],

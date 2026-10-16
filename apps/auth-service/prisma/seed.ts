@@ -1,7 +1,7 @@
 // apps/auth-service/prisma/seed.ts
 import { PrismaPg } from '@prisma/adapter-pg';
 import { PrismaClient } from '../src/generated/prisma/client';
-import { configuration } from "../../../libs/common/src/config/configuration";
+import { configuration } from "../../../libs/common/src/config/global-configuration";
 import * as argon2 from 'argon2';
 
 const url = configuration().database.url;

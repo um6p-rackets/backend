@@ -1,6 +1,6 @@
 import { config } from "dotenv";
 import { defineConfig } from "prisma/config";
-import { configuration } from "../../libs/common/src/config/configuration";
+import { configuration } from "../../libs/common/src/config/global-configuration";
 
 if (process.env.NODE_ENV !== "production") {
   config({ path: "apps/auth-service/.env.development" });

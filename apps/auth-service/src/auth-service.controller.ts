@@ -34,6 +34,7 @@ export class AuthServiceController {
   }
 
 
+  // /me
   @MessagePattern(AUTH_PATTERNS.GET_USER)
   async getUser(@Payload() data: { userId: string }) {
     console.log(`[AuthService] Received request for user ID: ${data.userId}`);
@@ -44,6 +45,23 @@ export class AuthServiceController {
   async health() {
     console.log(`[AuthService] Health check requested`);
     return await this.authServiceService.health();
+  }
+
+  // get user by login
+  @MessagePattern(AUTH_PATTERNS.GET_USER_BY_LOGIN)
+  async getUserByLogin(@Payload() data: { login: string }) {
+    console.log(`[AuthService] Received request for user by login: ${data.login}`);
+    return await this.authServiceService.getUserByLogin(data.login);
+  }
+
+  // get many users by ids
+  @MessagePattern(AUTH_PATTERNS.GET_USERS_BY_IDS)
+  async getUsersByIds(@Payload() data: { userIds: string[] }) {
+    // Defend against undefined payloads over RPC
+    const ids = data?.userIds || [];
+    
+    console.log(`[AuthService] Received request for users by IDs: ${ids.join(', ')}`);
+    return await this.authServiceService.getUsersByIds(ids);
   }
 
 }

@@ -10,4 +10,5 @@
     npm i --save @nestjs/config
     npm install joi
     npm i @nestjs/jwt @nestjs/throttler argon2
+    npm i google-auth-library
 ```
