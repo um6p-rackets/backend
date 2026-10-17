@@ -30,6 +30,8 @@ import {
   UpdateMemberRoleParamDto as RemoveMemberParamDto, 
   UpdateClubDto,
   PaginationQueryDto,
+  CreateAnnouncementDto,
+  DeleteAnnouncementParamDto,
 } from '@app/contracts/club/dto/index.js';
 
 @Controller('clubs')
@@ -311,6 +313,41 @@ export class ClubController {
       user_id: user.id,
       page,
       limit,
+    });
+    return response;
+  }
+
+  // POST /clubs/:slug/announcements
+  @Post(':slug/announcements')
+  async createClubAnnouncement(
+    @Param() { slug }: ClubSlugParamDto,
+    @CurrentUser() user: AuthenticatedUser,
+    @Body() body: CreateAnnouncementDto,
+  ) {
+    console.log(
+      `[ClubController] Received request to create club announcement for slug: ${slug} and user_id: ${user.id}, and send request to Club Service with body: ${JSON.stringify(body)}`,
+    );
+    const response = this.clubClient.send(CLUB_PATTERNS.POST_CLUB_ANNOUNCEMENT_CREATE, {
+      slug: slug,
+      user_id: user.id,
+      description: body.description,
+    });
+    return response;
+  }
+
+  // DELETE /clubs/:slug/announcements/:announcement_id
+  @Delete(':slug/announcements/:announcement_id')
+  async deleteClubAnnouncement(
+    @Param() { slug, announcement_id }: DeleteAnnouncementParamDto,
+    @CurrentUser() user: AuthenticatedUser,
+  ) {
+    console.log(
+      `[ClubController] Received request to delete club announcement for slug: ${slug} and user_id: ${user.id}, and send request to Club Service with announcement_id: ${announcement_id}`,
+    );
+    const response = this.clubClient.send(CLUB_PATTERNS.DELETE_CLUB_ANNOUNCEMENT_DELETE, {
+      slug: slug,
+      user_id: user.id,
+      announcement_id: parseInt(announcement_id, 10),
     });
     return response;
   }

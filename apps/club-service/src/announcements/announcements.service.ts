@@ -1,7 +1,7 @@
 import { Inject, Injectable } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service.js';
 import { ClientProxy } from '@nestjs/microservices';
-import { AUTH_PATTERNS, AUTH_SERVICE, User } from '@app/contracts';
+import { AUTH_PATTERNS, AUTH_SERVICE, rpcError, User } from '@app/contracts';
 import { ClubAccessService } from '../access/club-access.service.js';
 import {
   AnnouncementWithAuthor,
@@ -113,4 +113,82 @@ export class AnnouncementsService {
     
 
   }
+
+  async createAnnouncement({
+    slug,
+    user_id,
+    description,
+  }: {
+    slug: string;
+    user_id: number;
+    description: string;
+  }): Promise<AnnouncementWithAuthor> {
+    const { club, member } = await this.clubAccessService.requireRole(
+      slug,
+      user_id,
+      MemberRole.LEADER,
+    );
+
+    const announcement = await this.prisma.announcement.create({
+      data: {
+        club_id: club.id,
+        announcer_id: member.id,
+        description,
+      },
+    });
+
+    const announcerUser = await rpc<User>(this.authClient, AUTH_PATTERNS.GET_USER_BY_ID, { userId: member.user_id });
+
+    return {
+      ...announcement,
+      created_at: toFullString(announcement.created_at),
+      announcer: {
+        id: announcerUser.id,
+        login: announcerUser.login,
+        first_name: announcerUser.first_name,
+        last_name: announcerUser.last_name,
+        avatar: announcerUser.avatar ?? null,
+        department: announcerUser.department ?? null,
+        member_id: member.id,
+      },
+    };
+  }
+
+  async deleteAnnouncement({
+    slug,
+    user_id,
+    announcement_id,
+  }: {
+    slug: string;
+    user_id: number;
+    announcement_id: number;
+  }): Promise<{ status: number; message: string }> {
+    const { club } = await this.clubAccessService.requireRole(
+      slug,
+      user_id,
+      MemberRole.LEADER,
+    );
+
+    const announcement = await this.prisma.announcement.findUnique({
+      where: {
+        id: announcement_id,
+      },
+    });
+
+    if (!announcement || announcement.club_id !== club.id) {
+      throw rpcError(404,   'Announcement not found or does not belong to the club', "Not Found");
+    }
+
+    await this.prisma.announcement.delete({
+      where: {
+        id: announcement_id,
+      },
+    });
+
+    return {
+      status:  200,
+      message: 'Announcement deleted successfully',
+    }
+  }
+
 }
