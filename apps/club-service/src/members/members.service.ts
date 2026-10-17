@@ -215,6 +215,30 @@ export class MembersService {
         'Not Found',
       );
     }
+    // check if member already join and left the club before, if so update the left_at to null and update the role
+    const previousMember = await this.prisma.member.findFirst({
+      where: {
+        club_id: club.id,
+        user_id: body.user_id,
+        left_at: { not: null },
+      },
+    });
+    if (previousMember) {
+      const updatedMember = await this.prisma.member.update({
+        where: {
+          id: previousMember.id,
+        },
+        data: {
+          left_at: null,
+          role: body.role ?? 0, // Default role to MEMBER if not provided
+        },
+      });
+      return {
+        ...updatedMember,
+        joined_at: toFullString(updatedMember.joined_at),
+        left_at: updatedMember.left_at ? toFullString(updatedMember.left_at) : null,
+      };
+    }
 
     // Add the new member to the club
     const newMember = await this.prisma.member.create({
