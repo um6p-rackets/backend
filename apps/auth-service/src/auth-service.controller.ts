@@ -50,16 +50,22 @@ export class AuthServiceController {
   }
 
   @MessagePattern(AUTH_PATTERNS.UPDATE_USER)
-  async updateProfile(@Payload() data: { userId: string, profileData: UpdateUserDto }) {
-    console.log(`[AuthService] Received request to update profile for user: ${data.userId}`);
-    return await this.usersService.updateUser(data.userId, data.profileData);
+  async updateProfile(@Payload() data: { user_id: string, profileData: UpdateUserDto }) {
+    console.log(`[AuthService] Received request to update profile for user: ${data.user_id}`);
+    return await this.usersService.updateUser(data.user_id, data.profileData);
+  }
+
+  @MessagePattern(AUTH_PATTERNS.IS_LOGIN_AVAILABLE)
+  async isLoginAvailable(@Payload() data: { login: string }) {
+    console.log(`[AuthService] Received request to check login availability for: ${data.login}`);
+    return await this.usersService.isLoginAvailable(data.login);
   }
 
   // get user by id
   @MessagePattern(AUTH_PATTERNS.GET_USER_BY_ID)
-  async getUserById(@Payload() data: { userId: string }) {
-    console.log(`[AuthService] Received request for user by ID: ${data.userId}`);
-    return await this.usersService.findById(Number(data.userId));
+  async getUserById(@Payload() data: { user_id: string }) {
+    console.log(`[AuthService] Received request for user by ID: ${data.user_id}`);
+    return await this.usersService.findById(Number(data.user_id));
   }
 
   // get user by login
@@ -71,9 +77,9 @@ export class AuthServiceController {
 
   // get many users by ids
   @MessagePattern(AUTH_PATTERNS.GET_USERS_BY_IDS)
-  async getUsersByIds(@Payload() data: { userIds: string[] }) {
+  async getUsersByIds(@Payload() data: { user_ids: string[] }) {
     // Defend against undefined payloads over RPC
-    const ids = data?.userIds || [];
+    const ids = data?.user_ids || [];
     console.log(`[AuthService] Received request for users by IDs: ${ids.join(', ')}`);
     return await this.usersService.findManyByIds(ids);
   }

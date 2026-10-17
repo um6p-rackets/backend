@@ -48,6 +48,11 @@ export class UsersService {
     return rows.map(row => toUser(row));
   }
 
+  async isLoginAvailable(login: string): Promise<boolean> {
+    const v = login.trim().toLowerCase();
+    return this.prisma.user.count({ where: { login: v } }).then(count => count === 0);
+  }
+
   async createUser(data: {
     login: string;
     first_name: string;
@@ -59,52 +64,36 @@ export class UsersService {
     avatar: string | null;
     password_hash: string;
   }): Promise<User> {
-    try {
-      // 1. Await the database creation
-      const user = await this.prisma.user.create({ 
-        data: { 
-          ...data, 
-          login: data.login.toLowerCase(), 
-          email: data.email.toLowerCase() 
-        } 
-      });
-      
-      // 2. Return the safe, mapped user (strips out password_hash)
-      return toUser(user); 
-      
-    } catch (error: any) {
-      if (error.code === 'P2002') {
-        throw new RpcException({ status: 409, message: 'Login or email already in use' });
-      }
-      throw error;
-    }
+    // 1. Await the database creation
+    const user = await this.prisma.user.create({ 
+      data: { 
+        ...data, 
+        login: data.login.toLowerCase(), 
+        email: data.email.toLowerCase() 
+      } 
+    });
+    // 2. Return the safe, mapped user (strips out password_hash)
+    return toUser(user); 
   }
 
-  async updateUser(userId: string, dto: UpdateUserDto): Promise<User> {
-    const numericId = parseInt(userId, 10);
+  async updateUser(user_id: string, dto: UpdateUserDto): Promise<User> {
+    const numericId = parseInt(user_id, 10);
     if (isNaN(numericId)) {
       throw new RpcException({ status: 400, message: 'Invalid user ID' });
     }
-
-    try {
-      const updatedUser = await this.prisma.user.update({
-        where: { id: numericId },
-        data: {
-          first_name: dto.first_name,
-          last_name: dto.last_name,
-          department: dto.department,
-          phone_number: dto.phone_number,
-          gender: dto.gender,
-          avatar: dto.avatar,
-        }
-      })
-      return toUser(updatedUser);
-    } catch (error: any) {
-      if (error.code === 'P2025') {
-        throw new RpcException({ status: 404, message: 'User not found' });
+    const updatedUser = await this.prisma.user.update({
+      where: { id: numericId },
+      data: {
+        login: dto.login?.toLowerCase(),
+        first_name: dto.first_name,
+        last_name: dto.last_name,
+        department: dto.department,
+        phone_number: dto.phone_number,
+        gender: dto.gender,
+        avatar: dto.avatar,
       }
-      throw error;
-    }
+    })
+    return toUser(updatedUser);
   }
 
   async getUserByIdentity(data: {provider: string, subject: string}): Promise<User | null> {
@@ -123,7 +112,7 @@ export class UsersService {
       // 1. Create the user
       const user = await prisma.user.create({
         data: {
-          login,
+          login: login.toLowerCase(),
           first_name: dto.first_name,
           last_name: dto.last_name,
           gender: null,

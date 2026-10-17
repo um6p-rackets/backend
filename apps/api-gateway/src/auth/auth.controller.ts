@@ -106,14 +106,14 @@ export class AuthController {
         @Req() req: Request,
         @Res({ passthrough: true }) res: Response,
     ): Promise<void> {
-        const refreshToken = req.cookies?.[REFRESH_COOKIE];
-        if (!refreshToken) throw new UnauthorizedException();
+        const refresh_token = req.cookies?.[REFRESH_COOKIE];
+        if (!refresh_token) throw new UnauthorizedException();
 
         try {
             const tokens = await rpc<AuthTokens>(
                 this.authClient,
                 AUTH_PATTERNS.REFRESH,
-                { refreshToken },
+                { refresh_token },
             );
             setAuthCookies(res, tokens);
         } catch (err) {
@@ -182,24 +182,34 @@ export class AuthController {
     @Get('me')
     async me(@CurrentUser() user: AuthenticatedUser): Promise<User> {
         return rpc<User>(this.authClient, AUTH_PATTERNS.GET_USER_BY_ID, {
-            userId: String(user.id),
+            user_id: String(user.id),
         });
     }
 
+    @Throttle({ default: { limit: REQUEST_LIMIT, ttl: REQUEST_TTL } })
     @Patch('me')
     async updateProfile(
         @CurrentUser() user: AuthenticatedUser,
         @Body() dto: UpdateUserDto
     ): Promise<{ user: User }> {
         // Enforce ownership: The user can only update their own ID
-        const payload = { userId: user.id, profileData: { ...dto } };
+        const payload = { user_id: user.id, profileData: { ...dto } };
         
         const updatedUser = await rpc<User>(
             this.authClient, 
             AUTH_PATTERNS.UPDATE_USER, 
             payload
         );
-        
         return { user: updatedUser };
+    }
+
+    // /users/login-available?login=abc 
+    @Throttle({ default: { limit: REQUEST_LIMIT, ttl: REQUEST_TTL } })
+    @Get('users/login-available')
+    async isLoginAvailable(@Query('login') login: string): Promise<{ available: boolean }> {
+        const available = await rpc<boolean>(this.authClient, AUTH_PATTERNS.IS_LOGIN_AVAILABLE, {
+            login: login.toLowerCase(),
+        });
+        return { available };
     }
 }

@@ -32,11 +32,11 @@ export class SessionsService {
   async getClubWeekSessions(
     clubSlug: string,
     weekStartDate: string,
-    userId: number,
+    user_id: number,
   ): Promise<WeekView> {
     const { member, club } = await this.clubAccessService.requireRole(
       clubSlug,
-      userId,
+      user_id,
       0,
     ); // minRole = MEMBER (0)
     // generate next week sessions
@@ -122,10 +122,10 @@ export class SessionsService {
     };
   }
 
-  async attendSession(clubSlug: string, sessionId: string, userId: number) {
+  async attendSession(clubSlug: string, sessionId: string, user_id: number) {
     const { member, club } = await this.clubAccessService.requireRole(
       clubSlug,
-      userId,
+      user_id,
       0,
     );
 
@@ -190,10 +190,10 @@ export class SessionsService {
     return { success: true, message: 'User successfully attended the session' };
   }
 
-  async unattendSession(clubSlug: string, sessionId: string, userId: number) {
+  async unattendSession(clubSlug: string, sessionId: string, user_id: number) {
     const { member, club } = await this.clubAccessService.requireRole(
       clubSlug,
-      userId,
+      user_id,
       0,
     );
 
@@ -254,12 +254,12 @@ export class SessionsService {
 
   async createSession(
     clubSlug: string,
-    userId: number,
+    user_id: number,
     body: CreateSessionBody,
   ): Promise<WeekView> {
     const { club } = await this.clubAccessService.requireRole(
       clubSlug,
-      userId,
+      user_id,
       1, // LEADER or COACH
     ); // here we chack that is member and have role >= 1
 
@@ -373,18 +373,18 @@ export class SessionsService {
       
     });
 
-    return this.getClubWeekSessions(clubSlug, monday, userId);
+    return this.getClubWeekSessions(clubSlug, monday, user_id);
   }
 
   async updateSession(
     clubSlug: string,
     sessionId: string,
-    userId: number,
+    user_id: number,
     body: UpdateSessionBody,
   ): Promise<WeekView> {
     const { club } = await this.clubAccessService.requireRole(
       clubSlug,
-      userId,
+      user_id,
       1, // LEADER or COACH
     );
 
@@ -491,19 +491,19 @@ export class SessionsService {
     return this.getClubWeekSessions(
       clubSlug,
       mondayOf(updatedSession.start_at.toISOString().split('T')[0]),
-      userId
+      user_id
     );
   }
 
   async deleteSession(
     clubSlug: string,
     sessionId: string,
-    userId: number,
+    user_id: number,
     applyToFuture: boolean,
   ): Promise<WeekView> {
     const { club } = await this.clubAccessService.requireRole(
       clubSlug,
-      userId,
+      user_id,
       1, // LEADER or COACH
     );
 
@@ -554,7 +554,7 @@ export class SessionsService {
     return this.getClubWeekSessions(
       clubSlug,
       mondayOf(session.start_at.toISOString().split('T')[0]),
-      userId
+      user_id
     );
   }
 

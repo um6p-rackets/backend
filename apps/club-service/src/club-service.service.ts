@@ -32,10 +32,10 @@ export class ClubServiceService {
     };
   }
 
-  async getClubStatus(clubSlug: string, userId: number): Promise<ClubMemberStatus> 
+  async getClubStatus(clubSlug: string, user_id: number): Promise<ClubMemberStatus> 
   {
       const club = await this.clubAccessService.getClub(clubSlug);
-      const member = await this.clubAccessService.findMember(club.id, userId);
+      const member = await this.clubAccessService.findMember(club.id, user_id);
 
       return {
         is_member: !!member,
@@ -44,8 +44,8 @@ export class ClubServiceService {
       };
   }
 
-  async updateClub(clubSlug: string, userId: number, body: UpdateClubDto): Promise<Club> {
-    const { club } = await this.clubAccessService.requireRole(clubSlug, userId, MemberRole.COACH); // Ensure the user has at least COACH role to update the club
+  async updateClub(clubSlug: string, user_id: number, body: UpdateClubDto): Promise<Club> {
+    const { club } = await this.clubAccessService.requireRole(clubSlug, user_id, MemberRole.COACH); // Ensure the user has at least COACH role to update the club
 
     let slug = club.slug;
     body.name = body.name?.trim();
