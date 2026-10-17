@@ -49,6 +49,39 @@ export interface RefreshPayload {
 export interface LogoutPayload {
   refresh_token: string;
 }
+// ==================================== OAuth Payloads ====================================
+
+export interface OAuthAuthorizationPayload {
+  url: string;
+  token: string;
+}
+
+export interface OAuthLoginPayload {
+  provider: string; // e.g., "google", "facebook"
+  subject: string; // Unique identifier for the user from the OAuth provider
+  email: string;
+  email_verified: boolean;
+  first_name: string;
+  last_name: string;
+  picture: string;
+}
+
+export interface OAuthTx {
+  purpose: string;
+  state: string;
+  nonce: string;
+  codeVerifier: string;
+}
+
+export interface GoogleProfile {
+  provider: 'google';
+  subject: string;
+  email: string;
+  emailVerified: true;
+  firstName: string;
+  lastName: string;
+  picture: string | null;
+}
 
 export interface GetUserPayload {
   user_id: string;

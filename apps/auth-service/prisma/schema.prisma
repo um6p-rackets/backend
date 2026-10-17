@@ -20,6 +20,7 @@ model User {
   password_hash String
   joined_at     DateTime @default(now()) @db.Timestamptz(6)
   refresh_tokens RefreshToken[]
+  identities    Identity[]
 
   @@map("users")
 }
@@ -37,4 +38,17 @@ model RefreshToken {
   user       User     @relation(fields: [user_id], references: [id], onDelete: Cascade)
 
   @@map("refresh_tokens")
+}
+
+model Identity {
+  id        String   @id @default(uuid()) @db.Uuid
+  provider  String
+  subject   String
+  user_id   Int
+  created_at DateTime @default(now()) @db.Timestamptz(6)
+  user      User     @relation(fields: [user_id], references: [id], onDelete: Cascade)
+
+  @@unique([provider, subject])
+  @@index([user_id])
+  @@map("identities")
 }
