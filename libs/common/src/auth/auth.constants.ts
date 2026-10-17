@@ -10,4 +10,4 @@ export const OAUTH_TTL_SECONDS = 10 * 60_000;            // Time To Live => 10 m
 export const OAUTH_AUDIENCE = 'google-oauth';
 
 export const REQUEST_LIMIT = 20;  // Max number of requests per 10 minutes for rate limiting
-export const REQUEST_TTL = 600;     // Time To Live  => 10 minutes for rate limiting
+export const REQUEST_TTL = 600 * 1000;     // Time To Live  => 10 minutes for rate limiting

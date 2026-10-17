@@ -123,7 +123,6 @@ export class AuthController {
         }
     }
 
-    @Public()
     @HttpCode(200)
     @Throttle({ default: { limit: REQUEST_LIMIT, ttl: REQUEST_TTL } })
     @Post('logout')
