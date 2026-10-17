@@ -137,7 +137,7 @@ export class AnnouncementsService {
       },
     });
 
-    const announcerUser = await rpc<User>(this.authClient, AUTH_PATTERNS.GET_USER_BY_ID, { userId: member.user_id });
+    const announcerUser = await rpc<User>(this.authClient, AUTH_PATTERNS.GET_USER_BY_ID, { user_id: member.user_id });
 
     return {
       ...announcement,
