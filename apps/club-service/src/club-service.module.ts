@@ -8,6 +8,7 @@ import { SessionsModule } from './sessions/sessions.module.js';
 import { ClubAccessModule } from './access/club-access.module.js';
 import { MembersModule } from './members/members.module.js';
 import { AuthClientModule } from './global-clients/auth-client.module.js';
+import { AnnouncementsModule } from './announcements/announcements.module.js';
 
 @Module({
   imports: [
@@ -21,6 +22,7 @@ import { AuthClientModule } from './global-clients/auth-client.module.js';
     ClubAccessModule,
     MembersModule,
     AuthClientModule,
+    AnnouncementsModule,
   ],
   controllers: [ClubServiceController],
   providers: [

@@ -29,6 +29,7 @@ import {
   UpdateMemberRoleParamDto,
   UpdateMemberRoleParamDto as RemoveMemberParamDto, 
   UpdateClubDto,
+  PaginationQueryDto,
 } from '@app/contracts/club/dto/index.js';
 
 @Controller('clubs')
@@ -294,4 +295,24 @@ export class ClubController {
     });
     return response;
   }
+
+  // GET /clubs/:slug/announcements?page=&limit=: members only, newest first, returns Paginated<AnnouncementWithAuthor>.
+  @Get(':slug/announcements')
+  async getClubAnnouncements(
+    @Param() { slug }: ClubSlugParamDto,
+    @CurrentUser() user: AuthenticatedUser,
+    @Query() { page, limit }: PaginationQueryDto,
+  ) {
+    console.log(
+      `[ClubController] Received request to get club announcements for slug: ${slug} and user_id: ${user.id}, and send request to Club Service with page: ${page} and limit: ${limit}`,
+    );
+    const response = this.clubClient.send(CLUB_PATTERNS.GET_CLUB_ANNOUNCEMENTS, {
+      slug: slug,
+      user_id: user.id,
+      page,
+      limit,
+    });
+    return response;
+  }
+
 }
