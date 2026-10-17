@@ -1,16 +1,20 @@
 import { Controller } from '@nestjs/common';
 import { MessagePattern, Payload } from '@nestjs/microservices';
 import { AuthServiceService } from './auth-service.service.js';
-import { AUTH_PATTERNS, GoogleProfile } from '@app/contracts';
+import { AUTH_PATTERNS, LogoutUserDto, OAuthLoginDto, RegisterDto } from '@app/contracts';
 import { LoginDto } from '@app/contracts/auth/dto/login.dto.js';
+import { UsersService } from './users/users.service.js';
 
 @Controller()
 export class AuthServiceController {
-  constructor(private readonly authServiceService: AuthServiceService) {}
+  constructor(
+    private readonly authServiceService: AuthServiceService,
+    private readonly usersService: UsersService
+  ) {}
 
 
   @MessagePattern(AUTH_PATTERNS.REGISTER)
-  async register(@Payload() dto: any) {
+  async register(@Payload() dto: RegisterDto) {
     console.log(`[AuthService] Received registration request for email: ${dto.email}`);
     return await this.authServiceService.register(dto);
   }
@@ -22,28 +26,21 @@ export class AuthServiceController {
   }
 
   @MessagePattern(AUTH_PATTERNS.REFRESH)
-  async refresh(@Payload() data: { refreshToken: string }) {
+  async refresh(@Payload() data: { refresh_token: string }) {
     console.log(`[AuthService] Received refresh request`);
-    return await this.authServiceService.refresh(data.refreshToken);
+    return await this.authServiceService.refresh(data.refresh_token);
   }
 
   @MessagePattern(AUTH_PATTERNS.LOGOUT)
-  async logout(@Payload() data: { userId: string; refreshToken: string }) {
-    console.log(`[AuthService] Received logout request for user ID: ${data.userId}`);
-    return await this.authServiceService.logout(data.refreshToken);
+  async logout(@Payload() dto: LogoutUserDto) {
+    console.log(`[AuthService] Received logout request for user ID: ${dto.user_id}`);
+    return await this.authServiceService.logout(dto.refresh_token);
   }
 
   @MessagePattern(AUTH_PATTERNS.OAUTH_LOGIN)
-  async oAuthLogin(@Payload() profile: GoogleProfile) {
+  async oAuthLogin(@Payload() dto: OAuthLoginDto) {
     console.log(`[AuthService] Received OAuth login request`);
-    return await this.authServiceService.oAuthLogin(profile);
-  }
-
-  // /me
-  @MessagePattern(AUTH_PATTERNS.GET_USER)
-  async getUser(@Payload() data: { userId: string }) {
-    console.log(`[AuthService] Received request for user ID: ${data.userId}`);
-    return await this.authServiceService.getUser(data.userId);
+    return await this.authServiceService.oAuthLogin(dto);
   }
 
   @MessagePattern(AUTH_PATTERNS.HEALTH)
@@ -52,18 +49,18 @@ export class AuthServiceController {
     return await this.authServiceService.health();
   }
 
-  // get user by login
-  @MessagePattern(AUTH_PATTERNS.GET_USER_BY_LOGIN)
-  async getUserByLogin(@Payload() data: { login: string }) {
-    console.log(`[AuthService] Received request for user by login: ${data.login}`);
-    return await this.authServiceService.getUserByLogin(data.login);
-  }
-
   // get user by id
   @MessagePattern(AUTH_PATTERNS.GET_USER_BY_ID)
   async getUserById(@Payload() data: { userId: string }) {
     console.log(`[AuthService] Received request for user by ID: ${data.userId}`);
-    return await this.authServiceService.getUserById(data.userId);
+    return await this.usersService.findById(Number(data.userId));
+  }
+
+  // get user by login
+  @MessagePattern(AUTH_PATTERNS.GET_USER_BY_LOGIN)
+  async getUserByLogin(@Payload() data: { login: string }) {
+    console.log(`[AuthService] Received request for user by login: ${data.login}`);
+    return await this.usersService.findByLogin(data.login);
   }
 
   // get many users by ids
@@ -71,9 +68,8 @@ export class AuthServiceController {
   async getUsersByIds(@Payload() data: { userIds: string[] }) {
     // Defend against undefined payloads over RPC
     const ids = data?.userIds || [];
-    
     console.log(`[AuthService] Received request for users by IDs: ${ids.join(', ')}`);
-    return await this.authServiceService.getUsersByIds(ids);
+    return await this.usersService.findManyByIds(ids);
   }
 
 }

@@ -3,15 +3,17 @@ import {
   RegisterDto,
   LoginDto,
   rpcError,
-  User,
   AuthTokens,
   AuthResult,
   HealthResult,
   LogoutResult,
+  OAuthLoginDto,
+  User,
 } from '@app/contracts';
 import { UsersService } from './users/users.service.js';
 import { TokensService } from './tokens/tokens.service.js';
 import * as argon2 from 'argon2';
+import { randomBytes, randomInt } from 'crypto';
 
 @Injectable()
 export class AuthServiceService {
@@ -35,7 +37,7 @@ export class AuthServiceService {
   async register(dto: RegisterDto): Promise<AuthResult> {
     const { password, ...userData } = dto;
 
-    const user = await this.usersService.create({
+    const user = await this.usersService.createUser({
       ...userData,
       password_hash: await argon2.hash(password),
       avatar: null,
@@ -75,19 +77,19 @@ export class AuthServiceService {
   }
 
   // refresh
-  async refresh(refreshToken: string): Promise<AuthTokens> {
-    if (!refreshToken) {
+  async refresh(refresh_token: string): Promise<AuthTokens> {
+    if (!refresh_token) {
       throw rpcError(401, 'No refresh token provided', 'Unauthorized');
     }
     
     // Rotate the token and return the new set to the Gateway
-    return await this.tokensService.rotate(refreshToken);
+    return await this.tokensService.rotate(refresh_token);
   }
 
   // logout
-  async logout(refreshToken: string): Promise<LogoutResult> {
-    if (refreshToken) {
-      await this.tokensService.revoke(refreshToken);
+  async logout(refresh_token: string): Promise<LogoutResult> {
+    if (refresh_token) {
+      await this.tokensService.revoke(refresh_token);
     }
     return {
       "success": true,
@@ -95,27 +97,68 @@ export class AuthServiceService {
     }
   }
 
-  // me / getUser
-  async getUser(userId: string): Promise<User> {
-    const user = await this.usersService.findById(Number(userId));
-    if (!user) {
-      throw rpcError(404, 'User not found', 'Not Found');
+  // OAuth login
+  async oAuthLogin(dto: OAuthLoginDto): Promise<AuthResult | null> {
+    if (!dto.email_verified) {
+      throw rpcError(401, 'Email not verified', 'Unauthorized');
     }
-    return user;
-  }
-  async getUserById(userId: string): Promise<User|null> {
-    const user = await this.usersService.findById(Number(userId));
-    return user;
+
+    // Allow up to 3 attempts to gracefully handle DB race conditions
+    for (let attempt = 1; attempt <= 3; attempt++) {
+      try {
+        // Case 1: User has IDENTITY in our system, just log them in
+        const user = await this.usersService.getUserByIdentity({
+          provider: dto.provider,
+          subject: dto.subject,
+        });
+
+        if (user) {
+          const tokens = await this.tokensService.issue(user.id, user.login);
+          return { ...tokens, user };
+        }
+
+        const existingUser = await this.usersService.findByEmail(dto.email);
+        let finalUser: User;
+
+        // Case 2: User exists but doesn't have this IDENTITY, link it
+        if (existingUser) {
+          await this.usersService.linkIdentityToUser(existingUser.id, dto);
+          finalUser = existingUser;
+        } 
+        // Case 3: User doesn't exist, create a new one with this IDENTITY
+        else {
+          const login = await this.uniqueLogin(dto.email);
+          finalUser = await this.usersService.createIdentityUser(login, dto);
+        }
+
+        const tokens = await this.tokensService.issue(finalUser.id, finalUser.login);
+        return { ...tokens, user: finalUser };
+
+      } catch (e: any) {
+        // P2002: Prisma Unique Constraint Failed
+        if (e.code === 'P2002') {
+          if (attempt < 3) continue; // Retry the whole flow
+          throw rpcError(409, 'Account already exists or collision occurred', 'Conflict');
+        }
+        // If it's not a unique constraint error, throw it immediately
+        throw e;
+      }
+    }
+    throw rpcError(500, 'Could not create account', 'Internal Server Error');
   }
 
-  // used by club or notification service
-  async getUserByLogin(login: string): Promise<(User|null)> {
-    const user = await this.usersService.findByLogin(login);
-    return user;
-  }
+    private async uniqueLogin(email: string): Promise<string> {
+      // "John.Doe+123@example.com" => "johndoe123"
+      const base = email.split('@')[0].toLowerCase().replace(/[^a-z0-9_]/g, '').slice(0, 20) || 'user';
+      // Try a few times to find a unique login
+      for (let i = 0; i < 5; i++) {
+        const candidate = i === 0 ? base : `${base}[${randomInt(1000, 9999)}]`;
+        const taken = await this.usersService.findByLogin(candidate);
+        // If not taken, return the candidate
+        if (!taken)
+          return candidate;
+      }
+      return `${base}${randomBytes(4).toString('hex')}`;
+    }
 
-  async getUsersByIds(userIds: string[]): Promise<User[]> {
-    const users = await this.usersService.findManyByIds(userIds);
-    return users;
-  }
 }
