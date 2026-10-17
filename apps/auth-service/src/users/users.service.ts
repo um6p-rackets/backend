@@ -50,7 +50,7 @@ export class UsersService {
 
   async isLoginAvailable(login: string): Promise<boolean> {
     const v = login.trim().toLowerCase();
-    return this.prisma.user.count({ where: { login: v } }).then(count => count === 0);
+    return await this.prisma.user.count({ where: { login: v } }).then(count => count === 0);
   }
 
   async createUser(data: {
