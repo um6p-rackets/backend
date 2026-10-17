@@ -60,7 +60,7 @@ export class ClubController {
 
   @Get(':slug/status')
   async getClubStatus(
-    @Param() { slug }: SessionParamDto,
+    @Param() { slug }: ClubSlugParamDto,
     @CurrentUser() user: AuthenticatedUser,
   ) {
     console.log(
