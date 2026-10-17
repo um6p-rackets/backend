@@ -21,8 +21,8 @@ While raw TCP sockets are fast, they are notoriously difficult to manage at scal
 
 **The Strategic Advantages:**
 
-* **Single Source of Authentication:** The API Gateway is the only service that touches a JWT. It intercepts the HTTP request, validates the cookie, extracts the `userId`, and completely strips the HTTP context.
-* **Implicit Internal Trust:** By the time a message reaches the `club-service` via RabbitMQ, it arrives as a sanitized payload (e.g., `{ cmd: 'create_match', userId: 42 }`). The `club-service` completely trusts this payload because it is mathematically impossible for the frontend to reach RabbitMQ directly.
+* **Single Source of Authentication:** The API Gateway is the only service that touches a JWT. It intercepts the HTTP request, validates the cookie, extracts the `user_id`, and completely strips the HTTP context.
+* **Implicit Internal Trust:** By the time a message reaches the `club-service` via RabbitMQ, it arrives as a sanitized payload (e.g., `{ cmd: 'create_match', user_id: 42 }`). The `club-service` completely trusts this payload because it is mathematically impossible for the frontend to reach RabbitMQ directly.
 * **Total Network Isolation:** The internal microservices no longer import Express. They do not have HTTP listeners. They only connect to the RabbitMQ broker, rendering them entirely immune to external REST API attacks (like CSRF or injection via headers).
 
 ## 3. Architecture Comparison Matrix

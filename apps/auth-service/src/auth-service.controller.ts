@@ -1,7 +1,7 @@
 import { Controller } from '@nestjs/common';
 import { MessagePattern, Payload } from '@nestjs/microservices';
 import { AuthServiceService } from './auth-service.service.js';
-import { AUTH_PATTERNS, type AuthTokens, OAuthLoginDto, RegisterDto } from '@app/contracts';
+import { AUTH_PATTERNS, type AuthTokens, UpdateUserDto, OAuthLoginDto, RegisterDto } from '@app/contracts';
 import { LoginDto } from '@app/contracts/auth/dto/login.dto.js';
 import { UsersService } from './users/users.service.js';
 
@@ -12,6 +12,12 @@ export class AuthServiceController {
     private readonly usersService: UsersService
   ) {}
 
+
+  @MessagePattern(AUTH_PATTERNS.HEALTH)
+  async health() {
+    console.log(`[AuthService] Health check requested`);
+    return await this.authServiceService.health();
+  }
 
   @MessagePattern(AUTH_PATTERNS.REGISTER)
   async register(@Payload() dto: RegisterDto) {
@@ -31,29 +37,35 @@ export class AuthServiceController {
     return await this.authServiceService.refresh(data.refresh_token);
   }
 
-  @MessagePattern(AUTH_PATTERNS.LOGOUT)
-  async logout(@Payload() data: AuthTokens) {
-    console.log(`[AuthService] Received logout request`);
-    return await this.authServiceService.logout(data.refresh_token);
-  }
-
   @MessagePattern(AUTH_PATTERNS.OAUTH_LOGIN)
   async oAuthLogin(@Payload() dto: OAuthLoginDto) {
     console.log(`[AuthService] Received OAuth login request`);
     return await this.authServiceService.oAuthLogin(dto);
   }
 
-  @MessagePattern(AUTH_PATTERNS.HEALTH)
-  async health() {
-    console.log(`[AuthService] Health check requested`);
-    return await this.authServiceService.health();
+  @MessagePattern(AUTH_PATTERNS.LOGOUT)
+  async logout(@Payload() data: AuthTokens) {
+    console.log(`[AuthService] Received logout request`);
+    return await this.authServiceService.logout(data.refresh_token);
+  }
+
+  @MessagePattern(AUTH_PATTERNS.UPDATE_USER)
+  async updateProfile(@Payload() data: { user_id: string, profileData: UpdateUserDto }) {
+    console.log(`[AuthService] Received request to update profile for user: ${data.user_id}`);
+    return await this.usersService.updateUser(data.user_id, data.profileData);
+  }
+
+  @MessagePattern(AUTH_PATTERNS.IS_LOGIN_AVAILABLE)
+  async isLoginAvailable(@Payload() data: { login: string }) {
+    console.log(`[AuthService] Received request to check login availability for: ${data.login}`);
+    return await this.usersService.isLoginAvailable(data.login);
   }
 
   // get user by id
   @MessagePattern(AUTH_PATTERNS.GET_USER_BY_ID)
-  async getUserById(@Payload() data: { userId: string }) {
-    console.log(`[AuthService] Received request for user by ID: ${data.userId}`);
-    return await this.usersService.findById(Number(data.userId));
+  async getUserById(@Payload() data: { user_id: string }) {
+    console.log(`[AuthService] Received request for user by ID: ${data.user_id}`);
+    return await this.usersService.findById(Number(data.user_id));
   }
 
   // get user by login
@@ -65,9 +77,9 @@ export class AuthServiceController {
 
   // get many users by ids
   @MessagePattern(AUTH_PATTERNS.GET_USERS_BY_IDS)
-  async getUsersByIds(@Payload() data: { userIds: string[] }) {
+  async getUsersByIds(@Payload() data: { user_ids: string[] }) {
     // Defend against undefined payloads over RPC
-    const ids = data?.userIds || [];
+    const ids = data?.user_ids || [];
     console.log(`[AuthService] Received request for users by IDs: ${ids.join(', ')}`);
     return await this.usersService.findManyByIds(ids);
   }

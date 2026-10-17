@@ -86,6 +86,45 @@ export class AuthServiceService {
     return await this.tokensService.rotate(refresh_token);
   }
 
+  // OAuth login
+  async oAuthLogin(dto: OAuthLoginDto): Promise<AuthResult | null> {
+    if (!dto.email_verified) {
+      throw rpcError(401, 'Email not verified', 'Unauthorized');
+    }
+
+    // Allow up to 3 attempts to gracefully handle DB race conditions
+    for (let attempt = 1; attempt <= 3; attempt++) {
+      // Case 1: User has IDENTITY in our system, just log them in
+      const user = await this.usersService.getUserByIdentity({
+        provider: dto.provider,
+        subject: dto.subject,
+      });
+
+      if (user) {
+        const tokens = await this.tokensService.issue(user.id, user.login);
+        return { ...tokens, user };
+      }
+
+      const existingUser = await this.usersService.findByEmail(dto.email);
+      let finalUser: User;
+
+      // Case 2: User exists but doesn't have this IDENTITY, link it
+      if (existingUser) {
+        await this.usersService.linkIdentityToUser(existingUser.id, dto);
+        finalUser = existingUser;
+      } 
+      // Case 3: User doesn't exist, create a new one with this IDENTITY
+      else {
+        const login = await this.uniqueLogin(dto.email);
+        finalUser = await this.usersService.createIdentityUser(login, dto);
+      }
+
+      const tokens = await this.tokensService.issue(finalUser.id, finalUser.login);
+      return { ...tokens, user: finalUser };
+    }
+    throw rpcError(500, 'Could not create account', 'Internal Server Error');
+  }
+
   // logout
   async logout(refresh_token: string): Promise<LogoutResult> {
     if (refresh_token) {
@@ -97,55 +136,7 @@ export class AuthServiceService {
     }
   }
 
-  // OAuth login
-  async oAuthLogin(dto: OAuthLoginDto): Promise<AuthResult | null> {
-    if (!dto.email_verified) {
-      throw rpcError(401, 'Email not verified', 'Unauthorized');
-    }
-
-    // Allow up to 3 attempts to gracefully handle DB race conditions
-    for (let attempt = 1; attempt <= 3; attempt++) {
-      try {
-        // Case 1: User has IDENTITY in our system, just log them in
-        const user = await this.usersService.getUserByIdentity({
-          provider: dto.provider,
-          subject: dto.subject,
-        });
-
-        if (user) {
-          const tokens = await this.tokensService.issue(user.id, user.login);
-          return { ...tokens, user };
-        }
-
-        const existingUser = await this.usersService.findByEmail(dto.email);
-        let finalUser: User;
-
-        // Case 2: User exists but doesn't have this IDENTITY, link it
-        if (existingUser) {
-          await this.usersService.linkIdentityToUser(existingUser.id, dto);
-          finalUser = existingUser;
-        } 
-        // Case 3: User doesn't exist, create a new one with this IDENTITY
-        else {
-          const login = await this.uniqueLogin(dto.email);
-          finalUser = await this.usersService.createIdentityUser(login, dto);
-        }
-
-        const tokens = await this.tokensService.issue(finalUser.id, finalUser.login);
-        return { ...tokens, user: finalUser };
-
-      } catch (e: any) {
-        // P2002: Prisma Unique Constraint Failed
-        if (e.code === 'P2002') {
-          if (attempt < 3) continue; // Retry the whole flow
-          throw rpcError(409, 'Account already exists or collision occurred', 'Conflict');
-        }
-        // If it's not a unique constraint error, throw it immediately
-        throw e;
-      }
-    }
-    throw rpcError(500, 'Could not create account', 'Internal Server Error');
-  }
+  // ------------------ Helper Methods ------------------
 
     private async uniqueLogin(email: string): Promise<string> {
       // "John.Doe+123@example.com" => "johndoe123"

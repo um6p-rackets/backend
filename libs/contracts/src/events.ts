@@ -6,5 +6,5 @@ export const EVENTS = {
 } as const;
 
 export interface UserDeletedEvent {
-  userId: string;
+  user_id: string;
 }

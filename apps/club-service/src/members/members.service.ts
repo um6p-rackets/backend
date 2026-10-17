@@ -114,7 +114,7 @@ export class MembersService {
         const users: User[] = await rpc<User[]>(
           this.authClient,
           AUTH_PATTERNS.GET_USERS_BY_IDS,
-          { userIds: ids },
+          { user_ids: ids },
         );
         if (users.length != members.length) {
           console.error(
@@ -206,7 +206,7 @@ export class MembersService {
     const user: User | null = await rpc<User | null>(
       this.authClient,
       AUTH_PATTERNS.GET_USER_BY_ID,
-      { userId: body.user_id },
+      { user_id: body.user_id },
     );
     if (!user) {
       throw rpcError(
