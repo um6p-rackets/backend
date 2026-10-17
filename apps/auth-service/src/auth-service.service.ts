@@ -86,17 +86,6 @@ export class AuthServiceService {
     return await this.tokensService.rotate(refresh_token);
   }
 
-  // logout
-  async logout(refresh_token: string): Promise<LogoutResult> {
-    if (refresh_token) {
-      await this.tokensService.revoke(refresh_token);
-    }
-    return {
-      "success": true,
-      "message": "Logged out successfully"
-    }
-  }
-
   // OAuth login
   async oAuthLogin(dto: OAuthLoginDto): Promise<AuthResult | null> {
     if (!dto.email_verified) {
@@ -146,6 +135,19 @@ export class AuthServiceService {
     }
     throw rpcError(500, 'Could not create account', 'Internal Server Error');
   }
+
+  // logout
+  async logout(refresh_token: string): Promise<LogoutResult> {
+    if (refresh_token) {
+      await this.tokensService.revoke(refresh_token);
+    }
+    return {
+      "success": true,
+      "message": "Logged out successfully"
+    }
+  }
+
+  // ------------------ Helper Methods ------------------
 
     private async uniqueLogin(email: string): Promise<string> {
       // "John.Doe+123@example.com" => "johndoe123"

@@ -1,7 +1,7 @@
 import { Controller } from '@nestjs/common';
 import { MessagePattern, Payload } from '@nestjs/microservices';
 import { AuthServiceService } from './auth-service.service.js';
-import { AUTH_PATTERNS, type AuthTokens, OAuthLoginDto, RegisterDto } from '@app/contracts';
+import { AUTH_PATTERNS, type AuthTokens, UpdateUserDto, OAuthLoginDto, RegisterDto } from '@app/contracts';
 import { LoginDto } from '@app/contracts/auth/dto/login.dto.js';
 import { UsersService } from './users/users.service.js';
 
@@ -12,6 +12,12 @@ export class AuthServiceController {
     private readonly usersService: UsersService
   ) {}
 
+
+  @MessagePattern(AUTH_PATTERNS.HEALTH)
+  async health() {
+    console.log(`[AuthService] Health check requested`);
+    return await this.authServiceService.health();
+  }
 
   @MessagePattern(AUTH_PATTERNS.REGISTER)
   async register(@Payload() dto: RegisterDto) {
@@ -31,22 +37,22 @@ export class AuthServiceController {
     return await this.authServiceService.refresh(data.refresh_token);
   }
 
-  @MessagePattern(AUTH_PATTERNS.LOGOUT)
-  async logout(@Payload() data: AuthTokens) {
-    console.log(`[AuthService] Received logout request`);
-    return await this.authServiceService.logout(data.refresh_token);
-  }
-
   @MessagePattern(AUTH_PATTERNS.OAUTH_LOGIN)
   async oAuthLogin(@Payload() dto: OAuthLoginDto) {
     console.log(`[AuthService] Received OAuth login request`);
     return await this.authServiceService.oAuthLogin(dto);
   }
 
-  @MessagePattern(AUTH_PATTERNS.HEALTH)
-  async health() {
-    console.log(`[AuthService] Health check requested`);
-    return await this.authServiceService.health();
+  @MessagePattern(AUTH_PATTERNS.LOGOUT)
+  async logout(@Payload() data: AuthTokens) {
+    console.log(`[AuthService] Received logout request`);
+    return await this.authServiceService.logout(data.refresh_token);
+  }
+
+  @MessagePattern(AUTH_PATTERNS.UPDATE_USER)
+  async updateProfile(@Payload() data: { userId: string, profileData: UpdateUserDto }) {
+    console.log(`[AuthService] Received request to update profile for user: ${data.userId}`);
+    return await this.usersService.updateUser(data.userId, data.profileData);
   }
 
   // get user by id

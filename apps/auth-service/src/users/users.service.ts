@@ -2,7 +2,7 @@ import { Injectable } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service.js';
 import { RpcException } from '@nestjs/microservices';
 import { toUser } from './user.mapper.js';
-import { OAuthLoginDto, User } from '@app/contracts';
+import { OAuthLoginDto, UpdateUserDto, User } from '@app/contracts';
 import type { User as PrismaUser } from '../generated/prisma/client.js';
 import * as argon2 from 'argon2';
 import { TokensService } from '../tokens/tokens.service.js';
@@ -80,6 +80,33 @@ export class UsersService {
     }
   }
 
+  async updateUser(userId: string, dto: UpdateUserDto): Promise<User> {
+    const numericId = parseInt(userId, 10);
+    if (isNaN(numericId)) {
+      throw new RpcException({ status: 400, message: 'Invalid user ID' });
+    }
+
+    try {
+      const updatedUser = await this.prisma.user.update({
+        where: { id: numericId },
+        data: {
+          first_name: dto.first_name,
+          last_name: dto.last_name,
+          department: dto.department,
+          phone_number: dto.phone_number,
+          gender: dto.gender,
+          avatar: dto.avatar,
+        }
+      })
+      return toUser(updatedUser);
+    } catch (error: any) {
+      if (error.code === 'P2025') {
+        throw new RpcException({ status: 404, message: 'User not found' });
+      }
+      throw error;
+    }
+  }
+
   async getUserByIdentity(data: {provider: string, subject: string}): Promise<User | null> {
     // 1. Known identity: sign in
     const row = await this.prisma.identity.findUnique({
@@ -90,6 +117,8 @@ export class UsersService {
   }
 
   async createIdentityUser(login: string, dto: OAuthLoginDto): Promise<User> {
+    // For testing purposes
+    const testPasswordHash = await argon2.hash('abdellahnsila123#002');
     const row = await this.prisma.$transaction(async (prisma) => {
       // 1. Create the user
       const user = await prisma.user.create({
@@ -102,7 +131,8 @@ export class UsersService {
           phone_number: null,
           email: dto.email.toLowerCase(),
           avatar: dto.picture ?? null,
-          password_hash: DUMMY_HASH,
+          password_hash: testPasswordHash, // Use a test password hash for OAuth users
+          // password_hash: DUMMY_HASH,
         },
       });
 

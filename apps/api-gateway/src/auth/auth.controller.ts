@@ -8,6 +8,7 @@ import {
     User,
     HealthResult,
     LogoutResult,
+    UpdateUserDto,
 } from '@app/contracts';
 import {
     Body,
@@ -15,6 +16,7 @@ import {
     Get,
     HttpCode,
     Inject,
+    Patch,
     Post,
     Query,
     Req,
@@ -123,28 +125,6 @@ export class AuthController {
         }
     }
 
-    @HttpCode(200)
-    @Throttle({ default: { limit: REQUEST_LIMIT, ttl: REQUEST_TTL } })
-    @Post('logout')
-    async logout(
-        @Req() req: Request,
-        @Res({ passthrough: true }) res: Response,
-    ): Promise<LogoutResult> {
-        const msg = await rpc<LogoutResult>(this.authClient, AUTH_PATTERNS.LOGOUT, {
-            refreshToken: req.cookies?.[REFRESH_COOKIE] ?? '',
-        });
-        clearAuthCookies(res);
-        return msg;
-    }
-
-    @Throttle({ default: { limit: REQUEST_LIMIT, ttl: REQUEST_TTL } })
-    @Get('me')
-    async me(@CurrentUser() user: AuthenticatedUser): Promise<User> {
-        return rpc<User>(this.authClient, AUTH_PATTERNS.GET_USER_BY_ID, {
-            userId: String(user.id),
-        });
-    }
-
     @Public()
     @Throttle({ default: { limit: REQUEST_LIMIT, ttl: REQUEST_TTL } })
     @Get('google/login')
@@ -182,5 +162,44 @@ export class AuthController {
             clearCookie(res, OAUTH_COOKIE, OAUTH_COOKIE_PATH);
             res.redirect(new URL('?error=oauth_failed', this.cfg.frontendRedirectUrl).toString());
         }
+    }
+
+    @HttpCode(200)
+    @Throttle({ default: { limit: REQUEST_LIMIT, ttl: REQUEST_TTL } })
+    @Post('logout')
+    async logout(
+        @Req() req: Request,
+        @Res({ passthrough: true }) res: Response,
+    ): Promise<LogoutResult> {
+        const msg = await rpc<LogoutResult>(this.authClient, AUTH_PATTERNS.LOGOUT, {
+            refreshToken: req.cookies?.[REFRESH_COOKIE] ?? '',
+        });
+        clearAuthCookies(res);
+        return msg;
+    }
+
+    @Throttle({ default: { limit: REQUEST_LIMIT, ttl: REQUEST_TTL } })
+    @Get('me')
+    async me(@CurrentUser() user: AuthenticatedUser): Promise<User> {
+        return rpc<User>(this.authClient, AUTH_PATTERNS.GET_USER_BY_ID, {
+            userId: String(user.id),
+        });
+    }
+
+    @Patch('me')
+    async updateProfile(
+        @CurrentUser() user: AuthenticatedUser,
+        @Body() dto: UpdateUserDto
+    ): Promise<{ user: User }> {
+        // Enforce ownership: The user can only update their own ID
+        const payload = { userId: user.id, profileData: { ...dto } };
+        
+        const updatedUser = await rpc<User>(
+            this.authClient, 
+            AUTH_PATTERNS.UPDATE_USER, 
+            payload
+        );
+        
+        return { user: updatedUser };
     }
 }
