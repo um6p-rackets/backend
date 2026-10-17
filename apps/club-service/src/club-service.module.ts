@@ -9,6 +9,7 @@ import { ClubAccessModule } from './access/club-access.module.js';
 import { MembersModule } from './members/members.module.js';
 import { AuthClientModule } from './global-clients/auth-client.module.js';
 import { AnnouncementsModule } from './announcements/announcements.module.js';
+import { DocumentsModule } from './documents/documents.module.js';
 
 @Module({
   imports: [
@@ -23,6 +24,7 @@ import { AnnouncementsModule } from './announcements/announcements.module.js';
     MembersModule,
     AuthClientModule,
     AnnouncementsModule,
+    DocumentsModule,
   ],
   controllers: [ClubServiceController],
   providers: [
