@@ -68,3 +68,193 @@ POST {{API}}/auth/logout
 
 ### 16. Not logged in (expect 401)
 GET {{API}}/clubs/tennis/announcements
+
+
+################################ Test for creating and deleting announcements ###################################
+
+@A = 13
+@B = 17
+@MEMBER_ID = 4
+
+### 1. Login as the tennis coach
+POST {{API}}/auth/login
+Content-Type: application/json
+
+{
+  "email": "coach.tennis@example.com",
+  "password": "abdellahnsila123#002"
+}
+
+### 2. Create announcement A (expect success, copy its "id" into @A above)
+POST {{API}}/clubs/tennis/announcements
+Content-Type: application/json
+
+{
+  "description": "Announcement A from the coach"
+}
+
+### 3. The list must show A first, with announcer coach_tennis
+GET {{API}}/clubs/tennis/announcements
+
+### 4. Spaces only (expect 400)
+POST {{API}}/clubs/tennis/announcements
+Content-Type: application/json
+
+{
+  "description": "     "
+}
+
+### 5. Empty description (expect 400)
+POST {{API}}/clubs/tennis/announcements
+Content-Type: application/json
+
+{
+  "description": ""
+}
+
+### 6. Empty body (expect 400)
+POST {{API}}/clubs/tennis/announcements
+Content-Type: application/json
+
+{}
+
+### 7. Extra property (expect 400)
+POST {{API}}/clubs/tennis/announcements
+Content-Type: application/json
+
+{
+  "description": "x",
+  "club_id": 2
+}
+
+### 8. Club that does not exist (expect 404)
+POST {{API}}/clubs/not-a-club/announcements
+Content-Type: application/json
+
+{
+  "description": "x"
+}
+
+### 9. Login as the plain member testettt
+POST {{API}}/auth/login
+Content-Type: application/json
+
+{
+  "email": "user7@gmail.com",
+  "password": "abdellahnsila123#002"
+}
+
+### 10. Plain member creates (expect 403)
+POST {{API}}/clubs/tennis/announcements
+Content-Type: application/json
+
+{
+  "description": "x"
+}
+
+### 11. Plain member deletes A (expect 403)
+DELETE {{API}}/clubs/tennis/announcements/{{A}}
+
+### 12. Login as the coach, then promote testettt to leader
+POST {{API}}/auth/login
+Content-Type: application/json
+
+{
+  "email": "coach.tennis@example.com",
+  "password": "abdellahnsila123#002"
+}
+
+###
+PATCH {{API}}/clubs/tennis/members/{{MEMBER_ID}}/role
+Content-Type: application/json
+
+{
+  "role": 1
+}
+
+### 13. Login as testettt (now leader)
+POST {{API}}/auth/login
+Content-Type: application/json
+
+{
+  "email": "user7@gmail.com",
+  "password": "abdellahnsila123#002"
+}
+
+### 14. Leader creates announcement B (expect success, copy its "id" into @B above)
+POST {{API}}/clubs/tennis/announcements
+Content-Type: application/json
+
+{
+  "description": "Announcement B from the leader"
+}
+
+### 15. Login as the PADEL coach (not a member of tennis)
+POST {{API}}/auth/login
+Content-Type: application/json
+
+{
+  "email": "coach.padel@example.com",
+  "password": "abdellahnsila123#002"
+}
+
+### 16. Padel coach creates in tennis (expect 403)
+POST {{API}}/clubs/tennis/announcements
+Content-Type: application/json
+
+{
+  "description": "x"
+}
+
+### 17. Padel coach deletes A in tennis (expect 403)
+DELETE {{API}}/clubs/tennis/announcements/{{A}}
+
+### 18. Padel coach deletes A through their OWN club (expect 404, A belongs to tennis)
+DELETE {{API}}/clubs/padel/announcements/{{A}}
+
+### 19. Login as testettt (leader)
+POST {{API}}/auth/login
+Content-Type: application/json
+
+{
+  "email": "testettt@gmail.com",
+  "password": "abdellahnsila123#002"
+}
+
+### 20. Leader deletes the coach's announcement A (expect success)
+DELETE {{API}}/clubs/tennis/announcements/{{A}}
+
+### 21. The list must not include A anymore, and B must still be there
+GET {{API}}/clubs/tennis/announcements
+
+### 22. Login as the coach
+POST {{API}}/auth/login
+Content-Type: application/json
+
+{
+  "email": "coach.tennis@example.com",
+  "password": "abdellahnsila123#002"
+}
+
+### 23. Coach deletes the leader's announcement B (expect success)
+DELETE {{API}}/clubs/tennis/announcements/{{B}}
+
+### 24. Delete B again (expect 404)
+DELETE {{API}}/clubs/tennis/announcements/{{B}}
+
+### 25. Id that does not exist (expect 404)
+DELETE {{API}}/clubs/tennis/announcements/99999
+
+### 26. Id is not a number (expect 400)
+DELETE {{API}}/clubs/tennis/announcements/abc
+
+### 27. Id is 0 (expect 400)
+DELETE {{API}}/clubs/tennis/announcements/0
+
+### 28. Club that does not exist (expect 404)
+DELETE {{API}}/clubs/not-a-club/announcements/1
+
+### 29. Back to the 2 seeded announcements only
+GET {{API}}/clubs/tennis/announcements
+
+### 30. Demote testettt back
