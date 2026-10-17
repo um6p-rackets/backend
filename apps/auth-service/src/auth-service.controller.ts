@@ -1,7 +1,7 @@
 import { Controller } from '@nestjs/common';
 import { MessagePattern, Payload } from '@nestjs/microservices';
 import { AuthServiceService } from './auth-service.service.js';
-import { AUTH_PATTERNS, LogoutUserDto, OAuthLoginDto, RegisterDto } from '@app/contracts';
+import { AUTH_PATTERNS, type AuthTokens, OAuthLoginDto, RegisterDto } from '@app/contracts';
 import { LoginDto } from '@app/contracts/auth/dto/login.dto.js';
 import { UsersService } from './users/users.service.js';
 
@@ -32,9 +32,9 @@ export class AuthServiceController {
   }
 
   @MessagePattern(AUTH_PATTERNS.LOGOUT)
-  async logout(@Payload() dto: LogoutUserDto) {
-    console.log(`[AuthService] Received logout request for user ID: ${dto.user_id}`);
-    return await this.authServiceService.logout(dto.refresh_token);
+  async logout(@Payload() data: AuthTokens) {
+    console.log(`[AuthService] Received logout request`);
+    return await this.authServiceService.logout(data.refresh_token);
   }
 
   @MessagePattern(AUTH_PATTERNS.OAUTH_LOGIN)
