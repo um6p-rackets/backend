@@ -27,7 +27,8 @@ import {
   MembersQueryDto,
   AddMemberDto,
   UpdateMemberRoleParamDto,
-  UpdateMemberRoleParamDto as RemoveMemberParamDto ,
+  UpdateMemberRoleParamDto as RemoveMemberParamDto, 
+  UpdateClubDto,
 } from '@app/contracts/club/dto/index.js';
 
 @Controller('clubs')
@@ -45,7 +46,7 @@ export class ClubController {
 
   @Public()
   @Get(':slug')
-  async getClub(@Param() { slug }: SessionParamDto) {
+  async getClub(@Param() { slug }: ClubSlugParamDto) {
     console.log(
       `[ClubController] Received request for club slug: ${slug}, and send request to Club Service`,
     );
@@ -273,6 +274,24 @@ export class ClubController {
         member_id: parseInt(member_id, 10),
       },
     );
+    return response;
+  }
+
+  // PATCH /clubs/:slug
+  @Patch(':slug')
+  async updateClub(
+    @Param() { slug }: ClubSlugParamDto,
+    @CurrentUser() user: AuthenticatedUser,
+    @Body() body: UpdateClubDto,
+  ) {
+    console.log(
+      `[ClubController] Received request to update club for slug: ${slug} and user_id: ${user.id}, and send request to Club Service with body: ${JSON.stringify(body)}`,
+    );
+    const response = this.clubClient.send(CLUB_PATTERNS.PATCH_CLUB_UPDATE, {
+      club_slug: slug,
+      user_id: user.id,
+      body,
+    });
     return response;
   }
 }

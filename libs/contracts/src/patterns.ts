@@ -22,6 +22,8 @@ export const CLUB_PATTERNS = {
   GET_CLUBS: 'club.get-clubs',
   GET_CLUB: 'club.get-club',
   GET_CLUB_STATUS: 'club.get-club-status',
+  PATCH_CLUB_UPDATE: 'club.patch-club-update',
+  // ================== SESSIONS SERVICE ==================
   GET_CLUB_WEEK_SESSIONS: 'club.get-club-week-sessions',
   POST_CLUB_SESSION_ATTEND: 'club.post-club-session-attend',
   DELETE_CLUB_SESSION_ATTEND: 'club.delete-club-session-attend',
