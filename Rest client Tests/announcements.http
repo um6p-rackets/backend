@@ -1,0 +1,70 @@
+@API = http://localhost:3000/api/v1
+
+### 1. Login as the tennis coach
+POST {{API}}/auth/login
+Content-Type: application/json
+
+{
+  "email": "coach.tennis@example.com",
+  "password": "abdellahnsila123#002"
+}
+
+### 2. Default list (expect 200, page 1, limit 20, total 2, 2 items)
+GET {{API}}/clubs/tennis/announcements
+
+### 3. Page 1 with limit 1 (expect 1 item, the NEWEST: "Sessions start this Monday at 17:00.")
+GET {{API}}/clubs/tennis/announcements?page=1&limit=1
+
+### 4. Page 2 with limit 1 (expect 1 item, the older: "Welcome to the new season!")
+GET {{API}}/clubs/tennis/announcements?page=2&limit=1
+
+### 5. Page after the last one (expect 200, data is [], total still 2)
+GET {{API}}/clubs/tennis/announcements?page=3&limit=1
+
+### 6. Page 0 (expect 400)
+GET {{API}}/clubs/tennis/announcements?page=0
+
+### 7. Limit above 50 (expect 400)
+GET {{API}}/clubs/tennis/announcements?limit=51
+
+### 8. Limit not a number (expect 400)
+GET {{API}}/clubs/tennis/announcements?limit=abc
+
+### 9. Club that does not exist (expect 404)
+GET {{API}}/clubs/not-a-club/announcements
+
+### 10. Login as the plain member testettt
+POST {{API}}/auth/login
+Content-Type: application/json
+
+{
+  "email": "user7@gmail.com",
+  "password": "abdellahnsila123#002"
+}
+
+### 11. A plain member can read (expect 200, same data)
+GET {{API}}/clubs/tennis/announcements
+
+### 12. Login as the PADEL coach (not a member of tennis)
+POST {{API}}/auth/login
+Content-Type: application/json
+
+{
+  "email": "coach.padel@example.com",
+  "password": "abdellahnsila123#002"
+}
+
+### 13. Not a member of this club (expect 403)
+GET {{API}}/clubs/tennis/announcements
+
+### 14. Padel coach reads their own club (expect 200, padel announcements, not tennis)
+GET {{API}}/clubs/padel/announcements
+
+### 14.1. 
+GET {{API}}/clubs/badminton/announcements
+
+### 15. Logout
+POST {{API}}/auth/logout
+
+### 16. Not logged in (expect 401)
+GET {{API}}/clubs/tennis/announcements
