@@ -54,6 +54,13 @@ export class AuthServiceController {
     return await this.authServiceService.getUserByLogin(data.login);
   }
 
+  // get user by id
+  @MessagePattern(AUTH_PATTERNS.GET_USER_BY_ID)
+  async getUserById(@Payload() data: { userId: string }) {
+    console.log(`[AuthService] Received request for user by ID: ${data.userId}`);
+    return await this.authServiceService.getUserById(data.userId);
+  }
+
   // get many users by ids
   @MessagePattern(AUTH_PATTERNS.GET_USERS_BY_IDS)
   async getUsersByIds(@Payload() data: { userIds: string[] }) {

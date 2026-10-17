@@ -1,10 +1,16 @@
 import { Inject, Injectable } from '@nestjs/common';
 import { ClubAccessService } from '../access/club-access.service.js';
 import { PrismaService } from '../prisma/prisma.service.js';
-import { rpc, toFullString } from '@app/common';
+import { now, rpc, toFullString } from '@app/common';
 import { AUTH_PATTERNS, AUTH_SERVICE, rpcError, User } from '@app/contracts';
 import { ClientProxy } from '@nestjs/microservices';
-import { MemberWithUser, Paginated } from '@app/contracts/club/club.types.js';
+import {
+  Member,
+  MemberWithUser,
+  Paginated,
+  MemberRole,
+} from '@app/contracts/club/club.types.js';
+import { AddMemberDto } from '@app/contracts/club/dto/index.js';
 
 @Injectable()
 export class MembersService {
@@ -31,13 +37,17 @@ export class MembersService {
 
       if (login) {
         // send request to auth service to get user by login
-        const user: (User|null) = await rpc<User|null>(
+        const user: User | null = await rpc<User | null>(
           this.authClient,
           AUTH_PATTERNS.GET_USER_BY_LOGIN,
           { login },
         );
         if (!user) {
-          throw rpcError(404, `User with login ${login} not found`, "Not Found");
+          throw rpcError(
+            404,
+            `User with login ${login} not found`,
+            'Not Found',
+          );
         }
         const member = await this.prisma.member.findFirst({
           where: {
@@ -47,7 +57,11 @@ export class MembersService {
           },
         });
         if (!member) {
-          throw rpcError(404, `User ${login} is not a member of club ${club_slug}`, "Not Found");
+          throw rpcError(
+            404,
+            `User ${login} is not a member of club ${club_slug}`,
+            'Not Found',
+          );
         }
         const member_with_user_summery: MemberWithUser = {
           id: member.id,
@@ -76,7 +90,7 @@ export class MembersService {
         if (!limit) limit = 10;
         if (!page) page = 1;
         if (!role) role = 0;
-        console.log("I am here man + 1");
+        console.log('I am here man + 1');
         const members = await this.prisma.member.findMany({
           where: {
             club_id: club.id,
@@ -102,14 +116,18 @@ export class MembersService {
           AUTH_PATTERNS.GET_USERS_BY_IDS,
           { userIds: ids },
         );
-        if ( users.length != members.length) {
-          console.error(`MembersService.getClubMembers: Mismatch in number of members and users. Members: ${members.length}, Users: ${users.length}`);
+        if (users.length != members.length) {
+          console.error(
+            `MembersService.getClubMembers: Mismatch in number of members and users. Members: ${members.length}, Users: ${users.length}`,
+          );
         }
-        const members_with_user_summery: (MemberWithUser|null)[] = members.map(
-          (member) => {
+        const members_with_user_summery: (MemberWithUser | null)[] =
+          members.map((member) => {
             const user = users.find((user) => user.id === member.user_id);
             if (!user) {
-              console.error(`MembersService.getClubMembers: User not found for member with user_id: ${member.user_id}`);
+              console.error(
+                `MembersService.getClubMembers: User not found for member with user_id: ${member.user_id}`,
+              );
               return null;
             }
             return {
@@ -128,9 +146,10 @@ export class MembersService {
                 avatar: user.avatar,
               },
             };
-          },
-        );
-        const filtered_members = members_with_user_summery.filter((member) => member !== null) as MemberWithUser[];
+          });
+        const filtered_members = members_with_user_summery.filter(
+          (member) => member !== null,
+        ) as MemberWithUser[];
         return {
           data: filtered_members,
           total: totalMembers,
@@ -139,5 +158,228 @@ export class MembersService {
         };
       }
     }
+  }
+
+  async addClubMember(
+    club_slug: string,
+    user_id: number,
+    body: AddMemberDto,
+  ): Promise<Member> {
+    const { club, member } = await this.clubAccessService.requireRole(
+      club_slug,
+      user_id,
+      1, // Require at least admin role to add members
+    );
+    if (body.role && body.role > 1) {
+      throw rpcError(
+        400,
+        `You can't update role to a higher or equal role than your own.`,
+        'Bad Request',
+      );
+    }
+    if (member && member.role == 1 && body.role == 1) {
+      throw rpcError(
+        400,
+        `Only Coach can add another leader to the club.`,
+        'Bad Request',
+      );
+    }
+
+    // Check if the user is already a member of the club
+    const existingMember = await this.prisma.member.findFirst({
+      where: {
+        club_id: club.id,
+        user_id: body.user_id,
+        left_at: null,
+      },
+    });
+
+    if (existingMember) {
+      throw rpcError(
+        400,
+        `User with id ${body.user_id} is already a member of club ${club_slug}`,
+        'Bad Request',
+      );
+    }
+
+    // Check if the user exists in the auth service
+    const user: User | null = await rpc<User | null>(
+      this.authClient,
+      AUTH_PATTERNS.GET_USER_BY_ID,
+      { userId: body.user_id },
+    );
+    if (!user) {
+      throw rpcError(
+        404,
+        `User with id ${body.user_id} not found in auth service`,
+        'Not Found',
+      );
+    }
+    // check if member already join and left the club before, if so update the left_at to null and update the role
+    const previousMember = await this.prisma.member.findFirst({
+      where: {
+        club_id: club.id,
+        user_id: body.user_id,
+        left_at: { not: null },
+      },
+    });
+    if (previousMember) {
+      const updatedMember = await this.prisma.member.update({
+        where: {
+          id: previousMember.id,
+        },
+        data: {
+          left_at: null,
+          role: body.role ?? 0, // Default role to MEMBER if not provided
+        },
+      });
+      return {
+        ...updatedMember,
+        joined_at: toFullString(updatedMember.joined_at),
+        left_at: updatedMember.left_at ? toFullString(updatedMember.left_at) : null,
+      };
+    }
+
+    // Add the new member to the club
+    const newMember = await this.prisma.member.create({
+      data: {
+        club_id: club.id,
+        user_id: body.user_id,
+        role: body.role ?? 0, // Default role to MEMBER if not provided
+        joined_at: new Date(),
+      },
+    });
+
+    return {
+      ...newMember,
+      joined_at: toFullString(newMember.joined_at),
+      left_at: newMember.left_at ? toFullString(newMember.left_at) : null,
+    };
+  }
+
+  async updateClubMemberRole(
+    club_slug: string,
+    user_id: number,
+    body: { role: 0 | 1 },
+    member_id: number,
+  ): Promise<Member> {
+    const { club, member } = await this.clubAccessService.requireRole(
+      club_slug,
+      user_id,
+      2, // Require at least admin role to update member roles
+    );
+
+    if (body.role >= member.role) {
+      throw rpcError(
+        400,
+        `You can't update role to a higher or equal role than your own.`,
+        'Bad Request',
+      );
+    }
+    // Check if the member exists in the club
+    const existingMember = await this.prisma.member.findFirst({
+      where: {
+        id: member_id,
+        club_id: club.id,
+        left_at: null,
+      },
+    });
+    
+    if (!existingMember) {
+      throw rpcError(
+        404,
+        `Member with id ${member_id} not found in club ${club_slug}`,
+        'Not Found',
+      );
+    }
+    
+    // check if member role already has the same role as the new role
+    if (existingMember.role === body.role) {
+      throw rpcError(
+        400,
+        `Member with id ${member_id} already has the role ${body.role}`,
+        'Bad Request',
+      );
+    }
+
+    // you can't less role of a member who has a higher or equal role than you
+    if (existingMember.role >= member.role) {
+      throw rpcError(
+        400,
+        `You can't change the role of a member who has a higher or equal role than your own.`,
+        'Bad Request',
+      );
+    }
+
+    
+
+    // Update the member's role
+    const updatedMember = await this.prisma.member.update({
+      where: {
+        id: member_id,
+      },
+      data: {
+        role: body.role,
+      },
+    });
+
+    return {
+      ...updatedMember,
+      joined_at: toFullString(updatedMember.joined_at),
+      left_at: updatedMember.left_at ? toFullString(updatedMember.left_at) : null,
+    };
+  }
+
+  async removeClubMember(
+    club_slug: string,
+    user_id: number,
+    member_id: number,
+  ) {
+    const { club, member } = await this.clubAccessService.requireRole(
+      club_slug,
+      user_id,
+      MemberRole.LEADER, // Require at least leader role to remove members
+    );
+    // get the member to be removed
+    const memberToRemove = await this.prisma.member.findFirst({
+      where: {
+        id: member_id,
+        club_id: club.id,
+        left_at: null,
+      },
+    });
+
+    if (!memberToRemove) {
+      throw rpcError(
+        404,
+        `Member with id ${member_id} not found in club ${club_slug}`,
+        'Not Found',
+      );
+    }
+
+    // you can't remove a member who has a higher or equal role than you
+    if (memberToRemove.role >= member.role) {
+      throw rpcError(
+        400,
+        `You can't remove a member who has a higher or equal role than your own.`,
+        'Bad Request',
+      );
+    }
+
+    // Set the left_at timestamp to mark the member as removed
+    const updatedMember = await this.prisma.member.update({
+      where: {
+        id: member_id,
+        club_id: club.id,
+      },
+      data: {
+        left_at: now(),
+      },
+    });
+
+    return {
+      status: 204,
+      message: `Member with id ${member_id} has been removed from club ${club_slug}`,
+    };
   }
 }

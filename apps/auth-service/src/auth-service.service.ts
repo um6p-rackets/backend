@@ -103,6 +103,10 @@ export class AuthServiceService {
     }
     return user;
   }
+  async getUserById(userId: string): Promise<User|null> {
+    const user = await this.usersService.findById(Number(userId));
+    return user;
+  }
 
   // used by club or notification service
   async getUserByLogin(login: string): Promise<(User|null)> {

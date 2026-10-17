@@ -25,6 +25,9 @@ import {
   UpdateSessionDto,
   CreateSessionDto,
   MembersQueryDto,
+  AddMemberDto,
+  UpdateMemberRoleParamDto,
+  UpdateMemberRoleParamDto as RemoveMemberParamDto ,
 } from '@app/contracts/club/dto/index.js';
 
 @Controller('clubs')
@@ -210,6 +213,66 @@ export class ClubController {
       role,
       login,
     });
+    return response;
+  }
+
+  // POST /clubs/:slug/members
+  @Post(':slug/members')
+  async addClubMember(
+    @Param() { slug }: ClubSlugParamDto,
+    @CurrentUser() user: AuthenticatedUser,
+    @Body() body: AddMemberDto,
+  ) {
+    console.log(
+      `[ClubController] Received request to add member for club slug: ${slug} and user_id: ${user.id}, and send request to Club Service with body: ${JSON.stringify(body)}`,
+    );
+    const response = this.clubClient.send(CLUB_PATTERNS.POST_CLUB_MEMBER_ADD, {
+      club_slug: slug,
+      user_id: user.id,
+      body,
+    });
+    return response;
+  }
+
+  // PATCH /clubs/:slug/members/:member_id/role
+  @Patch(':slug/members/:member_id/role')
+  async updateClubMemberRole(
+    @Param() { slug, member_id }: UpdateMemberRoleParamDto,
+    @CurrentUser() user: AuthenticatedUser,
+    @Body() body: { role: 0 | 1 },
+  ) {
+    console.log(
+      `[ClubController] Received request to update member role for club slug: ${slug} and user_id: ${user.id}, and send request to Club Service with body: ${JSON.stringify(body)}`,
+    );
+    const response = this.clubClient.send(
+      CLUB_PATTERNS.PATCH_CLUB_MEMBER_ROLE_UPDATE,
+      {
+        club_slug: slug,
+        user_id: user.id,
+        body,
+        member_id: parseInt(member_id, 10),
+      },
+    );
+    return response;
+  }
+
+  // DELETE /clubs/:slug/members/:member_id It sets left_at, so history stays.
+  @Delete(':slug/members/:member_id')
+  async removeClubMember(
+    @Param() { slug, member_id }: RemoveMemberParamDto,
+    @CurrentUser() user: AuthenticatedUser,
+  ) {
+    console.log(
+      `[ClubController] Received request to remove member for club slug: ${slug} and user_id: ${user.id}, and send request to Club Service`,
+    );
+    const response = this.clubClient.send(
+      CLUB_PATTERNS.DELETE_CLUB_MEMBER_REMOVE,
+      {
+        club_slug: slug,
+        user_id: user.id,
+        member_id: parseInt(member_id, 10),
+      },
+    );
     return response;
   }
 }
