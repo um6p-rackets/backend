@@ -60,8 +60,12 @@ Content-Type: application/json
   "avatar": "https://example.com/new-avatar.png"
 }
 
-### /users/login-available?login=abc 
-GET {{API}}/auth/users/login-available?login=dasd
+### /users/login-available?login=player36 exist
+GET {{API}}/auth/users/login-available?login=player36
+
+
+### /users/login-available?login=atomic dont exist
+GET {{API}}/auth/users/login-available?login=atomic
 
 
 ### 1d. Refresh token (expect 200)
