@@ -35,6 +35,10 @@ export const CLUB_PATTERNS = {
   POST_CLUB_MEMBER_ADD: 'club.post-club-member-add',
   DELETE_CLUB_MEMBER_REMOVE: 'club.delete-club-member-remove',
   PATCH_CLUB_MEMBER_ROLE_UPDATE: 'club.patch-club-member-role-update',
+  // ================== ANNOUNCEMENTS SERVICE ==================
+  GET_CLUB_ANNOUNCEMENTS: 'club.get-club-announcements',
+  POST_CLUB_ANNOUNCEMENT_CREATE: 'club.post-club-announcement-create',
+  DELETE_CLUB_ANNOUNCEMENT_DELETE: 'club.delete-club-announcement-delete',
   
 } as const;
 
