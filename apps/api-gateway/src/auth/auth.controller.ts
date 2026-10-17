@@ -141,7 +141,7 @@ export class AuthController {
     @Throttle({ default: { limit: REQUEST_LIMIT, ttl: REQUEST_TTL } })
     @Get('me')
     async me(@CurrentUser() user: AuthenticatedUser): Promise<User> {
-        return rpc<User>(this.authClient, AUTH_PATTERNS.GET_USER, {
+        return rpc<User>(this.authClient, AUTH_PATTERNS.GET_USER_BY_ID, {
             userId: String(user.id),
         });
     }
@@ -165,6 +165,7 @@ export class AuthController {
         @Req() req: Request,
         @Res() res: Response
     ): Promise<void> {
+        console.log('googleCallback', { code, state, error });
         if (error === 'access_denied') {
               return res.redirect(new URL('?error=oauth_cancelled', this.cfg.frontendRedirectUrl).toString());
         }
@@ -178,6 +179,7 @@ export class AuthController {
             setAuthCookies(res, tokens);
             res.redirect(this.cfg.frontendRedirectUrl);
         } catch (err) {
+            console.error('[GoogleOAuth Error]', err);
             clearCookie(res, OAUTH_COOKIE, OAUTH_COOKIE_PATH);
             res.redirect(new URL('?error=oauth_failed', this.cfg.frontendRedirectUrl).toString());
         }

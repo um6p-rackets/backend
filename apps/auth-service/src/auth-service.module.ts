@@ -8,6 +8,7 @@ import { configuration, envFiles, jwtConfig } from '@app/common';
 import { UsersModule } from './users/users.module.js';
 import { TokensModule } from './tokens/tokens.module.js';
 import { PrismaModule } from './prisma/prisma.module.js';
+import { UsersService } from './users/users.service.js';
 
 @Module({
   imports: [
@@ -21,6 +22,6 @@ import { PrismaModule } from './prisma/prisma.module.js';
     PrismaModule
   ],
   controllers: [AuthServiceController],
-  providers: [AuthServiceService],
+  providers: [AuthServiceService, UsersService],
 })
 export class AuthServiceModule {}

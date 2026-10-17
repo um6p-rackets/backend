@@ -2,15 +2,19 @@ import { Injectable } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service.js';
 import { RpcException } from '@nestjs/microservices';
 import { toUser } from './user.mapper.js';
-import { User } from '@app/contracts';
+import { OAuthLoginDto, User } from '@app/contracts';
 import type { User as PrismaUser } from '../generated/prisma/client.js';
 import * as argon2 from 'argon2';
+import { TokensService } from '../tokens/tokens.service.js';
+import { randomBytes, randomInt } from 'crypto';
 
 const DUMMY_HASH = '$argon2id$v=19$m=65536,t=3,p=4$c29tZXNhbHQ$R29vZEx1Y2tXaXRoVGhhdEFyZ29uMklkSGFzaA';
 
 @Injectable()
 export class UsersService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+  ) {}
 
   private async findRawByEmail(email: string): Promise<PrismaUser | null> {
     const v = email.trim().toLowerCase();
@@ -26,23 +30,6 @@ export class UsersService {
     const v = login.trim().toLowerCase();
     const row = await this.prisma.user.findFirst({ where: { login: v } });
     return row ? toUser(row) : null;
-  }
-
-  async validateCredentials(email: string, password: string): Promise<User | null> {
-    const row = await this.findRawByEmail(email);
-    
-    // Select the hash to test: the real one if the user exists, or the dummy one if they don't
-    const hashToVerify = (row && row.password_hash) ? row.password_hash : DUMMY_HASH;
-    
-    // ALWAYS run verify to prevent side-channel timing attacks
-    const isPasswordValid = await argon2.verify(hashToVerify, password).catch(() => false);
-    
-    if (!row || !isPasswordValid) {
-      return null;
-    }
-
-    // Strip the hash safely before returning to the Auth Service
-    return toUser(row);
   }
 
   async findById(id: number): Promise<User | null> {
@@ -61,7 +48,7 @@ export class UsersService {
     return rows.map(row => toUser(row));
   }
 
-  async create(data: {
+  async createUser(data: {
     login: string;
     first_name: string;
     last_name: string;
@@ -93,22 +80,63 @@ export class UsersService {
     }
   }
 
-  async verifyPassword(userId: number, plainTextPassword: string): Promise<boolean> {
-    // 1. Fetch the raw database row directly from Prisma to get the hash
-    const userRecord = await this.prisma.user.findUnique({ 
-      where: { id: userId } 
+  async getUserByIdentity(data: {provider: string, subject: string}): Promise<User | null> {
+    // 1. Known identity: sign in
+    const row = await this.prisma.identity.findUnique({
+      where: { provider_subject: { provider: data.provider, subject: data.subject } },
+      include: { user: true },
     });
+    return row?.user ? toUser(row.user) : null;
+  }
 
-    if (!userRecord || !userRecord.password_hash) {
-      return false;
+  async createIdentityUser(login: string, dto: OAuthLoginDto): Promise<User> {
+    const row = await this.prisma.$transaction(async (prisma) => {
+      // 1. Create the user
+      const user = await prisma.user.create({
+        data: {
+          login,
+          first_name: dto.first_name,
+          last_name: dto.last_name,
+          gender: null,
+          department: null,
+          phone_number: null,
+          email: dto.email.toLowerCase(),
+          avatar: dto.picture ?? null,
+          password_hash: DUMMY_HASH,
+        },
+      });
+
+      // 2. Create the identity link
+      this.linkIdentityToUser(user.id, dto);      
+      return user;  
+    })
+    return toUser(row);
+  }
+
+  async linkIdentityToUser(user_id: number, dto: OAuthLoginDto): Promise<void> {
+    await this.prisma.identity.create({
+      data: {
+        provider: dto.provider,
+        subject: dto.subject,
+        user_id: user_id,
+      },
+    });
+  }
+
+  async validateCredentials(email: string, password: string): Promise<User | null> {
+    const row = await this.findRawByEmail(email);
+    
+    // Select the hash to test: the real one if the user exists, or the dummy one if they don't
+    const hashToVerify = (row && row.password_hash) ? row.password_hash : DUMMY_HASH;
+    
+    // ALWAYS run verify to prevent side-channel timing attacks
+    const isPasswordValid = await argon2.verify(hashToVerify, password).catch(() => false);
+    
+    if (!row || !isPasswordValid) {
+      return null;
     }
 
-    // 2. Securely compare the provided password against the database hash
-    try {
-      return await argon2.verify(userRecord.password_hash, plainTextPassword);
-    } catch (error) {
-      // Catching errors prevents crashes if the hash format in the DB is corrupted
-      return false; 
-    }
+    // Strip the hash safely before returning to the Auth Service
+    return toUser(row);
   }
 }

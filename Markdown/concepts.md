@@ -40,3 +40,6 @@ This project implements an enterprise-grade, microservices-based authentication 
 
 * **Shared Domain Contracts (`@app/contracts`)**
   A monorepo strategy ensures that the API Gateway, Auth Service, and Club Service all rely on the exact same TypeScript definitions (e.g., `User`, `AuthTokens`, `snake_case` DTOs). This strict typing guarantees that inter-service payload mismatches are caught at compile-time rather than causing runtime crashes.
+
+* **SSO Upsert Flow**
+  (commonly referred to as Just-in-Time or JIT Provisioning) is an identity management process that automatically creates (inserts) or updates (updates) a user profile in a target application’s database the exact moment they log in via Single Sign-On.

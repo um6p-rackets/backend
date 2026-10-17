@@ -4,7 +4,7 @@ import { type ConfigType } from "@nestjs/config";
 import { JwtService } from "@nestjs/jwt";
 import { CodeChallengeMethod, OAuth2Client } from "google-auth-library";
 import { randomBytes, timingSafeEqual } from "crypto";
-import { GoogleProfile, OAuthAuthorizationPayload, OAuthTx } from "@app/contracts/auth/index.js";
+import { OAuthAuthorizationPayload, OAuthLoginDto, OAuthTx } from "@app/contracts/auth/index.js";
 import { OAUTH_AUDIENCE } from "@app/common/auth/auth.constants.js";
 
 
@@ -36,8 +36,8 @@ export class GoogleOAuthService {
             scope: ['openid', 'email', 'profile'],
             state,
             nonce,
-            codeChallenge,
-            codeChallengeMethod: CodeChallengeMethod.S256,
+            code_challenge: codeChallenge,
+            code_challenge_method: CodeChallengeMethod.S256,
             // Prompt the user to select an account if they are already logged in
             prompt: 'select_account',
         })
@@ -54,7 +54,7 @@ export class GoogleOAuthService {
     async verifyCallback(
         query: { code?: unknown; state?: unknown },
         cookieToken?: unknown,
-    ): Promise<GoogleProfile> {
+    ): Promise<OAuthLoginDto> {
         // Query params can be arrays or objects (?code[]=x): accept strings only.
         if (
         typeof query.code !== 'string' || !query.code ||
@@ -82,13 +82,14 @@ export class GoogleOAuthService {
 
         let idToken: string | null | undefined;
         try {
-        const { tokens } = await this.oauth2client.getToken({
-            code: query.code,
-            codeVerifier: saved.codeVerifier,
-        });
-        idToken = tokens.id_token;
-        } catch (err) {
+            const { tokens } = await this.oauth2client.getToken({
+                code: query.code,
+                codeVerifier: saved.codeVerifier,
+            });
+            idToken = tokens.id_token;
+        } catch (err: any) {
             // Typical causes: reused/expired code, redirect_uri mismatch. Never log the code.
+            console.error('[Google Token Error]:', err.response?.data || err);
             throw new UnauthorizedException('Token exchange failed');
         }
         if (!idToken)
@@ -112,9 +113,9 @@ export class GoogleOAuthService {
             provider: 'google',
             subject: payload.sub,
             email: payload.email,
-            emailVerified: true,
-            firstName: payload.given_name ?? '',
-            lastName: payload.family_name ?? '',
+            email_verified: true,
+            first_name: payload.given_name ?? '',
+            last_name: payload.family_name ?? '',
             picture: payload.picture ?? null,
         };
     }
