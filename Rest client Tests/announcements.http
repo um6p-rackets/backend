@@ -33,7 +33,7 @@ GET {{API}}/clubs/tennis/announcements?limit=abc
 ### 9. Club that does not exist (expect 404)
 GET {{API}}/clubs/not-a-club/announcements
 
-### 10. Login as the plain member testettt
+### 10. Login as the plain member nsila
 POST {{API}}/auth/login
 Content-Type: application/json
 
@@ -73,7 +73,7 @@ GET {{API}}/clubs/tennis/announcements
 ################################ Test for creating and deleting announcements ###################################
 
 @A = 13
-@B = 17
+@B = 15
 @MEMBER_ID = 4
 
 ### 1. Login as the tennis coach
@@ -135,7 +135,7 @@ Content-Type: application/json
   "description": "x"
 }
 
-### 9. Login as the plain member testettt
+### 9. Login as the plain member nsila
 POST {{API}}/auth/login
 Content-Type: application/json
 
@@ -172,7 +172,7 @@ Content-Type: application/json
   "role": 1
 }
 
-### 13. Login as testettt (now leader)
+### 13. Login as nsila (now leader)
 POST {{API}}/auth/login
 Content-Type: application/json
 
@@ -212,12 +212,12 @@ DELETE {{API}}/clubs/tennis/announcements/{{A}}
 ### 18. Padel coach deletes A through their OWN club (expect 404, A belongs to tennis)
 DELETE {{API}}/clubs/padel/announcements/{{A}}
 
-### 19. Login as testettt (leader)
+### 19. Login as nsila (leader)
 POST {{API}}/auth/login
 Content-Type: application/json
 
 {
-  "email": "testettt@gmail.com",
+  "email": "user7@gmail.com",
   "password": "abdellahnsila123#002"
 }
 
@@ -256,5 +256,3 @@ DELETE {{API}}/clubs/not-a-club/announcements/1
 
 ### 29. Back to the 2 seeded announcements only
 GET {{API}}/clubs/tennis/announcements
-
-### 30. Demote testettt back
