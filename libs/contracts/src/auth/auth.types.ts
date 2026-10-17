@@ -73,16 +73,6 @@ export interface OAuthTx {
   codeVerifier: string;
 }
 
-export interface GoogleProfile {
-  provider: 'google';
-  subject: string;
-  email: string;
-  emailVerified: true;
-  firstName: string;
-  lastName: string;
-  picture: string | null;
-}
-
 export interface GetUserPayload {
   user_id: string;
 }
