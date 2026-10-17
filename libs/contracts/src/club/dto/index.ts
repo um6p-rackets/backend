@@ -18,3 +18,4 @@ export * from './session-param.dto.js';
 export * from './week-query.dto.js';
 export * from './delete-session-query.dto.js';
 export * from './update-member-role-param.dto.js';
+export * from './delete-announcement-param.dto.js';
