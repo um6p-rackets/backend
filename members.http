@@ -125,6 +125,8 @@ Content-Type: application/json
 ############# ######################## test member role update #############################
 
 @MEMBER_ID = 4
+@USER_ID = 24
+
 
 ### 4a. Login as the coach (leader+)
 POST {{API}}/auth/login
@@ -198,3 +200,61 @@ Content-Type: application/json
 {
   "role": 1
 }
+
+
+######################### test member remove #############################
+
+
+@MEMBER_ID = 4
+@USER_ID = 8
+
+
+### 5a. Login as the coach (leader+)
+POST {{API}}/auth/login
+Content-Type: application/json
+
+{
+  "email": "coach.tennis@example.com",
+  "password": "abdellahnsila123#002"
+}
+
+### 5b. Remove the member (expect success)
+DELETE {{API}}/clubs/tennis/members/{{MEMBER_ID}}
+
+### 5c. The list must not include them anymore
+GET {{API}}/clubs/tennis/members?role=0
+
+### 5d. Remove the same member again (expect an error, already left)
+DELETE {{API}}/clubs/tennis/members/{{MEMBER_ID}}
+
+### 5e. Member id that does not exist (expect 404)
+DELETE {{API}}/clubs/tennis/members/99999
+
+### 5f. Remove the coach (expect an error, a coach can't be removed)
+DELETE {{API}}/clubs/tennis/members/1
+
+### 5g. Login as the removed user
+POST {{API}}/auth/login
+Content-Type: application/json
+
+{
+  "email": "user7@gmail.com",
+  "password": "abdellahnsila123#002"
+}
+
+### 5h. A removed user opens the club sessions (expect 403, not a member)
+GET {{API}}/clubs/tennis/sessions
+
+### 5i. Login as the coach again, then add the user back (expect success, not "already a member")
+POST {{API}}/clubs/tennis/members
+Content-Type: application/json
+
+{
+  "user_id": {{USER_ID}}
+}
+
+### 5j. The user is back in the list
+GET {{API}}/clubs/tennis/members?role=0
+
+### 5k. Login as the plain member, then remove someone (expect 403)
+DELETE {{API}}/clubs/tennis/members/2
