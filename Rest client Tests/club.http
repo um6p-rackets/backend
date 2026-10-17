@@ -1,0 +1,219 @@
+@API = http://localhost:3000/api/v1
+
+
+@NEW = tennis-club-pro
+@MESSY = tennis-club-elite
+
+
+@MEMBER_ID = 4
+@USER_ID = 8
+
+### 6a. Login as the tennis coach
+POST {{API}}/auth/login
+Content-Type: application/json
+
+{
+  "email": "coach.tennis@example.com",
+  "password": "abdellahnsila123#002"
+}
+
+### 6b. Rename + description (expect success, slug becomes tennis-club-pro)
+PATCH {{API}}/clubs/tennis
+Content-Type: application/json
+
+{
+  "name": "Tennis Club Pro",
+  "description": "New description"
+}
+
+### 6c. New slug works (expect 200, new name)
+GET {{API}}/clubs/{{NEW}}
+
+### 6d. Old slug is gone (expect 404)
+GET {{API}}/clubs/tennis
+
+### 6e. Description only (expect success, name and slug unchanged)
+PATCH {{API}}/clubs/{{NEW}}
+Content-Type: application/json
+
+{
+  "description": "Only the description changed"
+}
+
+### 6f. Same name again (expect success, slug unchanged)
+PATCH {{API}}/clubs/{{NEW}}
+Content-Type: application/json
+
+{
+  "name": "Tennis Club Pro"
+}
+
+### 6g. Name of another club (expect 409)
+PATCH {{API}}/clubs/{{NEW}}
+Content-Type: application/json
+
+{
+  "name": "Padel"
+}
+
+### 6h. Different name, same slug as padel (expect 409, slug already exists)
+PATCH {{API}}/clubs/{{NEW}}
+Content-Type: application/json
+
+{
+  "name": "PADEL"
+}
+
+### 6i. Empty body (expect 400)
+PATCH {{API}}/clubs/{{NEW}}
+Content-Type: application/json
+
+{}
+
+### 6j. Blank name (expect 400)
+PATCH {{API}}/clubs/{{NEW}}
+Content-Type: application/json
+
+{
+  "name": "      "
+}
+
+### 6k. Avatar was removed (expect 400, property should not exist)
+PATCH {{API}}/clubs/{{NEW}}
+Content-Type: application/json
+
+{
+  "avatar": "https://example.com/a.png"
+}
+
+### 6l. Slug can't be sent (expect 400)
+PATCH {{API}}/clubs/{{NEW}}
+Content-Type: application/json
+
+{
+  "slug": "hacked"
+}
+
+### 6m. Club that does not exist (expect 404)
+PATCH {{API}}/clubs/not-a-club
+Content-Type: application/json
+
+{
+  "description": "vvvvvvvvvvx"
+}
+
+### 6n. Not logged in (expect 401), run 6a again after it
+POST {{API}}/auth/logout
+
+###
+PATCH {{API}}/clubs/{{NEW}}
+Content-Type: application/json
+
+{
+  "description": "x"
+}
+
+### 6o. Login as the PADEL coach (not a member of tennis)
+POST {{API}}/auth/login
+Content-Type: application/json
+
+{
+  "email": "coach.padel@example.com",
+  "password": "abdellahnsila123#002"
+}
+
+### 6p. Coach of another club updates tennis (expect 403)
+PATCH {{API}}/clubs/{{NEW}}
+Content-Type: application/json
+
+{
+  "description": "xdffffffffffffffff"
+}
+
+### 6q. Login as the plain member testettt
+POST {{API}}/auth/login
+Content-Type: application/json
+
+{
+  "email": "user7@gmail.com",
+  "password": "abdellahnsila123#002"
+}
+
+### 6r. Plain member updates (expect 403)
+PATCH {{API}}/clubs/{{NEW}}
+Content-Type: application/json
+
+{
+  "description": "xxxxxxxxxxxxxxxxxxxxx"
+}
+
+### 6s. Login as the tennis coach, then promote testettt to leader
+POST {{API}}/auth/login
+Content-Type: application/json
+
+{
+  "email": "coach.tennis@example.com",
+  "password": "abdellahnsila123#002"
+}
+
+###
+PATCH {{API}}/clubs/{{NEW}}/members/{{MEMBER_ID}}/role
+Content-Type: application/json
+
+{
+  "role": 1
+}
+
+### 6t. Login as testettt (now leader), update (expect 403, only the coach can)
+POST {{API}}/auth/login
+Content-Type: application/json
+
+{
+  "email": "user7@gmail.com",
+  "password": "abdellahnsila123#002"
+}
+
+###
+PATCH {{API}}/clubs/{{NEW}}
+Content-Type: application/json
+
+{
+  "description": "xccccccccccccc"
+}
+
+### 6u. Login as the coach, demote testettt back to member
+POST {{API}}/auth/login
+Content-Type: application/json
+
+{
+  "email": "coach.tennis@example.com",
+  "password": "abdellahnsila123#002"
+}
+
+###
+PATCH {{API}}/clubs/{{NEW}}/members/{{MEMBER_ID}}/role
+Content-Type: application/json
+
+{
+  "role": 0
+}
+
+### 6v. Messy name (expect slug tennis-club-elite, single dashes, trimmed)
+PATCH {{API}}/clubs/{{NEW}}
+Content-Type: application/json
+
+{
+  "name": "  tennis   CLUB  elite "
+}
+
+### 6w. Restore the original name (expect slug tennis again)
+PATCH {{API}}/clubs/{{MESSY}}
+Content-Type: application/json
+
+{
+  "name": "Tennis",
+  "description": "Tennis club"
+}
+
+### 6x. Everything is back (expect 200)
+GET {{API}}/clubs/tennis
