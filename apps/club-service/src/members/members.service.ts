@@ -1,7 +1,7 @@
 import { Inject, Injectable } from '@nestjs/common';
 import { ClubAccessService } from '../access/club-access.service.js';
 import { PrismaService } from '../prisma/prisma.service.js';
-import { rpc, toFullString } from '@app/common';
+import { now, rpc, toFullString } from '@app/common';
 import { AUTH_PATTERNS, AUTH_SERVICE, rpcError, User } from '@app/contracts';
 import { ClientProxy } from '@nestjs/microservices';
 import {
@@ -327,6 +327,59 @@ export class MembersService {
       ...updatedMember,
       joined_at: toFullString(updatedMember.joined_at),
       left_at: updatedMember.left_at ? toFullString(updatedMember.left_at) : null,
+    };
+  }
+
+  async removeClubMember(
+    club_slug: string,
+    user_id: number,
+    member_id: number,
+  ) {
+    const { club, member } = await this.clubAccessService.requireRole(
+      club_slug,
+      user_id,
+      MemberRole.LEADER, // Require at least leader role to remove members
+    );
+    // get the member to be removed
+    const memberToRemove = await this.prisma.member.findFirst({
+      where: {
+        id: member_id,
+        club_id: club.id,
+        left_at: null,
+      },
+    });
+
+    if (!memberToRemove) {
+      throw rpcError(
+        404,
+        `Member with id ${member_id} not found in club ${club_slug}`,
+        'Not Found',
+      );
+    }
+
+    // you can't remove a member who has a higher or equal role than you
+    if (memberToRemove.role >= member.role) {
+      throw rpcError(
+        400,
+        `You can't remove a member who has a higher or equal role than your own.`,
+        'Bad Request',
+      );
+    }
+
+    // Set the left_at timestamp to mark the member as removed
+    const updatedMember = await this.prisma.member.update({
+      where: {
+        id: member_id,
+        club_id: club.id,
+      },
+      data: {
+        left_at: now(),
+      },
+    });
+
+    return {
+      status: 204,
+      message: `Member with id ${member_id} has been removed from club ${club_slug}`,
     };
   }
 }

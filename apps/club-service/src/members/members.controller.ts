@@ -22,4 +22,9 @@ export class MembersController {
   async updateClubMemberRole(data: { club_slug: string; user_id: number, body: { role: 0 | 1 }, member_id: number }) {
     return this.membersService.updateClubMemberRole(data.club_slug, data.user_id, data.body, data.member_id);
   }
+
+  @MessagePattern(CLUB_PATTERNS.DELETE_CLUB_MEMBER_REMOVE)
+  async removeClubMember(data: { club_slug: string; user_id: number, member_id: number }) {
+    return this.membersService.removeClubMember(data.club_slug, data.user_id, data.member_id);
+  }
 }
