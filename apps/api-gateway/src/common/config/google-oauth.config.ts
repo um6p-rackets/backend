@@ -9,7 +9,7 @@ export default registerAs('googleOAuth', () => {
 
   const clientId = process.env.GOOGLE_CLIENT_ID || readSecret(process.env.GOOGLE_CLIENT_ID_FILE);
   const clientSecret = process.env.GOOGLE_CLIENT_SECRET || readSecret(process.env.GOOGLE_CLIENT_SECRET_FILE);
-  const callbackUrl = process.env.GOOGLE_REDIRECT_URI
+  const redirectUri = process.env.GOOGLE_REDIRECT_URI
   const frontendRedirectUrl = process.env.FRONTEND_REDIRECT_URL || readSecret(process.env.FRONTEND_REDIRECT_URL_FILE);
   
   if (!clientId || !clientSecret) {
@@ -19,7 +19,7 @@ export default registerAs('googleOAuth', () => {
   return {
     clientId,
     clientSecret,
-    redirectUri: callbackUrl,
+    redirectUri: redirectUri,
     frontendRedirectUrl: frontendRedirectUrl,
   };
 });
