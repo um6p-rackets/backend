@@ -38,7 +38,7 @@ export class SessionsService {
       clubSlug,
       userId,
       0,
-    ); // user_id = 1, minRole = MEMBER (0)
+    ); // minRole = MEMBER (0)
     // generate next week sessions
     await this.generateNextWeekSessions(club.id);
     const { weekStart, from, to } = weekRange(weekStartDate);
