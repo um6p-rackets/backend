@@ -8,6 +8,7 @@ export const AUTH_PATTERNS = {
     OAUTH_LOGIN: 'auth.oauth.login',
     OAUTH_CALLBACK: 'auth.oauth.callback',
     LOGOUT: 'auth.logout',
+    COMPLETE_PROFILE: 'auth.complete-profile',
     GET_USER: 'auth.user.get',
     GET_USER_BY_ID: 'auth.user.get_by_id',
     GET_USER_BY_LOGIN: 'auth.user.get_by_login',

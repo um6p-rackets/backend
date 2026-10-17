@@ -31,7 +31,7 @@ POST {{API}}/auth/login
 Content-Type: application/json
 
 {
-  "email": "coach.table-tennis2@example.com",
+  "email": "abdonsila222@gmail.com",
   "password": "abdellahnsila123#002"
 }
 
@@ -40,6 +40,26 @@ POST {{API}}/auth/logout
 
 ### 1c. /me (expect 401, not logged in)
 GET {{API}}/auth/me
+
+
+### Update user loged with oauth google
+PATCH {{API}}/auth/me
+Content-Type: application/json
+
+{
+  "login": "3zwa",
+  "department": "1337 Coding School",
+  "phone_number": "+212600000000",
+  "gender": true
+}
+
+### 1f. Update Profile - Single Field (expect 200, requires valid cookies)
+PATCH {{API}}/auth/me
+Content-Type: application/json
+
+{
+  "avatar": "https://example.com/new-avatar.png"
+}
 
 
 ### 1d. Refresh token (expect 200)
