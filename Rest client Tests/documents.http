@@ -1,0 +1,277 @@
+@API = http://localhost:3000/api/v1
+@D1 = 1
+@D2 = 2
+@D3 = 3
+@MEMBER_ID = 4
+
+### 1. Login as the tennis coach
+POST {{API}}/auth/login
+Content-Type: application/json
+
+{
+  "email": "coach.tennis@example.com",
+  "password": "abdellahnsila123#002"
+}
+
+### 2. Empty list (expect 200, data [], total 0)
+GET {{API}}/clubs/tennis/documents
+
+### 3. Create D1 (expect success, copy its "id" into @D1 above)
+POST {{API}}/clubs/tennis/documents
+Content-Type: application/json
+
+{
+  "title": "  Club rules  ",
+  "description": "Read before your first session",
+  "path": "https://example.com/rules.pdf"
+}
+
+### 4. Create D2 without description (expect success, description null, copy its "id" into @D2)
+POST {{API}}/clubs/tennis/documents
+Content-Type: application/json
+
+{
+  "title": "Season schedule",
+  "path": "https://example.com/schedule.pdf"
+}
+
+### 5. List (expect D2 first, then D1, total 2, D1 title trimmed to "Club rules")
+GET {{API}}/clubs/tennis/documents
+
+### 6. Page 1 with limit 1 (expect only D2)
+GET {{API}}/clubs/tennis/documents?page=1&limit=1
+
+### 7. Page 2 with limit 1 (expect only D1)
+GET {{API}}/clubs/tennis/documents?page=2&limit=1
+
+### 8. Page after the last one (expect 200, data [], total still 2)
+GET {{API}}/clubs/tennis/documents?page=3&limit=1
+
+### 9. Page 0 (expect 400)
+GET {{API}}/clubs/tennis/documents?page=0
+
+### 10. Limit above 50 (expect 400)
+GET {{API}}/clubs/tennis/documents?limit=51
+
+### 11. Title with spaces only (expect 400)
+POST {{API}}/clubs/tennis/documents
+Content-Type: application/json
+
+{
+  "title": "     ",
+  "path": "https://example.com/a.pdf"
+}
+
+### 12. Empty title (expect 400)
+POST {{API}}/clubs/tennis/documents
+Content-Type: application/json
+
+{
+  "title": "",
+  "path": "https://example.com/a.pdf"
+}
+
+### 13. Missing path (expect 400)
+POST {{API}}/clubs/tennis/documents
+Content-Type: application/json
+
+{
+  "title": "No path"
+}
+
+### 14. Path without protocol (expect 400)
+POST {{API}}/clubs/tennis/documents
+Content-Type: application/json
+
+{
+  "title": "Bad path",
+  "path": "example.com/a.pdf"
+}
+
+### 15. Path that is not a web link (expect 400)
+POST {{API}}/clubs/tennis/documents
+Content-Type: application/json
+
+{
+  "title": "Bad path",
+  "path": "javascript:alert(1)"
+}
+
+### 16. Extra property (expect 400)
+POST {{API}}/clubs/tennis/documents
+Content-Type: application/json
+
+{
+  "title": "Extra",
+  "path": "https://example.com/a.pdf",
+  "club_id": 2
+}
+
+### 17. Empty body (expect 400)
+POST {{API}}/clubs/tennis/documents
+Content-Type: application/json
+
+{}
+
+### 18. Club that does not exist (expect 404)
+POST {{API}}/clubs/not-a-club/documents
+Content-Type: application/json
+
+{
+  "title": "x",
+  "path": "https://example.com/a.pdf"
+}
+
+### 19. Login as the plain member nsila
+POST {{API}}/auth/login
+Content-Type: application/json
+
+{
+  "email": "user7@gmail.com",
+  "password": "abdellahnsila123#002"
+}
+
+### 20. A plain member can read (expect 200, same 2 documents)
+GET {{API}}/clubs/tennis/documents
+
+### 21. Plain member creates (expect 403)
+POST {{API}}/clubs/tennis/documents
+Content-Type: application/json
+
+{
+  "title": "xeeeeeeeee",
+  "path": "https://example.com/a.pdf"
+}
+
+### 22. Plain member deletes D1 (expect 403)
+DELETE {{API}}/clubs/tennis/documents/{{D1}}
+
+### 23. Login as the PADEL coach (not a member of tennis)
+POST {{API}}/auth/login
+Content-Type: application/json
+
+{
+  "email": "coach.padel@example.com",
+  "password": "abdellahnsila123#002"
+}
+
+### 24. Padel coach reads tennis (expect 403)
+GET {{API}}/clubs/tennis/documents
+
+### 25. Padel coach creates in tennis (expect 403)
+POST {{API}}/clubs/tennis/documents
+Content-Type: application/json
+
+{
+  "title": "x",
+  "path": "https://example.com/a.pdf"
+}
+
+### 26. Padel coach deletes D1 in tennis (expect 403)
+DELETE {{API}}/clubs/tennis/documents/{{D1}}
+
+### 27. Padel coach deletes D1 through their OWN club (expect 404, D1 belongs to tennis)
+DELETE {{API}}/clubs/padel/documents/{{D1}}
+
+### 28. Padel coach reads their own club (expect 200, empty, no tennis documents)
+GET {{API}}/clubs/padel/documents
+
+### 29. Login as the coach, then promote nsila to leader
+POST {{API}}/auth/login
+Content-Type: application/json
+
+{
+  "email": "coach.tennis@example.com",
+  "password": "abdellahnsila123#002"
+}
+
+###
+PATCH {{API}}/clubs/tennis/members/{{MEMBER_ID}}/role
+Content-Type: application/json
+
+{
+  "role": 1
+}
+
+### 30. Login as nsila (now leader)
+POST {{API}}/auth/login
+Content-Type: application/json
+
+{
+  "email": "user7@gmail.com",
+  "password": "abdellahnsila123#002"
+}
+
+### 31. Leader creates D3 (expect success, copy its "id" into @D3)
+POST {{API}}/clubs/tennis/documents
+Content-Type: application/json
+
+{
+  "title": "Leader document",
+  "path": "https://example.com/leader.pdf"
+}
+
+### 32. Leader deletes the coach's D1 (expect success)
+DELETE {{API}}/clubs/tennis/documents/{{D1}}
+
+### 33. List (expect D3 first, then D2, total 2, no D1)
+GET {{API}}/clubs/tennis/documents
+
+### 34. Login as the coach
+POST {{API}}/auth/login
+Content-Type: application/json
+
+{
+  "email": "coach.tennis@example.com",
+  "password": "abdellahnsila123#002"
+}
+
+### 35. Coach deletes the leader's D3 (expect success)
+DELETE {{API}}/clubs/tennis/documents/{{D3}}
+
+### 36. Delete D3 again (expect 404)
+DELETE {{API}}/clubs/tennis/documents/{{D3}}
+
+### 37. Id that does not exist (expect 404)
+DELETE {{API}}/clubs/tennis/documents/99999
+
+### 38. Id is not a number (expect 400)
+DELETE {{API}}/clubs/tennis/documents/abc
+
+### 39. Id is 0 (expect 400)
+DELETE {{API}}/clubs/tennis/documents/0
+
+### 40. Club that does not exist (expect 404)
+DELETE {{API}}/clubs/not-a-club/documents/1
+
+### 41. Delete D2 (expect success), then the list must be empty again
+DELETE {{API}}/clubs/tennis/documents/{{D2}}
+
+###
+GET {{API}}/clubs/tennis/documents
+
+### 42. Demote nsila back to member
+PATCH {{API}}/clubs/tennis/members/{{MEMBER_ID}}/role
+Content-Type: application/json
+
+{
+  "role": 0
+}
+
+### 43. Logout
+POST {{API}}/auth/logout
+
+### 44. Read without login (expect 401)
+GET {{API}}/clubs/tennis/documents
+
+### 45. Create without login (expect 401)
+POST {{API}}/clubs/tennis/documents
+Content-Type: application/json
+
+{
+  "title": "x",
+  "path": "https://example.com/a.pdf"
+}
+
+### 46. Delete without login (expect 401)
+DELETE {{API}}/clubs/tennis/documents/1

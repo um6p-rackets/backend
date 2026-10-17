@@ -41,6 +41,10 @@ export const CLUB_PATTERNS = {
   GET_CLUB_ANNOUNCEMENTS: 'club.get-club-announcements',
   POST_CLUB_ANNOUNCEMENT_CREATE: 'club.post-club-announcement-create',
   DELETE_CLUB_ANNOUNCEMENT_DELETE: 'club.delete-club-announcement-delete',
+  // ================== DOCUMENTS SERVICE ==================
+  GET_CLUB_DOCUMENTS: 'club.get-club-documents',
+  POST_CLUB_DOCUMENT_CREATE: 'club.post-club-document-create',
+  DELETE_CLUB_DOCUMENT_DELETE: 'club.delete-club-document-delete',
   
 } as const;
 
