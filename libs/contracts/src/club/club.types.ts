@@ -179,7 +179,7 @@ export type Player = UserSummary & { member_id: number };
 // 4. Club views
 // ==========================================
 
-export type ClubWithMembersCount = Club & { members_count: number };
+export type ClubWithMembersCountAndCoachFullName = Club & { members_count: number, coach_full_name: string };
 
 // GET /:slug/status: who the current user is in this club.
 export type ClubMemberStatus = {
