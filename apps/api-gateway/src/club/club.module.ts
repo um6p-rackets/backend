@@ -7,6 +7,7 @@ import { rmqOptions } from '@app/rmq';
 import { ClubController } from './club.controller.js';
 import { ClubAchievementController } from './club-achievements.controller.js';
 import { ClubAnnouncementsController } from './club-announcements.controller.js';
+import { ClubDocumentsController } from './club-documents.controller.js';
 
 @Module({
   imports: [
@@ -23,6 +24,11 @@ import { ClubAnnouncementsController } from './club-announcements.controller.js'
       },
     ]),
   ],
-  controllers: [ClubController, ClubAchievementController, ClubAnnouncementsController],
+  controllers: [
+    ClubController,
+    ClubAchievementController,
+    ClubAnnouncementsController,
+    ClubDocumentsController,
+  ],
 })
 export class ClubModule {}
