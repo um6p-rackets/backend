@@ -1,11 +1,13 @@
 // create-achievement.dto.ts
-import { IsEnum, IsInt, IsPositive } from 'class-validator';
-import { AchievementCode } from '../index.js';
+import { IsInt, IsNotEmpty, IsOptional, IsPositive, IsString, MaxLength } from 'class-validator';
 
 export class CreateAchievementDto {
   @IsInt() @IsPositive()
   user_id: number;
 
-  @IsEnum(AchievementCode)
-  code: AchievementCode;
+  @IsString() @IsNotEmpty() @MaxLength(255)
+  name: string;
+
+  @IsOptional() @IsString() @MaxLength(2000)
+  description?: string;
 }

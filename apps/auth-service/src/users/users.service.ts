@@ -1,14 +1,16 @@
 import { Injectable } from '@nestjs/common';
-import { PrismaService } from '../prisma/prisma.service.js';
 import { RpcException } from '@nestjs/microservices';
-import { toUser } from './user.mapper.js';
-import { OAuthLoginDto, UpdateUserDto, User } from '@app/contracts';
-import type { User as PrismaUser } from '../generated/prisma/client.js';
-import * as argon2 from 'argon2';
-import { TokensService } from '../tokens/tokens.service.js';
-import { randomBytes, randomInt } from 'crypto';
 
-const DUMMY_HASH = '$argon2id$v=19$m=65536,t=3,p=4$c29tZXNhbHQ$R29vZEx1Y2tXaXRoVGhhdEFyZ29uMklkSGFzaA';
+import { OAuthLoginDto, UpdateUserDto, User } from '@app/contracts';
+import { PrismaService } from '../prisma/prisma.service.js';
+import type { User as PrismaUser } from '../generated/prisma/client.js';
+import { toUser } from './user.mapper.js';
+import * as argon2 from 'argon2';
+
+
+// For testing purposes
+const DUMMY_HASH = await argon2.hash('abdellahnsila123#002');
+// const DUMMY_HASH = '$argon2id$v=19$m=65536,t=3,p=4$c29tZXNhbHQ$R29vZEx1Y2tXaXRoVGhhdEFyZ29uMklkSGFzaA';
 
 @Injectable()
 export class UsersService {
@@ -17,8 +19,7 @@ export class UsersService {
   ) {}
 
   private async findRawByEmail(email: string): Promise<PrismaUser | null> {
-    const v = email.trim().toLowerCase();
-    return await this.prisma.user.findFirst({ where: { email: v } });
+    return await this.prisma.user.findFirst({ where: { email: email } });
   }
 
   async findByEmail(email: string): Promise<User | null> {
@@ -27,8 +28,7 @@ export class UsersService {
   }
 
   async findByLogin(login: string): Promise<User | null> {
-    const v = login.trim().toLowerCase();
-    const row = await this.prisma.user.findFirst({ where: { login: v } });
+    const row = await this.prisma.user.findFirst({ where: { login: login } });
     return row ? toUser(row) : null;
   }
 
@@ -49,8 +49,7 @@ export class UsersService {
   }
 
   async isLoginAvailable(login: string): Promise<boolean> {
-    const v = login.trim().toLowerCase();
-    return await this.prisma.user.count({ where: { login: v } }).then(count => count === 0);
+    return await this.prisma.user.count({ where: { login: login } }).then(count => count === 0);
   }
 
   async createUser(data: {
@@ -68,23 +67,22 @@ export class UsersService {
     const user = await this.prisma.user.create({ 
       data: { 
         ...data, 
-        login: data.login.toLowerCase(), 
-        email: data.email.toLowerCase() 
+        login: data.login, 
+        email: data.email 
       } 
     });
     // 2. Return the safe, mapped user (strips out password_hash)
     return toUser(user); 
   }
 
-  async updateUser(user_id: string, dto: UpdateUserDto): Promise<User> {
-    const numericId = parseInt(user_id, 10);
-    if (isNaN(numericId)) {
+  async updateUser(user_id: number, dto: UpdateUserDto): Promise<User> {
+    if (isNaN(user_id)) {
       throw new RpcException({ status: 400, message: 'Invalid user ID' });
     }
     const updatedUser = await this.prisma.user.update({
-      where: { id: numericId },
+      where: { id: user_id },
       data: {
-        login: dto.login?.toLowerCase(),
+        login: dto.login,
         first_name: dto.first_name,
         last_name: dto.last_name,
         department: dto.department,
@@ -94,6 +92,20 @@ export class UsersService {
       }
     })
     return toUser(updatedUser);
+  }
+
+  async updateUserPassword(user_id: number, newPasswordHash: string): Promise<void> {
+    if (isNaN(user_id)) {
+      throw new RpcException({ status: 400, message: 'Invalid user ID' });
+    }
+    await this.prisma.user.update({
+      where: { id: user_id },
+      data: {
+        password_hash: newPasswordHash,
+        reset_token_hash: null,
+        reset_token_expiry: null,
+      },
+    });
   }
 
   async getUserByIdentity(data: {provider: string, subject: string}): Promise<User | null> {
@@ -106,22 +118,20 @@ export class UsersService {
   }
 
   async createIdentityUser(login: string, dto: OAuthLoginDto): Promise<User> {
-    // For testing purposes
-    const testPasswordHash = await argon2.hash('abdellahnsila123#002');
+    
     const row = await this.prisma.$transaction(async (prisma) => {
       // 1. Create the user
       const user = await prisma.user.create({
         data: {
-          login: login.toLowerCase(),
+          login: login,
           first_name: dto.first_name,
           last_name: dto.last_name,
           gender: null,
           department: null,
           phone_number: null,
-          email: dto.email.toLowerCase(),
+          email: dto.email,
           avatar: dto.picture ?? null,
-          password_hash: testPasswordHash, // Use a test password hash for OAuth users
-          // password_hash: DUMMY_HASH,
+          password_hash: DUMMY_HASH, // Use a test password hash for OAuth users
         },
       });
 

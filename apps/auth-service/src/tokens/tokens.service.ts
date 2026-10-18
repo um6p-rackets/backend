@@ -1,7 +1,7 @@
   import { Injectable } from '@nestjs/common';
   import { JwtService } from '@nestjs/jwt';
   import { PrismaService } from '../prisma/prisma.service.js';
-  import { randomBytes, createHash, randomUUID } from 'crypto';
+  import { randomBytes, createHash, randomUUID, hash } from 'crypto';
   import { AuthTokens, rpcError } from '@app/contracts';
 
   @Injectable()
@@ -72,6 +72,38 @@
         where: { token_hash: tokenHash },
         data: { is_revoked: true },
       });
+    }
+
+    // 4. Password Reset Token
+    async issuePasswordResetToken(user_id: number): Promise<string> {
+      const rowToken = randomBytes(32).toString('base64url');
+      const tokenHash = createHash('sha256').update(rowToken).digest('hex');
+      
+      const expiresAt = new Date();
+      // Set the expiry to 15 min from now
+      expiresAt.setMinutes(expiresAt.getMinutes() + 15);
+
+      await this.prisma.user.update({
+        where: { id: user_id },
+        data: {
+          reset_token_hash: tokenHash,
+          reset_token_expiry: expiresAt,
+        },
+      });
+      return rowToken;  
+    }
+
+    // 5. Validate Password Reset Token
+    async validatePasswordResetToken(rawToken: string): Promise<number | null> {
+      const tokenHash = createHash('sha256').update(rawToken).digest('hex');
+      const user = await this.prisma.user.findFirst({
+        where: { reset_token_hash: tokenHash },
+        select: { id: true, reset_token_expiry: true },
+      });
+      if ((!user) || new Date() > user.reset_token_expiry) {
+        return null;
+      }
+      return user.id;
     }
 
     // --- Private Helper ---

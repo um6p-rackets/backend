@@ -9,6 +9,8 @@ import {
     HealthResult,
     LogoutResult,
     UpdateUserDto,
+    ForgetPasswordDto,
+    ResetPasswordDto,
 } from '@app/contracts';
 import {
     Body,
@@ -178,6 +180,28 @@ export class AuthController {
         return msg;
     }
 
+    @HttpCode(202)
+    @Throttle({ default: { limit: REQUEST_LIMIT, ttl: REQUEST_TTL } })
+    @Post('forget-password')
+    async forgetPassword(@Body() dto: ForgetPasswordDto): Promise<void> {
+        await rpc<void>(this.authClient, AUTH_PATTERNS.FORGET_PASSWORD, { email: dto.email });
+    }
+
+    @HttpCode(200)
+    @Throttle({ default: { limit: REQUEST_LIMIT, ttl: REQUEST_TTL } })
+    @Post('reset-password')
+    async resetPassword(
+        @Body() dto: ResetPasswordDto,
+        @Res({ passthrough: true }) res: Response,
+    ): Promise<void> {
+        await rpc<void>(this.authClient, AUTH_PATTERNS.RESET_PASSWORD, {
+            token: dto.token,
+            password: dto.password,
+            email: dto.email,
+        });
+        res.redirect(new URL('?success=password_reset', this.cfg.frontendRedirectUrl).toString());
+    }
+
     @Throttle({ default: { limit: REQUEST_LIMIT, ttl: REQUEST_TTL } })
     @Get('me')
     async me(@CurrentUser() user: AuthenticatedUser): Promise<User> {
@@ -208,7 +232,7 @@ export class AuthController {
     @Get('users/login-available')
     async isLoginAvailable(@Query('login') login: string): Promise<{ available: boolean }> {
         const available = await rpc<boolean>(this.authClient, AUTH_PATTERNS.IS_LOGIN_AVAILABLE, {
-            login: login.toLowerCase(),
+            login: login,
         });
         return { available };
     }

@@ -49,10 +49,22 @@ export class AuthServiceController {
     return await this.authServiceService.logout(data.refresh_token);
   }
 
+  @MessagePattern(AUTH_PATTERNS.FORGET_PASSWORD)
+  async forgetPassword(@Payload() data: { email: string }): Promise<void> {
+    console.log(`[AuthService] Received forget password request for email: ${data.email}`);
+    await this.authServiceService.forgetPassword(data.email);
+  }
+
+  @MessagePattern(AUTH_PATTERNS.RESET_PASSWORD)
+  async resetPassword(@Payload() data: { token: string, password: string }): Promise<void> {
+    console.log(`[AuthService] Received reset password request`);
+    await this.authServiceService.resetPassword(data.token, data.password);
+  }
+
   @MessagePattern(AUTH_PATTERNS.UPDATE_USER)
   async updateProfile(@Payload() data: { user_id: string, profileData: UpdateUserDto }): Promise<User> {
     console.log(`[AuthService] Received request to update profile for user: ${data.user_id}`);
-    return await this.usersService.updateUser(data.user_id, data.profileData);
+    return await this.usersService.updateUser(Number(data.user_id), data.profileData);
   }
 
   @MessagePattern(AUTH_PATTERNS.IS_LOGIN_AVAILABLE)

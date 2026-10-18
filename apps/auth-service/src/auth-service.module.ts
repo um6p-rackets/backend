@@ -8,7 +8,9 @@ import { configuration, envFiles, jwtConfig } from '@app/common';
 import { UsersModule } from './users/users.module.js';
 import { TokensModule } from './tokens/tokens.module.js';
 import { PrismaModule } from './prisma/prisma.module.js';
+import { EmailModule } from './email/email.module.js';
 import { UsersService } from './users/users.service.js';
+import { EmailService } from './email/email.service.js';
 
 @Module({
   imports: [
@@ -19,9 +21,10 @@ import { UsersService } from './users/users.service.js';
     }),
     UsersModule,
     TokensModule,
-    PrismaModule
+    PrismaModule,
+    EmailModule,
   ],
   controllers: [AuthServiceController],
-  providers: [AuthServiceService, UsersService],
+  providers: [AuthServiceService],
 })
 export class AuthServiceModule {}

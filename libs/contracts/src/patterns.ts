@@ -2,6 +2,7 @@
 
 export const AUTH_PATTERNS = {
     HEALTH: 'auth.health',
+    // ================== AUTH SERVICE ==================
     REGISTER: 'auth.register',
     LOGIN: 'auth.login',
     REFRESH: 'auth.refresh',
@@ -9,7 +10,9 @@ export const AUTH_PATTERNS = {
     OAUTH_CALLBACK: 'auth.oauth.callback',
     LOGOUT: 'auth.logout',
     COMPLETE_PROFILE: 'auth.complete-profile',
-    GET_USER: 'auth.user.get',
+    FORGET_PASSWORD: 'auth.forget-password',
+    RESET_PASSWORD: 'auth.reset-password',
+    // ================== USER SERVICE ==================
     IS_LOGIN_AVAILABLE: 'auth.user.is_login_available',
     GET_USER_BY_ID: 'auth.user.get_by_id',
     GET_USER_BY_LOGIN: 'auth.user.get_by_login',
@@ -45,10 +48,6 @@ export const CLUB_PATTERNS = {
   GET_CLUB_DOCUMENTS: 'club.get-club-documents',
   POST_CLUB_DOCUMENT_CREATE: 'club.post-club-document-create',
   DELETE_CLUB_DOCUMENT_DELETE: 'club.delete-club-document-delete',
-  // ================== ACHIEVEMENTS SERVICE ==================
-  GET_CLUB_ACHIEVEMENTS: 'club.get-club-achievements',
-  POST_CLUB_ACHIEVEMENT_CREATE: 'club.post-club-achievement-create',
-  DELETE_CLUB_ACHIEVEMENT_DELETE: 'club.delete-club-achievement-delete',
   
 } as const;
 
