@@ -97,7 +97,7 @@ Content-Type: application/json
 {
   "weekday": 6,
   "start_time": "23:00",
-  "end_time": "00:30",
+  "end_time": "23:30",
   "capacity": 1,
   "title": "test capacity",
   "location": "Court 4",
@@ -112,14 +112,14 @@ GET {{API}}/clubs/tennis/sessions
 GET {{API}}/clubs/tennis/sessions?week=2026-10-19
 
 
-@NEW = 92
+@NEW = 65
 
 ### 6a. Rename only this session (expect success)
 PATCH {{API}}/clubs/tennis/sessions/{{NEW}}
 Content-Type: application/json
 
 {
-  "title": "Renamsadfsadfed",
+  "title": "------------",
   "apply_to_future": true,
   "location": "sport departement",
   "start_time": "23:00",
