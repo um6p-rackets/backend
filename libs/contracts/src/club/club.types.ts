@@ -33,6 +33,7 @@ export enum MatchStatus {
   PENDING = 0, // waiting for the referee
   CONFIRMED = 1, // accepted, not played yet
   FINISHED = 2, // result entered
+  CANCELLED = 3, // cancelled by one of the teams or the referee or system
 }
 
 // ==========================================
@@ -146,7 +147,11 @@ export type Match = {
   team2_points: number;
   mode: MatchMode;
   status: MatchStatus;
+  location: string | null;
   scheduled_at: string;
+  cancelled_at: string | null;
+  cancelled_by: number | null; // member id
+  created_at: string;
 };
 
 // ==========================================
@@ -327,6 +332,6 @@ export type MatchRequestBody = {
   mode: MatchMode;
   partner_id?: number; // member id, required for doubles
   opponent_ids: number[]; // member ids, 1 for singles, 2 for doubles
-  requested_ref_id: number; // member id
+  location?: string | null;
   scheduled_at: string; // must be in the future
 };

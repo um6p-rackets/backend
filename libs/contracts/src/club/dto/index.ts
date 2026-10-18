@@ -3,7 +3,6 @@ export * from './matches-query.dto.js';
 export * from './members-query.dto.js';
 export * from './history-query.dto.js';
 export * from './match-request.dto.js';
-export * from './match-respond.dto.js';
 export * from './match-result.dto.js';
 export * from './add-member.dto.js';
 export * from './change-role.dto.js';

@@ -15,14 +15,14 @@ model Club {
   avatar      String?
   created_at  DateTime @default(now()) @db.Timestamptz(6)
 
-  members       Member[]
-  achievements  Achievement[]
-  announcements Announcement[]
+  members           Member[]
+  achievements      Achievement[]
+  announcements     Announcement[]
   session_templates SessionTemplate[]
   sessions          Session[]
-  teams         Team[]
-  matches       Match[]
-  documents     ClubDocument[]
+  teams             Team[]
+  matches           Match[]
+  documents         ClubDocument[]
 
   @@map("clubs")
 }
@@ -35,13 +35,15 @@ model Member {
   joined_at DateTime  @default(now()) @db.Timestamptz(6)
   left_at   DateTime? @db.Timestamptz(6) // null = active member
 
-  club             Club            @relation(fields: [club_id], references: [id], onDelete: Cascade)
-  announcements    Announcement[]
-  attends          SessionAttend[]
-  teams_as_player1 Team[]          @relation("TeamPlayer1")
-  teams_as_player2 Team[]          @relation("TeamPlayer2")
-  refereed_matches Match[]         @relation("MatchReferee")
-  awarded_achievements Achievement[] @relation("AchievementAwarder")
+  // club
+  club                 Club            @relation(fields: [club_id], references: [id], onDelete: Cascade)
+  announcements        Announcement[]
+  attends              SessionAttend[]
+  teams_as_player1     Team[]          @relation("TeamPlayer1")
+  teams_as_player2     Team[]          @relation("TeamPlayer2")
+  refereed_matches     Match[]         @relation("MatchReferee")
+  cancelled_matches    Match[]         @relation("MatchCanceller")
+  awarded_achievements Achievement[]   @relation("AchievementAwarder")
 
   @@unique([club_id, user_id])
   @@index([user_id])
@@ -153,25 +155,30 @@ model Team {
 }
 
 model Match {
-  id           Int      @id @default(autoincrement())
+  id           Int       @id @default(autoincrement())
   club_id      Int
   team1_id     Int
   team2_id     Int
   winner_id    Int? // only set when status = 2
   ref_id       Int?
-  team1_score  Int      @default(0)
-  team2_score  Int      @default(0)
-  team1_points Int      @default(0)
-  team2_points Int      @default(0)
+  team1_score  Int       @default(0)
+  team2_score  Int       @default(0)
+  team1_points Int       @default(0)
+  team2_points Int       @default(0)
   mode         Int // MatchMode: 1 singles, 2 doubles
-  status       Int      @default(0) @db.SmallInt // MatchStatus: 0 pending, 1 confirmed, 2 finished
-  scheduled_at DateTime @db.Timestamptz(6)
+  status       Int       @default(0) @db.SmallInt // MatchStatus: 0 pending, 1 confirmed, 2 finished 3 canceled
+  location     String?   @db.VarChar(100)
+  scheduled_at DateTime  @db.Timestamptz(6)
+  cancelled_at DateTime? @db.Timestamptz(6) // null = active
+  cancelled_by Int? // member id, null = cancelled by system
+  created_at   DateTime  @default(now()) @db.Timestamptz(6)
 
-  club    Club    @relation(fields: [club_id], references: [id], onDelete: Cascade)
-  team1   Team    @relation("MatchTeam1", fields: [team1_id], references: [id])
-  team2   Team    @relation("MatchTeam2", fields: [team2_id], references: [id])
-  winner  Team?   @relation("MatchWinner", fields: [winner_id], references: [id])
-  referee Member? @relation("MatchReferee", fields: [ref_id], references: [id])
+  club      Club    @relation(fields: [club_id], references: [id], onDelete: Cascade)
+  team1     Team    @relation("MatchTeam1", fields: [team1_id], references: [id])
+  team2     Team    @relation("MatchTeam2", fields: [team2_id], references: [id])
+  winner    Team?   @relation("MatchWinner", fields: [winner_id], references: [id])
+  referee   Member? @relation("MatchReferee", fields: [ref_id], references: [id])
+  cancellor Member? @relation("MatchCanceller", fields: [cancelled_by], references: [id], onDelete: SetNull)
 
   @@index([club_id, status, scheduled_at])
   @@map("matches")
