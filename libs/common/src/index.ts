@@ -2,6 +2,7 @@ export * from './filters/rpc-to-http.filter.js';
 export * from './filters/all-rpc-exceptions-filter.js';
 export * from './config/global-configuration.js';
 export * from './config/jwt.config.js';
+export * from './config/smtp.config.js';
 export * from './config/env.js';
 export * from './dates.js';
 export * from './auth/auth.constants.js';
