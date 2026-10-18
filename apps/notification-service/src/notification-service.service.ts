@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from './prisma/prisma.service.js';
 
 @Injectable()
@@ -13,24 +13,28 @@ export class NotificationServiceService {
     category: number;
     clubId?: bigint;
     receiverUserIds: bigint[];
+    dedupeKey?: string | null;
   }) {
-    return this.prisma.notification.create({ // we return a promise that resolves the created notification 
-      data: {
-        eventId: data.eventId,
-        senderType: data.senderType, // system = 1 , user = 2, club = 3
-        senderId: data.senderId,
-        category: data.category,  // meaning: join_request , join_accepted, join_rejected, club_announcement
-        clubId: data.clubId,
-        receivers: {
-          create: data.receiverUserIds.map((userId) => ({
-            receiverUserId: userId,
-          })), // we need to handle exception if a userId does not exist 
+    try {
+      return await this.prisma.notification.create({
+        data: {
+          eventId: data.eventId,
+          senderType: data.senderType, // system = 1 , user = 2, club = 3
+          senderId: data.senderId,
+          category: data.category,
+          clubId: data.clubId,
+          dedupeKey: data.dedupeKey,
+          receivers: {
+            create: data.receiverUserIds.map((userId) => ({
+              receiverUserId: userId,
+            })),
+          },
         },
-      },
-      include: {
-        receivers: true,
-      },
-    });
+        include: { receivers: true },
+      });
+    } catch (error) {
+      throw error;
+    }
   }
 
   // Retrieve a user's notifications
@@ -40,38 +44,42 @@ export class NotificationServiceService {
       orderBy: { id: 'desc' },
       skip: (page - 1) * limit,
       take: limit,
-      include: {
-        notification: true,
-      },
+      include: { notification: true },
     });
   }
 
   // Mark one notification as read
-//   async markAsRead(notificationId: bigint, userId: bigint) {
-//     return this.prisma.notificationReceiver.updateMany({
-//       where: {
-//         notificationId,
-//         receiverUserId: userId,
-//         isRead: false,
-//       },
-//       data: {
-//         isRead: true,
-//         readAt: new Date(),
-//       },
-//     });
-//   }
+  async markAsRead(notificationId: bigint, userId: bigint) {
+    const receiver = await this.prisma.notificationReceiver.findFirst({
+      where: {
+        notificationId: notificationId,
+        receiverUserId: userId,
+      },
+    });
 
-//   // Mark all of a user's notifications as read
-//   async markAllAsRead(userId: bigint) {
-//     return this.prisma.notificationReceiver.updateMany({
-//       where: {
-//         receiverUserId: userId,
-//         isRead: false,
-//       },
-//       data: {
-//         isRead: true,
-//         readAt: new Date(),
-//       },
-//     });
-//   }
+    if (!receiver) {
+      throw new NotFoundException('Notification not found for this user');
+    }
+
+    return this.prisma.notificationReceiver.update({
+      where: { id: receiver.id },
+      data: {
+        isRead: true,
+        readAt: new Date(),
+      },
+    });
+  }
+
+  async markAllAsRead(userId: bigint) {
+    return this.prisma.notificationReceiver.updateMany({
+      where: {
+        receiverUserId: userId,
+        isRead: false,
+      },
+      data: {
+        isRead: true,
+        readAt: new Date(),
+      },
+    });
+  }
 }
