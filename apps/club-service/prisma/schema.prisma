@@ -41,6 +41,7 @@ model Member {
   teams_as_player1 Team[]          @relation("TeamPlayer1")
   teams_as_player2 Team[]          @relation("TeamPlayer2")
   refereed_matches Match[]         @relation("MatchReferee")
+  awarded_achievements Achievement[] @relation("AchievementAwarder")
 
   @@unique([club_id, user_id])
   @@index([user_id])
@@ -48,16 +49,19 @@ model Member {
 }
 
 model Achievement {
-  id          Int      @id @default(autoincrement())
-  club_id     Int
-  user_id     Int // auth service user id, no relation
-  name        String   @db.VarChar(255)
-  description String?
-  taken_at    DateTime @default(now()) @db.Timestamptz(6)
+  id         Int      @id @default(autoincrement())
+  club_id    Int
+  user_id    Int // auth service user id, no relation
+  code       String   @db.VarChar(50) // AchievementCode, validated by the service
+  awarded_by Int? // member id, null = awarded automatically
+  taken_at   DateTime @default(now()) @db.Timestamptz(6)
 
-  club Club @relation(fields: [club_id], references: [id], onDelete: Cascade)
+  club    Club    @relation(fields: [club_id], references: [id], onDelete: Cascade)
+  awarder Member? @relation("AchievementAwarder", fields: [awarded_by], references: [id], onDelete: SetNull)
 
+  @@unique([club_id, user_id, code])
   @@index([user_id])
+  @@index([club_id, taken_at(sort: Desc)])
   @@map("achievements")
 }
 
