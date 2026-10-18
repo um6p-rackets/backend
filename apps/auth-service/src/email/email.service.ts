@@ -12,18 +12,24 @@ export class EmailService {
   ) {}
 
   async sendPasswordReset(email: string, rawToken: string): Promise<void> {
-    const resetLink = `${this.configService.get<string>('FRONTEND_URL')}/reset-password?token=${rawToken}`;
+    const smtp = this.configService.get('smtp');
+
+    const resetLink = `${smtp.frontendUrl}/reset-password?token=${rawToken}`;
     const htmlTemplate = getPasswordResetTemplate(resetLink);
-    const sender = this.configService.get<string>('SMTP_USER');
+    const sender = smtp.user;
 
     try {
-      await this.transporter.sendMail({
+      const info = await this.transporter.sendMail({
         from: `"Rackets Support" <${sender}>`,
         to: email,
         subject: 'Reset your password',
         html: htmlTemplate,
       });
       console.log(`Password reset email sent to ${email}`);
+      // Print the Ethereal preview link directly in the terminal!`
+      if (this.configService.get('SMTP_HOST').includes('ethereal')) {
+        console.log(`Preview URL: ${nodemailer.getTestMessageUrl(info)}`);
+      }
     } catch (error) {
       console.error(`Failed to send password reset email to ${email}:`, error);
     }

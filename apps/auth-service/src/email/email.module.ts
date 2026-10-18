@@ -1,9 +1,9 @@
 import { Module } from '@nestjs/common';
-import { ConfigService } from '@nestjs/config';
+import { ConfigService, ConfigType } from '@nestjs/config';
 import * as nodemailer from 'nodemailer';
 import { EmailService } from './email.service.js';
 import { TRANSPORTER_TOKEN } from '@app/contracts/queues.js';
-
+import { smtpConfig } from '@app/common';
 
 @Module({
   providers: [
@@ -11,13 +11,16 @@ import { TRANSPORTER_TOKEN } from '@app/contracts/queues.js';
       provide: TRANSPORTER_TOKEN,
       inject: [ConfigService],
       useFactory: (configService: ConfigService) => {
+        // Retrieve the strongly-typed config object
+        const smtp = configService.getOrThrow<ConfigType<typeof smtpConfig>>('smtp');
+        
         return nodemailer.createTransport({
-          host: configService.get<string>('SMTP_HOST'),
-          port: configService.get<number>('SMTP_PORT', 587),
-          secure: configService.get<string>('SMTP_SECURE') === 'true', 
+          host: smtp.host,
+          port: smtp.port,
+          secure: smtp.secure,
           auth: {
-            user: configService.get<string>('SMTP_USER'),
-            pass: configService.get<string>('SMTP_PASS'),
+            user: smtp.user,
+            pass: smtp.pass,
           },
         });
       },
