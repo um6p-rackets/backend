@@ -2,6 +2,8 @@
 import {
   ArrayMaxSize, ArrayMinSize, ArrayUnique, IsArray, IsDateString,
   IsEnum, IsInt, IsOptional, IsPositive,
+  IsString,
+  MaxLength,
 } from 'class-validator';
 import { MatchMode, MatchRequestBody } from '../club.types.js';
 
@@ -16,8 +18,8 @@ export class MatchRequestDto implements MatchRequestBody {
   @IsInt({ each: true }) @IsPositive({ each: true })
   opponent_ids: number[];
 
-  @IsInt() @IsPositive()
-  requested_ref_id: number;
+  @IsOptional() @IsString() @MaxLength(100)
+  location?: string;
 
   @IsDateString()
   scheduled_at: string;

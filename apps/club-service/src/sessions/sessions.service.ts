@@ -122,7 +122,7 @@ export class SessionsService {
     };
   }
 
-  async attendSession(clubSlug: string, sessionId: string, user_id: number) {
+  async attendSession(clubSlug: string, sessionId: string, user_id: number): Promise<{ success: boolean; message: string }> {
     const { member, club } = await this.clubAccessService.requireRole(
       clubSlug,
       user_id,
@@ -187,10 +187,10 @@ export class SessionsService {
       },
     });
 
-    return { success: true, message: 'User successfully attended the session' };
+    return { success: true, message: 'successfully attended the session' };
   }
 
-  async unattendSession(clubSlug: string, sessionId: string, user_id: number) {
+  async unattendSession(clubSlug: string, sessionId: string, user_id: number): Promise<{ success: boolean; message: string }> {
     const { member, club } = await this.clubAccessService.requireRole(
       clubSlug,
       user_id,
@@ -248,7 +248,7 @@ export class SessionsService {
 
     return {
       success: true,
-      message: 'User successfully unattended the session',
+      message: 'successfully unattended the session',
     };
   }
 

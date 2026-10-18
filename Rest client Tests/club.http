@@ -17,6 +17,9 @@ Content-Type: application/json
   "password": "abdellahnsila123#002"
 }
 
+### 6aab. check club
+GET {{API}}/clubs/tennis
+
 ### 6ab. check member status (expect 200, role 2)
 GET {{API}}/clubs/tennis/status
 

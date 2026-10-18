@@ -1,6 +1,6 @@
 import { Controller } from '@nestjs/common';
 import { MessagePattern } from '@nestjs/microservices';
-import { Club, ClubMemberStatus, ClubWithMembersCount } from '@app/contracts/club/club.types.js';
+import { Club, ClubMemberStatus, ClubWithMembersCountAndCoachFullName } from '@app/contracts/club/club.types.js';
 import { ClubServiceService } from './club-service.service.js';
 import { CLUB_PATTERNS } from '@app/contracts';
 import { UpdateClubDto } from '@app/contracts/club/dto/index.js';
@@ -16,9 +16,9 @@ export class ClubServiceController {
   }
 
   @MessagePattern(CLUB_PATTERNS.GET_CLUB)
-  async getClubWithMembersCount(data: { club_slug: string }): Promise<ClubWithMembersCount> {
+  async getClubWithMembersCountAndCoachFullName(data: { club_slug: string }): Promise<ClubWithMembersCountAndCoachFullName> {
     console.log(`[ClubService] Received request for club slug: ${data.club_slug}`);
-    return this.clubServiceService.getClubWithMembersCount(data.club_slug);
+    return this.clubServiceService.getClubWithMembersCountAndCoachFullName(data.club_slug);
   }
 
   @MessagePattern(CLUB_PATTERNS.GET_CLUB_STATUS)
