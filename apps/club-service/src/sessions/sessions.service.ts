@@ -276,9 +276,9 @@ export class SessionsService {
 
     const monday = mondayOf(week_start ?? today());
 
-    // check if the session is far then 2 weeks from now, if yes, throw error
-    const twoWeeksFromNow = addDays(today(), 14);
-    if (monday > twoWeeksFromNow) {
+    // check if the session is far then 2 weeks from monday of this week, if yes, throw error
+    const twoWeeksFromNow = addDays(mondayOf(today()), 14);
+    if (monday >= twoWeeksFromNow) {
       throw rpcError(
         400,
         'Cannot create a session more than 2 weeks in advance',
