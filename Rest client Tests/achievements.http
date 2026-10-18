@@ -1,0 +1,346 @@
+@API = http://localhost:3000/api/v1
+@USER_ID = 8
+@MEMBER_ID = 4
+
+@A1 = 31
+@A2 = 32
+@A3 = 34
+@A4 = 37
+
+### 1. Login as the tennis coach
+POST {{API}}/auth/login
+Content-Type: application/json
+
+{
+  "email": "coach.tennis@example.com",
+  "password": "abdellahnsila123#002"
+}
+
+### 2. List (expect 200, shape { data, page, limit, total }, write down total)
+GET {{API}}/clubs/tennis/achievements
+
+### 3. Award A1 to nsila (expect success, copy its "id" into @A1 above)
+POST {{API}}/clubs/tennis/achievements
+Content-Type: application/json
+
+{
+  "user_id": {{USER_ID}},
+  "code": "FIRST_SESSION"
+}
+
+### 4. Award A2 to nsila (expect success, copy its "id" into @A2)
+POST {{API}}/clubs/tennis/achievements
+Content-Type: application/json
+
+{
+  "user_id": {{USER_ID}},
+  "code": "FOUNDING_MEMBER"
+}
+
+### 5. List (expect A2 first, then A1, total = the old total + 2, user.login = nsila)
+GET {{API}}/clubs/tennis/achievements
+
+### 6. Page 1 with limit 1 (expect only A2)
+GET {{API}}/clubs/tennis/achievements?page=1&limit=1
+
+### 7. Page 2 with limit 1 (expect only A1)
+GET {{API}}/clubs/tennis/achievements?page=2&limit=1
+
+### 8. Page far after the last one (expect 200, data [], total unchanged)
+GET {{API}}/clubs/tennis/achievements?page=999&limit=1
+
+### 9. Page 0 (expect 400)
+GET {{API}}/clubs/tennis/achievements?page=0
+
+### 10. Limit above 50 (expect 400)
+GET {{API}}/clubs/tennis/achievements?limit=51
+
+### 11. Limit not a number (expect 400)
+GET {{API}}/clubs/tennis/achievements?limit=abc
+
+### 12. Same user and same code again (expect 409)
+POST {{API}}/clubs/tennis/achievements
+Content-Type: application/json
+
+{
+  "user_id": {{USER_ID}},
+  "code": "FIRST_SESSION"
+}
+
+### 13. Code that does not exist (expect 400)
+POST {{API}}/clubs/tennis/achievements
+Content-Type: application/json
+
+{
+  "user_id": {{USER_ID}},
+  "code": "NOT_A_CODE"
+}
+
+### 14. Lowercase code (expect 400, codes are case sensitive)
+POST {{API}}/clubs/tennis/achievements
+Content-Type: application/json
+
+{
+  "user_id": {{USER_ID}},
+  "code": "first_session"
+}
+
+### 15. Missing code (expect 400)
+POST {{API}}/clubs/tennis/achievements
+Content-Type: application/json
+
+{
+  "user_id": {{USER_ID}}
+}
+
+### 16. Missing user_id (expect 400)
+POST {{API}}/clubs/tennis/achievements
+Content-Type: application/json
+
+{
+  "code": "TEN_SESSIONS"
+}
+
+### 17. user_id 0 (expect 400)
+POST {{API}}/clubs/tennis/achievements
+Content-Type: application/json
+
+{
+  "user_id": 0,
+  "code": "TEN_SESSIONS"
+}
+
+### 18. user_id is text (expect 400)
+POST {{API}}/clubs/tennis/achievements
+Content-Type: application/json
+
+{
+  "user_id": "abc",
+  "code": "TEN_SESSIONS"
+}
+
+### 19. Empty body (expect 400)
+POST {{API}}/clubs/tennis/achievements
+Content-Type: application/json
+
+{}
+
+### 20. Extra property awarded_by (expect 400, it is set by the server)
+POST {{API}}/clubs/tennis/achievements
+Content-Type: application/json
+
+{
+  "user_id": {{USER_ID}},
+  "code": "TEN_SESSIONS",
+  "awarded_by": 1
+}
+
+### 21. User that does not exist in auth (expect an error, nothing created)
+POST {{API}}/clubs/tennis/achievements
+Content-Type: application/json
+
+{
+  "user_id": 99999,
+  "code": "TEN_SESSIONS"
+}
+
+### 22. Real user who is not a tennis member, the padel coach (expect an error, nothing created)
+POST {{API}}/clubs/tennis/achievements
+Content-Type: application/json
+
+{
+  "user_id": 2,
+  "code": "TEN_SESSIONS"
+}
+
+### 23. Remove nsila from the club (expect success)
+DELETE {{API}}/clubs/tennis/members/{{MEMBER_ID}}
+
+### 24. Award a user who left (expect an error, nothing created)
+POST {{API}}/clubs/tennis/achievements
+Content-Type: application/json
+
+{
+  "user_id": {{USER_ID}},
+  "code": "TEN_SESSIONS"
+}
+
+### 25. Add nsila back (expect success)
+POST {{API}}/clubs/tennis/members
+Content-Type: application/json
+
+{
+  "user_id": {{USER_ID}}
+}
+
+### 26. Club that does not exist (expect 404)
+POST {{API}}/clubs/not-a-club/achievements
+Content-Type: application/json
+
+{
+  "user_id": {{USER_ID}},
+  "code": "TEN_SESSIONS"
+}
+
+### 27. Login as the plain member nsila
+POST {{API}}/auth/login
+Content-Type: application/json
+
+{
+  "email": "user7@gmail.com",
+  "password": "abdellahnsila123#002"
+}
+
+### 28. A plain member can read (expect 200, same data)
+GET {{API}}/clubs/tennis/achievements
+
+### 29. Plain member awards (expect 403)
+POST {{API}}/clubs/tennis/achievements
+Content-Type: application/json
+
+{
+  "user_id": {{USER_ID}},
+  "code": "TEN_SESSIONS"
+}
+
+### 30. Plain member deletes A1 (expect 403)
+DELETE {{API}}/clubs/tennis/achievements/{{A1}}
+
+### 31. Login as the PADEL coach (not a member of tennis)
+POST {{API}}/auth/login
+Content-Type: application/json
+
+{
+  "email": "coach.padel@example.com",
+  "password": "abdellahnsila123#002"
+}
+
+### 32. Padel coach reads tennis (expect 403)
+GET {{API}}/clubs/tennis/achievements
+
+### 33. Padel coach awards in tennis (expect 403)
+POST {{API}}/clubs/tennis/achievements
+Content-Type: application/json
+
+{
+  "user_id": {{USER_ID}},
+  "code": "TEN_SESSIONS"
+}
+
+### 34. Padel coach deletes A1 in tennis (expect 403)
+DELETE {{API}}/clubs/tennis/achievements/{{A1}}
+
+### 35. Padel coach deletes A1 through their OWN club (expect 404, A1 belongs to tennis)
+DELETE {{API}}/clubs/padel/achievements/{{A1}}
+
+### 36. Padel coach reads their own club (expect 200, no tennis achievements)
+GET {{API}}/clubs/padel/achievements
+
+### 37. Login as the tennis coach, then promote nsila to leader
+POST {{API}}/auth/login
+Content-Type: application/json
+
+{
+  "email": "coach.tennis@example.com",
+  "password": "abdellahnsila123#002"
+}
+
+###
+PATCH {{API}}/clubs/tennis/members/{{MEMBER_ID}}/role
+Content-Type: application/json
+
+{
+  "role": 1
+}
+
+### 38. Login as nsila (now leader)
+POST {{API}}/auth/login
+Content-Type: application/json
+
+{
+  "email": "user7@gmail.com",
+  "password": "abdellahnsila123#002"
+}
+
+### 39. Leader awards the coach (user 1) MVP (expect success, copy its "id" into @A3, awarded_by = @MEMBER_ID)
+POST {{API}}/clubs/tennis/achievements
+Content-Type: application/json
+
+{
+  "user_id": 1,
+  "code": "MVP"
+}
+
+### 40. Leader deletes A1, which the coach gave (expect success)
+DELETE {{API}}/clubs/tennis/achievements/{{A1}}
+
+### 41. List (expect A3 and A2 present, no A1)
+GET {{API}}/clubs/tennis/achievements
+
+### 42. Login as the coach
+POST {{API}}/auth/login
+Content-Type: application/json
+
+{
+  "email": "coach.tennis@example.com",
+  "password": "abdellahnsila123#002"
+}
+
+### 43. Coach deletes the leader's A3 (expect success)
+DELETE {{API}}/clubs/tennis/achievements/{{A3}}
+
+### 44. Delete A3 again (expect 404)
+DELETE {{API}}/clubs/tennis/achievements/{{A3}}
+
+### 45. Id that does not exist (expect 404)
+DELETE {{API}}/clubs/tennis/achievements/99999
+
+### 46. Id is not a number (expect 400)
+DELETE {{API}}/clubs/tennis/achievements/abc
+
+### 47. Id is 0 (expect 400)
+DELETE {{API}}/clubs/tennis/achievements/0
+
+### 48. Club that does not exist (expect 404)
+DELETE {{API}}/clubs/not-a-club/achievements/1
+
+### 49. Award FIRST_SESSION to nsila again (expect success, A1 was deleted so the code is free, copy its "id" into @A4)
+POST {{API}}/clubs/tennis/achievements
+Content-Type: application/json
+
+{
+  "user_id": {{USER_ID}},
+  "code": "FIRST_SESSION"
+}
+
+### 50. Clean up, delete A2 and A4 (expect success for both)
+DELETE {{API}}/clubs/tennis/achievements/{{A2}}
+
+###
+DELETE {{API}}/clubs/tennis/achievements/{{A4}}
+
+### 51. Demote nsila back to member
+PATCH {{API}}/clubs/tennis/members/{{MEMBER_ID}}/role
+Content-Type: application/json
+
+{
+  "role": 0
+}
+
+### 52. Logout
+POST {{API}}/auth/logout
+
+### 53. Read without login (expect 401)
+GET {{API}}/clubs/tennis/achievements
+
+### 54. Award without login (expect 401)
+POST {{API}}/clubs/tennis/achievements
+Content-Type: application/json
+
+{
+  "user_id": 1,
+  "code": "MVP"
+}
+
+### 55. Delete without login (expect 401)
+DELETE {{API}}/clubs/tennis/achievements/1
