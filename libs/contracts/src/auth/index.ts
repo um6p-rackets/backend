@@ -4,4 +4,6 @@ export * from './dto/refresh-token.dto.js';
 export * from './dto/logout-user.dto.js';
 export * from './dto/oauth-login.dto.js';
 export * from './dto/update-user.dto.js';
+export * from './dto/forget-password.dto.js';
+export * from './dto/reset-password.dto.js';
 export * from './auth.types.js';

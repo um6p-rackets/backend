@@ -6,12 +6,14 @@ import {
   AuthTokens,
   AuthResult,
   HealthResult,
-  LogoutResult,
+  SuccessResult,
   OAuthLoginDto,
   User,
+  EVENTS,
 } from '@app/contracts';
 import { UsersService } from './users/users.service.js';
 import { TokensService } from './tokens/tokens.service.js';
+import { EmailService } from './email/email.service.js';
 import * as argon2 from 'argon2';
 import { randomBytes, randomInt } from 'crypto';
 
@@ -20,6 +22,7 @@ export class AuthServiceService {
   constructor(
     private readonly usersService: UsersService,
     private readonly tokensService: TokensService,
+    private readonly emailService: EmailService,
   ) {}
 
   // health
@@ -126,7 +129,7 @@ export class AuthServiceService {
   }
 
   // logout
-  async logout(refresh_token: string): Promise<LogoutResult> {
+  async logout(refresh_token: string): Promise<SuccessResult> {
     if (refresh_token) {
       await this.tokensService.revoke(refresh_token);
     }
@@ -136,11 +139,41 @@ export class AuthServiceService {
     }
   }
 
+  // forget password
+  async forgetPassword(email: string): Promise<SuccessResult> {
+    const user = await this.usersService.findByEmail(email);
+    if (!user) {
+      return { success: true, message: 'Complete' }; 
+    }
+    const rawToken = await this.tokensService.issuePasswordResetToken(user.id);
+    // Emit a fire-and-forget event to the Notification Service
+    // this.notificationClient.emit(EVENTS.SEND_RESET_EMAIL, { 
+    //   email: user.email, 
+    //   token: rawToken 
+    // });
+    // Fire-and-forget with safety catch
+    this.emailService.sendPasswordReset(user.email, rawToken)
+        .catch(err => console.error('Background email task failed:', err));
+    return { success: true, message: 'Complete' };
+  }
+
+  // reset password
+  async resetPassword(token: string, newPassword: string): Promise<SuccessResult> {
+    const user_id = await this.tokensService.validatePasswordResetToken(token);
+    if (!user_id) {
+      throw rpcError(400, 'Invalid or expired reset token', 'Bad Request');
+    }
+
+    const passwordHash = await argon2.hash(newPassword);
+    await this.usersService.updateUserPassword(user_id, passwordHash);
+    return { success: true, message: 'Password has been reset successfully' };
+  }
+
   // ------------------ Helper Methods ------------------
 
     private async uniqueLogin(email: string): Promise<string> {
       // "John.Doe+123@example.com" => "johndoe123"
-      const base = email.split('@')[0].toLowerCase().replace(/[^a-z0-9_]/g, '').slice(0, 20) || 'user';
+      const base = email.split('@')[0].replace(/[^a-z0-9_]/g, '').slice(0, 20) || 'user';
       // Try a few times to find a unique login
       for (let i = 0; i < 5; i++) {
         const candidate = i === 0 ? base : `${base}[${randomInt(1000, 9999)}]`;

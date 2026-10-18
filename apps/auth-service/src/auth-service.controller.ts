@@ -1,7 +1,7 @@
 import { Controller } from '@nestjs/common';
 import { MessagePattern, Payload } from '@nestjs/microservices';
 import { AuthServiceService } from './auth-service.service.js';
-import { AUTH_PATTERNS, type AuthTokens, UpdateUserDto, OAuthLoginDto, RegisterDto, User, LogoutResult, AuthResult, HealthResult } from '@app/contracts';
+import { AUTH_PATTERNS, type AuthTokens, UpdateUserDto, OAuthLoginDto, RegisterDto, User, SuccessResult, AuthResult, HealthResult } from '@app/contracts';
 import { LoginDto } from '@app/contracts/auth/dto/login.dto.js';
 import { UsersService } from './users/users.service.js';
 
@@ -44,15 +44,27 @@ export class AuthServiceController {
   }
 
   @MessagePattern(AUTH_PATTERNS.LOGOUT)
-  async logout(@Payload() data: AuthTokens): Promise<LogoutResult> {
+  async logout(@Payload() data: AuthTokens): Promise<SuccessResult> {
     console.log(`[AuthService] Received logout request`);
     return await this.authServiceService.logout(data.refresh_token);
+  }
+
+  @MessagePattern(AUTH_PATTERNS.FORGET_PASSWORD)
+  async forgetPassword(@Payload() data: { email: string }): Promise<SuccessResult> {
+    console.log(`[AuthService] Received forget password request for email: ${data.email}`);
+    return await this.authServiceService.forgetPassword(data.email);
+  }
+
+  @MessagePattern(AUTH_PATTERNS.RESET_PASSWORD)
+  async resetPassword(@Payload() data: { token: string, password: string }): Promise<SuccessResult> {
+    console.log(`[AuthService] Received reset password request`);
+    return await this.authServiceService.resetPassword(data.token, data.password);
   }
 
   @MessagePattern(AUTH_PATTERNS.UPDATE_USER)
   async updateProfile(@Payload() data: { user_id: string, profileData: UpdateUserDto }): Promise<User> {
     console.log(`[AuthService] Received request to update profile for user: ${data.user_id}`);
-    return await this.usersService.updateUser(data.user_id, data.profileData);
+    return await this.usersService.updateUser(Number(data.user_id), data.profileData);
   }
 
   @MessagePattern(AUTH_PATTERNS.IS_LOGIN_AVAILABLE)

@@ -19,8 +19,13 @@ model User {
   avatar        String?
   password_hash String?
   joined_at     DateTime @default(now()) @db.Timestamptz(6)
+  // For refresh token functionality
   refresh_tokens RefreshToken[]
+  // For OAuth2 identities (Google)
   identities    Identity[]
+  // For password reset functionality
+  reset_token_hash   String?
+  reset_token_expiry DateTime?
 
   @@map("users")
 }
