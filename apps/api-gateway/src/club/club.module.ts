@@ -5,6 +5,7 @@ import { ConfigService } from '@nestjs/config';
 import { CLUB_SERVICE, QUEUES } from '@app/contracts';
 import { rmqOptions } from '@app/rmq';
 import { ClubController } from './club.controller.js';
+import { ClubAchievementController } from './club-achievements.controller.js';
 
 @Module({
   imports: [
@@ -21,6 +22,6 @@ import { ClubController } from './club.controller.js';
       },
     ]),
   ],
-  controllers: [ClubController],
+  controllers: [ClubController, ClubAchievementController],
 })
 export class ClubModule {}
