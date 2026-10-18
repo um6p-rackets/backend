@@ -6,6 +6,7 @@ import { CLUB_SERVICE, QUEUES } from '@app/contracts';
 import { rmqOptions } from '@app/rmq';
 import { ClubController } from './club.controller.js';
 import { ClubAchievementController } from './club-achievements.controller.js';
+import { ClubAnnouncementsController } from './club-announcements.controller.js';
 
 @Module({
   imports: [
@@ -22,6 +23,6 @@ import { ClubAchievementController } from './club-achievements.controller.js';
       },
     ]),
   ],
-  controllers: [ClubController, ClubAchievementController],
+  controllers: [ClubController, ClubAchievementController, ClubAnnouncementsController],
 })
 export class ClubModule {}
