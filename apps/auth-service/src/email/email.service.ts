@@ -12,7 +12,7 @@ export class EmailService {
   ) {}
 
   async sendPasswordReset(email: string, rawToken: string): Promise<void> {
-    const resetLink = `${this.configService.get<string>('FRONTEND_URL')}/reset-password?token=${rawToken}&email=${encodeURIComponent(email)}`;
+    const resetLink = `${this.configService.get<string>('FRONTEND_URL')}/reset-password?token=${rawToken}`;
     const htmlTemplate = getPasswordResetTemplate(resetLink);
     const sender = this.configService.get<string>('SMTP_USER');
 

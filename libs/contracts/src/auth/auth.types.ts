@@ -28,7 +28,7 @@ export interface HealthResult {
   timestamp: string;
 }
 
-export interface LogoutResult {
+export interface SuccessResult {
   success: boolean;
   message: string;
 }

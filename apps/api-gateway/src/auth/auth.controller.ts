@@ -7,7 +7,7 @@ import {
     RegisterDto,
     User,
     HealthResult,
-    LogoutResult,
+    SuccessResult,
     UpdateUserDto,
     ForgetPasswordDto,
     ResetPasswordDto,
@@ -172,8 +172,8 @@ export class AuthController {
     async logout(
         @Req() req: Request,
         @Res({ passthrough: true }) res: Response,
-    ): Promise<LogoutResult> {
-        const msg = await rpc<LogoutResult>(this.authClient, AUTH_PATTERNS.LOGOUT, {
+    ): Promise<SuccessResult> {
+        const msg = await rpc<SuccessResult>(this.authClient, AUTH_PATTERNS.LOGOUT, {
             refreshToken: req.cookies?.[REFRESH_COOKIE] ?? '',
         });
         clearAuthCookies(res);
@@ -183,8 +183,8 @@ export class AuthController {
     @HttpCode(202)
     @Throttle({ default: { limit: REQUEST_LIMIT, ttl: REQUEST_TTL } })
     @Post('forget-password')
-    async forgetPassword(@Body() dto: ForgetPasswordDto): Promise<void> {
-        await rpc<void>(this.authClient, AUTH_PATTERNS.FORGET_PASSWORD, { email: dto.email });
+    async forgetPassword(@Body() dto: ForgetPasswordDto): Promise<SuccessResult> {
+        return await rpc<SuccessResult>(this.authClient, AUTH_PATTERNS.FORGET_PASSWORD, { email: dto.email });
     }
 
     @HttpCode(200)
@@ -194,10 +194,9 @@ export class AuthController {
         @Body() dto: ResetPasswordDto,
         @Res({ passthrough: true }) res: Response,
     ): Promise<void> {
-        await rpc<void>(this.authClient, AUTH_PATTERNS.RESET_PASSWORD, {
+        await rpc<SuccessResult>(this.authClient, AUTH_PATTERNS.RESET_PASSWORD, {
             token: dto.token,
             password: dto.password,
-            email: dto.email,
         });
         res.redirect(new URL('?success=password_reset', this.cfg.frontendRedirectUrl).toString());
     }

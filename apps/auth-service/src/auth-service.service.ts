@@ -6,7 +6,7 @@ import {
   AuthTokens,
   AuthResult,
   HealthResult,
-  LogoutResult,
+  SuccessResult,
   OAuthLoginDto,
   User,
   EVENTS,
@@ -129,7 +129,7 @@ export class AuthServiceService {
   }
 
   // logout
-  async logout(refresh_token: string): Promise<LogoutResult> {
+  async logout(refresh_token: string): Promise<SuccessResult> {
     if (refresh_token) {
       await this.tokensService.revoke(refresh_token);
     }
@@ -140,10 +140,10 @@ export class AuthServiceService {
   }
 
   // forget password
-  async forgetPassword(email: string): Promise<void> {
+  async forgetPassword(email: string): Promise<SuccessResult> {
     const user = await this.usersService.findByEmail(email);
     if (!user) {
-      return; 
+      return { success: true, message: 'Complete' }; 
     }
     const rawToken = await this.tokensService.issuePasswordResetToken(user.id);
     // Emit a fire-and-forget event to the Notification Service
@@ -154,10 +154,11 @@ export class AuthServiceService {
     // Fire-and-forget with safety catch
     this.emailService.sendPasswordReset(user.email, rawToken)
         .catch(err => console.error('Background email task failed:', err));
+    return { success: true, message: 'Complete' };
   }
 
   // reset password
-  async resetPassword(token: string, newPassword: string): Promise<void> {
+  async resetPassword(token: string, newPassword: string): Promise<SuccessResult> {
     const user_id = await this.tokensService.validatePasswordResetToken(token);
     if (!user_id) {
       throw rpcError(400, 'Invalid or expired reset token', 'Bad Request');
@@ -165,6 +166,7 @@ export class AuthServiceService {
 
     const passwordHash = await argon2.hash(newPassword);
     await this.usersService.updateUserPassword(user_id, passwordHash);
+    return { success: true, message: 'Password has been reset successfully' };
   }
 
   // ------------------ Helper Methods ------------------

@@ -14,7 +14,7 @@ import { TRANSPORTER_TOKEN } from '@app/contracts/queues.js';
         return nodemailer.createTransport({
           host: configService.get<string>('SMTP_HOST'),
           port: configService.get<number>('SMTP_PORT', 587),
-          secure: configService.get<boolean>('SMTP_SECURE', false),
+          secure: configService.get<string>('SMTP_SECURE') === 'true', 
           auth: {
             user: configService.get<string>('SMTP_USER'),
             pass: configService.get<string>('SMTP_PASS'),
