@@ -1,0 +1,117 @@
+import { Inject, Injectable } from '@nestjs/common';
+import { PrismaService } from '../prisma/prisma.service.js';
+import { ClientProxy } from '@nestjs/microservices';
+import { AUTH_PATTERNS, AUTH_SERVICE, rpcError, User } from '@app/contracts';
+import { ClubAccessService } from '../access/club-access.service.js';
+import {
+  Achievement,
+  MemberRole,
+  Paginated,
+} from '@app/contracts/club/club.types.js';
+import { now, rpc, toFullString } from '@app/common';
+import { CreateAchievementDto } from '@app/contracts/club/dto/index.js';
+
+@Injectable()
+export class AchievementsService {
+  constructor(
+    private readonly prisma: PrismaService,
+    @Inject(AUTH_SERVICE) private readonly authClient: ClientProxy,
+    private readonly clubAccessService: ClubAccessService,
+  ) {}
+
+  async getClubAchievements(
+    slug: string,
+    user_id: number,
+    page: number,
+    limit: number,
+  ): Promise<Paginated<Achievement>> {
+    const { club } = await this.clubAccessService.requireRole(
+      slug,
+      user_id,
+      MemberRole.MEMBER,
+    );
+    const achievements = await this.prisma.achievement.findMany({
+      where: { club_id: club.id },
+      skip: (page - 1) * limit,
+      take: limit,
+      orderBy: { taken_at: 'desc' },
+    });
+    const total = await this.prisma.achievement.count({
+      where: { club_id: club.id },
+    });
+
+    return {
+      data: achievements.map((achievement) => ({
+        ...achievement,
+        code: achievement.code as Achievement['code'],
+        taken_at: toFullString(achievement.taken_at),
+      })),
+      page,
+      limit,
+      total,
+    };
+  }
+
+  async createAchievement(
+    slug: string,
+    user_id: number,
+    body: CreateAchievementDto,
+  ): Promise<Achievement> {
+    const { club } = await this.clubAccessService.requireRole(
+      slug,
+      user_id,
+      MemberRole.LEADER,
+    );
+
+    // check if body.user_id is member of the club
+    const member = await this.clubAccessService.findMember(
+      club.id,
+      body.user_id,
+    );
+    if (!member) {
+      throw rpcError(400, 'User is not a member of the club', "Not Found");
+    }
+
+
+
+    const achievement = await this.prisma.achievement.create({
+      data: {
+        club_id: club.id,
+        user_id: body.user_id,
+        code: body.code,
+        awarded_by: user_id,
+        taken_at: now(),
+      },
+    });
+    return {
+      ...achievement,
+      code: achievement.code as Achievement['code'],
+      taken_at: toFullString(achievement.taken_at),
+    };
+  }
+
+  async deleteAchievement(
+    slug: string,
+    user_id: number,
+    achievement_id: number,
+  ): Promise<{status: number; message: string}> {
+    const { club } = await this.clubAccessService.requireRole(
+      slug,
+      user_id,
+      MemberRole.LEADER,
+    );
+
+    const achievement = await this.prisma.achievement.findUnique({
+      where: { id: achievement_id, club_id: club.id },
+    });
+    if (!achievement) {
+      throw rpcError(404, 'Achievement not found', "Not Found");
+    }
+
+    await this.prisma.achievement.delete({
+      where: { id: achievement_id },
+    });
+
+    return {status: 200, message: 'Achievement deleted successfully'};
+  }
+}
