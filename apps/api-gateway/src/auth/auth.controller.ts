@@ -7,8 +7,10 @@ import {
     RegisterDto,
     User,
     HealthResult,
-    LogoutResult,
+    SuccessResult,
     UpdateUserDto,
+    ForgetPasswordDto,
+    ResetPasswordDto,
 } from '@app/contracts';
 import {
     Body,
@@ -170,12 +172,33 @@ export class AuthController {
     async logout(
         @Req() req: Request,
         @Res({ passthrough: true }) res: Response,
-    ): Promise<LogoutResult> {
-        const msg = await rpc<LogoutResult>(this.authClient, AUTH_PATTERNS.LOGOUT, {
+    ): Promise<SuccessResult> {
+        const msg = await rpc<SuccessResult>(this.authClient, AUTH_PATTERNS.LOGOUT, {
             refreshToken: req.cookies?.[REFRESH_COOKIE] ?? '',
         });
         clearAuthCookies(res);
         return msg;
+    }
+
+    @HttpCode(202)
+    @Throttle({ default: { limit: REQUEST_LIMIT, ttl: REQUEST_TTL } })
+    @Post('forget-password')
+    async forgetPassword(@Body() dto: ForgetPasswordDto): Promise<SuccessResult> {
+        return await rpc<SuccessResult>(this.authClient, AUTH_PATTERNS.FORGET_PASSWORD, { email: dto.email });
+    }
+
+    @HttpCode(200)
+    @Throttle({ default: { limit: REQUEST_LIMIT, ttl: REQUEST_TTL } })
+    @Post('reset-password')
+    async resetPassword(
+        @Body() dto: ResetPasswordDto,
+        @Res({ passthrough: true }) res: Response,
+    ): Promise<void> {
+        await rpc<SuccessResult>(this.authClient, AUTH_PATTERNS.RESET_PASSWORD, {
+            token: dto.token,
+            password: dto.password,
+        });
+        res.redirect(new URL('?success=password_reset', this.cfg.frontendRedirectUrl).toString());
     }
 
     @Throttle({ default: { limit: REQUEST_LIMIT, ttl: REQUEST_TTL } })
@@ -208,7 +231,7 @@ export class AuthController {
     @Get('users/login-available')
     async isLoginAvailable(@Query('login') login: string): Promise<{ available: boolean }> {
         const available = await rpc<boolean>(this.authClient, AUTH_PATTERNS.IS_LOGIN_AVAILABLE, {
-            login: login.toLowerCase(),
+            login: login,
         });
         return { available };
     }

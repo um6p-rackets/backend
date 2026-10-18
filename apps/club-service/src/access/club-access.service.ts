@@ -15,11 +15,10 @@ export class ClubAccessService {
   }
 
   // active member of the club, or null
-  findMember(club_id: number, user_id: number) {
+  findMember(clubId: number, user_id: number) {
     return this.prisma.member.findFirst({
-      where: { club_id: club_id, user_id: user_id, left_at: null },
+      where: { club_id: clubId, user_id: user_id, left_at: null },
     });
-
   }
 
   // 404 if no club, 403 if not a member or the role is too low

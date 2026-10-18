@@ -20,10 +20,7 @@ import { JwtAuthGuard } from './common/guards/jwt-auth.guard.js';
       envFilePath: envFiles('api-gateway'),
       validationSchema: Joi.object({
         RABBITMQ_URL: Joi.string().uri().required(),
-        JWT_ACCESS_SECRET: Joi.string().required(),
         JWT_ACCESS_EXPIRES_IN: Joi.string().required(),
-        GOOGLE_CLIENT_ID: Joi.string().required(),
-        GOOGLE_CLIENT_SECRET: Joi.string().required(),
         GOOGLE_REDIRECT_URI: Joi.string().uri().required(),
         FRONTEND_REDIRECT_URL: Joi.string().uri().required(),
       }),

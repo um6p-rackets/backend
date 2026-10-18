@@ -46,6 +46,7 @@ lerna-debug.log*
 .env.production.local
 .env.local
 apps/api-gateway/.env.development
+apps/auth-service/.env.development
 
 # temp directory
 .temp

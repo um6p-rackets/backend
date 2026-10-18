@@ -31,13 +31,14 @@ export class JwtAuthGuard implements CanActivate {
 
         // 3. PRODUCTION FLOW: Extract and verify the JWT
         const token = req.cookies?.[ACCESS_COOKIE];
-        if (!token) throw new UnauthorizedException('Authentication token missing');
+        if (!token)
+            throw new UnauthorizedException('Authentication token missing');
 
         try {
             const payload = await this.jwt.verifyAsync<JwtPayload>(token, { algorithms: ['HS256'] });
             const id = Number(payload.sub);
             // JwtAuthGuard still accepts the OAuth cookie token as an access token we don't want to accept it
-            if (!Number.isInteger(id) || id <= 0 || !payload.login || (payload as any).aud) {
+            if (!Number.isInteger(id) || id <= 0 || !payload.login) {
                 throw new Error('not an access token');
             }
             req.user = { id, login: payload.login } satisfies AuthenticatedUser
