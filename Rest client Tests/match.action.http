@@ -1,7 +1,208 @@
-@API = http://localhost:3000/api/v1
-@PENDING_MATCH = 34
+############################################################
+#                                                          #
+#                 MEMBER ACTIONS  -  PART 3                #
+#          Test: accept  /  cancel  /  result              #
+#                                                          #
+############################################################
+#
+#  POST /clubs/:slug/matches/:match_id/accept   (leader or coach)
+#  POST /clubs/:slug/matches/:match_id/cancel   (see section 2)
+#  POST /clubs/:slug/matches/:match_id/result   (the referee only)
+#
+#  Who is who (tennis club, fresh seed)
+#    nsila .......... member 4 (user7@gmail.com), plain member
+#                     (promoted to leader in section 1, demoted at its end)
+#    tennis coach ... member 1 (coach.tennis@example.com)
+#    padel coach .... member 12 of ANOTHER club
+#    members 5, 6, 7  fake users: they can be opponents, they cannot log in
+#
+#  Error codes
+#    400 = bad input (ids, body shape)
+#    401 = not logged in
+#    403 = wrong role or not allowed
+#    404 = club or match not found (or the match is in another club)
+#    409 = the match is in the wrong state (already accepted, finished...)
+#    422 = a match rule failed (referee is a player, date, draw...)
+#
+#  The 12 test matches (each has a location label starting with T-)
+#
+#    name   requested by   used for
+#    -----  -------------  -------------------------------------------
+#    ACC    nsila          accept ok, first accept wins, cancel by player
+#    OWN    nsila          leader accepts his own match (422), referee cancels
+#    MINE   nsila          pending, cancelled by the requester
+#    BYL    nsila          pending, cancelled by a leader
+#    COWN   coach          the coach is a player (422), then nsila is referee
+#    CPEN   coach          pending, a stranger cannot cancel it (403)
+#    EXP    nsila          pending but the date has passed (expired)
+#    LATE   nsila          confirmed, already started, cancel after start
+#    RES1   nsila          result: team 1 wins
+#    RES2   nsila          result before the start (422)
+#    RES3   nsila          result on a pending match (409)
+#    RES4   nsila          result: team 2 wins
+#
+############################################################
 
-### 0.a login as tennis coach
+@API = http://localhost:3000/api/v1
+
+@ME = 4
+@P1 = 5
+@P2 = 6
+@P3 = 7
+
+# seed matches of the tennis club
+@SEED_FINISHED = 1
+@SEED_UPCOMING = 4
+
+# match ids, filled automatically by step 0 (do not edit)
+@ACC = {{acc.response.body.$.pending_match_id}}
+@OWN = {{own.response.body.$.pending_match_id}}
+@MINE = {{mine.response.body.$.pending_match_id}}
+@BYL = {{byl.response.body.$.pending_match_id}}
+@COWN = {{cown.response.body.$.pending_match_id}}
+@CPEN = {{cpen.response.body.$.pending_match_id}}
+@EXP = {{exp.response.body.$.pending_match_id}}
+@LATE = {{late.response.body.$.pending_match_id}}
+@RES1 = {{res1.response.body.$.pending_match_id}}
+@RES2 = {{res2.response.body.$.pending_match_id}}
+@RES3 = {{res3.response.body.$.pending_match_id}}
+@RES4 = {{res4.response.body.$.pending_match_id}}
+
+
+############################################################
+#  0.  SETUP  (create the 12 matches)
+############################################################
+
+### 0.1  Login as nsila
+POST {{API}}/auth/login
+Content-Type: application/json
+
+{
+  "email": "user7@gmail.com",
+  "password": "abdellahnsila123#002"
+}
+
+### 0.2  ACC  (nsila vs member 5)
+# @name acc
+POST {{API}}/clubs/tennis/matches/request
+Content-Type: application/json
+
+{
+  "mode": 1,
+  "opponent_ids": [{{P1}}],
+  "location": "T-ACCEPT",
+  "scheduled_at": "{{$datetime iso8601 3 d}}"
+}
+
+### 0.3  OWN  (nsila vs member 6)
+# @name own
+POST {{API}}/clubs/tennis/matches/request
+Content-Type: application/json
+
+{
+  "mode": 1,
+  "opponent_ids": [{{P2}}],
+  "location": "T-OWN",
+  "scheduled_at": "{{$datetime iso8601 4 d}}"
+}
+
+### 0.4  MINE  (nsila vs member 7)
+# @name mine
+POST {{API}}/clubs/tennis/matches/request
+Content-Type: application/json
+
+{
+  "mode": 1,
+  "opponent_ids": [{{P3}}],
+  "location": "T-MINE",
+  "scheduled_at": "{{$datetime iso8601 5 d}}"
+}
+
+### 0.5  BYL  (nsila vs member 5)
+# @name byl
+POST {{API}}/clubs/tennis/matches/request
+Content-Type: application/json
+
+{
+  "mode": 1,
+  "opponent_ids": [{{P1}}],
+  "location": "T-BYLEADER",
+  "scheduled_at": "{{$datetime iso8601 6 d}}"
+}
+
+### 0.6  EXP  (nsila vs member 7, moved to the past later)
+# @name exp
+POST {{API}}/clubs/tennis/matches/request
+Content-Type: application/json
+
+{
+  "mode": 1,
+  "opponent_ids": [{{P3}}],
+  "location": "T-PAST-EXPIRED",
+  "scheduled_at": "{{$datetime iso8601 10 s}}"
+}
+
+### 0.7  LATE  (nsila vs member 5, moved to the past later)
+# @name late
+POST {{API}}/clubs/tennis/matches/request
+Content-Type: application/json
+
+{
+  "mode": 1,
+  "opponent_ids": [{{P1}}],
+  "location": "T-PAST-LATE",
+  "scheduled_at": "{{$datetime iso8601 10 d}}"
+}
+
+### 0.8  RES1  (nsila vs member 5, moved to the past later)
+# @name res1
+POST {{API}}/clubs/tennis/matches/request
+Content-Type: application/json
+
+{
+  "mode": 1,
+  "opponent_ids": [{{P1}}],
+  "location": "T-PAST-RESULT-1",
+  "scheduled_at": "{{$datetime iso8601 11 d}}"
+}
+
+### 0.9  RES2  (nsila vs member 6, stays in the future)
+# @name res2
+POST {{API}}/clubs/tennis/matches/request
+Content-Type: application/json
+
+{
+  "mode": 1,
+  "opponent_ids": [{{P2}}],
+  "location": "T-FUTURE-RESULT",
+  "scheduled_at": "{{$datetime iso8601 12 d}}"
+}
+
+### 0.10  RES3  (nsila vs member 7, stays pending)
+# @name res3
+POST {{API}}/clubs/tennis/matches/request
+Content-Type: application/json
+
+{
+  "mode": 1,
+  "opponent_ids": [{{P3}}],
+  "location": "T-PENDING-RESULT",
+  "scheduled_at": "{{$datetime iso8601 13 d}}"
+}
+
+### 0.11  RES4  (nsila vs member 5, moved to the past later)
+# @name res4
+POST {{API}}/clubs/tennis/matches/request
+Content-Type: application/json
+
+{
+  "mode": 1,
+  "opponent_ids": [{{P1}}],
+  "location": "T-PAST-RESULT-4",
+  "scheduled_at": "{{$datetime iso8601 14 d}}"
+}
+
+### 0.12  Login as the tennis coach
 POST {{API}}/auth/login
 Content-Type: application/json
 
@@ -10,5 +211,587 @@ Content-Type: application/json
   "password": "abdellahnsila123#002"
 }
 
-### 1 Accept pending match (seed #34, nsila is player1)
-POST {{API}}/clubs/tennis/matches/{{PENDING_MATCH}}/cancel
+### 0.13  COWN  (coach vs member 5, moved to the past later)
+# @name cown
+POST {{API}}/clubs/tennis/matches/request
+Content-Type: application/json
+
+{
+  "mode": 1,
+  "opponent_ids": [{{P1}}],
+  "location": "T-PAST-COACH-OWN",
+  "scheduled_at": "{{$datetime iso8601 7 d}}"
+}
+
+### 0.14  CPEN  (coach vs member 6)
+# @name cpen
+POST {{API}}/clubs/tennis/matches/request
+Content-Type: application/json
+
+{
+  "mode": 1,
+  "opponent_ids": [{{P2}}],
+  "location": "T-COACH-PENDING",
+  "scheduled_at": "{{$datetime iso8601 8 d}}"
+}
+
+### 0.15  Check: the coach sees 12 new pending matches with the T- labels
+GET {{API}}/clubs/tennis/matches?status=pending&limit=50
+
+
+############################################################
+#  1.  ACCEPT   POST /matches/:match_id/accept
+############################################################
+
+### 1.1  Login as nsila (plain member)
+POST {{API}}/auth/login
+Content-Type: application/json
+
+{
+  "email": "user7@gmail.com",
+  "password": "abdellahnsila123#002"
+}
+
+### 1.2  A plain member accepts (expect 403)
+POST {{API}}/clubs/tennis/matches/{{ACC}}/accept
+
+### 1.3  Login as the tennis coach
+POST {{API}}/auth/login
+Content-Type: application/json
+
+{
+  "email": "coach.tennis@example.com",
+  "password": "abdellahnsila123#002"
+}
+
+### 1.4  The coach accepts ACC (expect success, status 1, ref_id = 1)
+POST {{API}}/clubs/tennis/matches/{{ACC}}/accept
+
+### 1.5  Check ACC (expect status 1, referee = coach_tennis, member_id 1)
+GET {{API}}/clubs/tennis/matches/{{ACC}}
+
+### 1.6  Accept ACC again (expect 409, already accepted)
+POST {{API}}/clubs/tennis/matches/{{ACC}}/accept
+
+### 1.7  The coach accepts HIS OWN match COWN (expect 422, the referee cannot be a player)
+POST {{API}}/clubs/tennis/matches/{{COWN}}/accept
+
+### 1.8  Accept a finished match, seed #1 (expect 409)
+POST {{API}}/clubs/tennis/matches/{{SEED_FINISHED}}/accept
+
+### 1.9  Accept a match that is already confirmed, seed #4 (expect 409)
+POST {{API}}/clubs/tennis/matches/{{SEED_UPCOMING}}/accept
+
+### 1.10  Promote nsila to leader, so we have a second leader who can accept
+PATCH {{API}}/clubs/tennis/members/{{ME}}/role
+Content-Type: application/json
+
+{
+  "role": 1
+}
+
+### 1.11  Login as nsila (now a leader)
+POST {{API}}/auth/login
+Content-Type: application/json
+
+{
+  "email": "user7@gmail.com",
+  "password": "abdellahnsila123#002"
+}
+
+### 1.12  nsila accepts HIS OWN match OWN (expect 422, a leader who plays cannot referee)
+POST {{API}}/clubs/tennis/matches/{{OWN}}/accept
+
+### 1.13  nsila accepts the coach's match COWN (expect success, ref_id = 4)
+POST {{API}}/clubs/tennis/matches/{{COWN}}/accept
+
+### 1.14  nsila accepts ACC, but the coach was first (expect 409, the first accept wins)
+POST {{API}}/clubs/tennis/matches/{{ACC}}/accept
+
+### 1.15  Login as the tennis coach to accept the matches used later
+POST {{API}}/auth/login
+Content-Type: application/json
+
+{
+  "email": "coach.tennis@example.com",
+  "password": "abdellahnsila123#002"
+}
+
+### 1.16  Accept OWN (expect success)
+POST {{API}}/clubs/tennis/matches/{{OWN}}/accept
+
+### 1.17  Accept LATE (expect success)
+POST {{API}}/clubs/tennis/matches/{{LATE}}/accept
+
+### 1.18  Accept RES1 (expect success)
+POST {{API}}/clubs/tennis/matches/{{RES1}}/accept
+
+### 1.19  Accept RES2 (expect success)
+POST {{API}}/clubs/tennis/matches/{{RES2}}/accept
+
+### 1.20  Accept RES4 (expect success)
+POST {{API}}/clubs/tennis/matches/{{RES4}}/accept
+
+
+############################################################
+#  >>>  DATABASE STEP  (run in the terminal, not in this file)
+############################################################
+#
+#  Move 5 matches 2 hours into the past, so they have "already started":
+#    COWN, LATE, RES1, RES4  (confirmed)   and   EXP (still pending)
+#
+#  docker exec -e PGPASSWORD=1337 database psql -h 127.0.0.1 -U club_service -d rackets_db -c "UPDATE club_schema.matches SET scheduled_at = now() - interval '2 hours' WHERE location LIKE 'T-PAST-%' AND status IN (0,1);"
+#
+#  expect: UPDATE 5
+#
+############################################################
+
+### 1.21  Accept EXP, a pending match whose date has passed (expect 422)
+POST {{API}}/clubs/tennis/matches/{{EXP}}/accept
+
+### 1.22  Match that does not exist (expect 404)
+POST {{API}}/clubs/tennis/matches/99999/accept
+
+### 1.23  Id is text (expect 400)
+POST {{API}}/clubs/tennis/matches/abc/accept
+
+### 1.24  Id is 0 (expect 400)
+POST {{API}}/clubs/tennis/matches/0/accept
+
+### 1.25  Id is negative (expect 400)
+POST {{API}}/clubs/tennis/matches/-1/accept
+
+### 1.26  Club that does not exist (expect 404)
+POST {{API}}/clubs/not-a-club/matches/{{BYL}}/accept
+
+### 1.27  Login as the PADEL coach
+POST {{API}}/auth/login
+Content-Type: application/json
+
+{
+  "email": "coach.padel@example.com",
+  "password": "abdellahnsila123#002"
+}
+
+### 1.28  Padel coach accepts a tennis match through the tennis URL (expect 403, not a member)
+POST {{API}}/clubs/tennis/matches/{{BYL}}/accept
+
+### 1.29  Padel coach accepts a tennis match through his OWN club URL (expect 404)
+POST {{API}}/clubs/padel/matches/{{BYL}}/accept
+
+### 1.30  Not logged in (expect 401)
+POST {{API}}/auth/logout
+
+###
+POST {{API}}/clubs/tennis/matches/{{BYL}}/accept
+
+### 1.31  Login as the coach and demote nsila back to a plain member
+POST {{API}}/auth/login
+Content-Type: application/json
+
+{
+  "email": "coach.tennis@example.com",
+  "password": "abdellahnsila123#002"
+}
+
+###
+PATCH {{API}}/clubs/tennis/members/{{ME}}/role
+Content-Type: application/json
+
+{
+  "role": 0
+}
+
+
+############################################################
+#  2.  CANCEL   POST /matches/:match_id/cancel
+############################################################
+#
+#  Who can cancel
+#    pending ................ the requester or a leader
+#    confirmed, before start  any player, the referee or a leader
+#    confirmed, after start . the referee or a leader only
+#    finished or cancelled .. nobody (409)
+#
+############################################################
+
+### 2.1  Login as nsila (plain member again)
+POST {{API}}/auth/login
+Content-Type: application/json
+
+{
+  "email": "user7@gmail.com",
+  "password": "abdellahnsila123#002"
+}
+
+### 2.2  nsila cancels the coach's pending match CPEN, he is a stranger (expect 403)
+POST {{API}}/clubs/tennis/matches/{{CPEN}}/cancel
+
+### 2.3  nsila cancels MINE, he is the requester (expect success, status 3)
+POST {{API}}/clubs/tennis/matches/{{MINE}}/cancel
+
+### 2.4  Check MINE (expect status 3, cancelled_at filled, ref_id null)
+GET {{API}}/clubs/tennis/matches/{{MINE}}
+
+### 2.5  Cancel MINE again (expect 409, already cancelled)
+POST {{API}}/clubs/tennis/matches/{{MINE}}/cancel
+
+### 2.6  nsila cancels ACC, confirmed and not started, he is a player (expect success)
+POST {{API}}/clubs/tennis/matches/{{ACC}}/cancel
+
+###@## 2.7  nsila cancels LATE, confirmed and already STARTED, he is only a player (expect 403)
+POST {{API}}/clubs/tennis/matches/{{LATE}}/cancel
+
+### 2.8  nsila cancels a finished match, seed #1 (expect 409)
+POST {{API}}/clubs/tennis/matches/{{SEED_FINISHED}}/cancel
+
+### 2.9  Login as the tennis coach (a leader)
+POST {{API}}/auth/login
+Content-Type: application/json
+
+{
+  "email": "coach.tennis@example.com",
+  "password": "abdellahnsila123#002"
+}
+
+### 2.10  The coach cancels BYL, a pending match of someone else (expect success)
+POST {{API}}/clubs/tennis/matches/{{BYL}}/cancel
+
+### 2.11  The coach cancels his own pending match CPEN (expect success)
+POST {{API}}/clubs/tennis/matches/{{CPEN}}/cancel
+
+### 2.12  Accept the cancelled CPEN (expect 409)
+POST {{API}}/clubs/tennis/matches/{{CPEN}}/accept
+
+### 2.13  The coach (referee of OWN) cancels it before the start (expect success)
+POST {{API}}/clubs/tennis/matches/{{OWN}}/cancel
+
+### 2.14  The coach (referee of LATE) cancels it AFTER the start (expect success)
+POST {{API}}/clubs/tennis/matches/{{LATE}}/cancel
+
+### 2.15  The coach clears EXP, the expired pending match (expect success)
+POST {{API}}/clubs/tennis/matches/{{EXP}}/cancel
+
+### 2.16  Check cancelled_by (expect 1 for BYL, CPEN, OWN, LATE, EXP, and 4 for MINE and ACC)
+GET {{API}}/clubs/tennis/matches?status=cancelled&limit=50
+
+### 2.17  Match that does not exist (expect 404)
+POST {{API}}/clubs/tennis/matches/99999/cancel
+
+### 2.18  Id is text (expect 400)
+POST {{API}}/clubs/tennis/matches/abc/cancel
+
+### 2.19  Id is 0 (expect 400)
+POST {{API}}/clubs/tennis/matches/0/cancel
+
+### 2.20  Club that does not exist (expect 404)
+POST {{API}}/clubs/not-a-club/matches/{{RES2}}/cancel
+
+### 2.21  Login as the PADEL coach
+POST {{API}}/auth/login
+Content-Type: application/json
+
+{
+  "email": "coach.padel@example.com",
+  "password": "abdellahnsila123#002"
+}
+
+### 2.22  Padel coach cancels a tennis match through the tennis URL (expect 403)
+POST {{API}}/clubs/tennis/matches/{{RES2}}/cancel
+
+### 2.23  Padel coach cancels a tennis match through his OWN club URL (expect 404)
+POST {{API}}/clubs/padel/matches/{{RES2}}/cancel
+
+### 2.24  Not logged in (expect 401)
+POST {{API}}/auth/logout
+
+###
+POST {{API}}/clubs/tennis/matches/{{RES2}}/cancel
+
+
+############################################################
+#  3.  RESULT   POST /matches/:match_id/result
+############################################################
+#
+#  Rules
+#    only the referee, only on a confirmed match, only after the start
+#    whole scores from 0, no draw, the higher score wins
+#    winner +10 points, loser -5 points, a finished match never changes
+#
+############################################################
+
+### 3.1  Login as nsila (a player of RES1, not the referee)
+POST {{API}}/auth/login
+Content-Type: application/json
+
+{
+  "email": "user7@gmail.com",
+  "password": "abdellahnsila123#002"
+}
+
+### 3.2  A player who is not the referee sends the result (expect 403)
+POST {{API}}/clubs/tennis/matches/{{RES1}}/result
+Content-Type: application/json
+
+{
+  "team1_score": 21,
+  "team2_score": 15
+}
+
+### 3.3  Login as the PADEL coach
+POST {{API}}/auth/login
+Content-Type: application/json
+
+{
+  "email": "coach.padel@example.com",
+  "password": "abdellahnsila123#002"
+}
+
+### 3.4  Padel coach, not a member of tennis (expect 403)
+POST {{API}}/clubs/tennis/matches/{{RES1}}/result
+Content-Type: application/json
+
+{
+  "team1_score": 21,
+  "team2_score": 15
+}
+
+### 3.5  Login as the tennis coach (referee of RES1, RES2, RES4)
+POST {{API}}/auth/login
+Content-Type: application/json
+
+{
+  "email": "coach.tennis@example.com",
+  "password": "abdellahnsila123#002"
+}
+
+### 3.6  Draw 15 to 15 (expect 422)
+POST {{API}}/clubs/tennis/matches/{{RES1}}/result
+Content-Type: application/json
+
+{
+  "team1_score": 15,
+  "team2_score": 15
+}
+
+### 3.7  Draw 0 to 0 (expect 422)
+POST {{API}}/clubs/tennis/matches/{{RES1}}/result
+Content-Type: application/json
+
+{
+  "team1_score": 0,
+  "team2_score": 0
+}
+
+### 3.8  Negative score (expect 400)
+POST {{API}}/clubs/tennis/matches/{{RES1}}/result
+Content-Type: application/json
+
+{
+  "team1_score": -1,
+  "team2_score": 15
+}
+
+### 3.9  Score is text (expect 400)
+POST {{API}}/clubs/tennis/matches/{{RES1}}/result
+Content-Type: application/json
+
+{
+  "team1_score": "abc",
+  "team2_score": 15
+}
+
+### 3.10  Score with decimals (expect 400)
+POST {{API}}/clubs/tennis/matches/{{RES1}}/result
+Content-Type: application/json
+
+{
+  "team1_score": 21.5,
+  "team2_score": 15
+}
+
+### 3.11  team2_score missing (expect 400)
+POST {{API}}/clubs/tennis/matches/{{RES1}}/result
+Content-Type: application/json
+
+{
+  "team1_score": 21
+}
+
+### 3.12  Empty body (expect 400)
+POST {{API}}/clubs/tennis/matches/{{RES1}}/result
+Content-Type: application/json
+
+{}
+
+### 3.13  The client tries to choose the winner (expect 400)
+POST {{API}}/clubs/tennis/matches/{{RES1}}/result
+Content-Type: application/json
+
+{
+  "team1_score": 5,
+  "team2_score": 21,
+  "winner_id": 1
+}
+
+### 3.14  Before the start, RES2 is in the future (expect 422)
+POST {{API}}/clubs/tennis/matches/{{RES2}}/result
+Content-Type: application/json
+
+{
+  "team1_score": 21,
+  "team2_score": 15
+}
+
+### 3.15  On a pending match, RES3 has no referee (expect 409, the status is checked before the date)
+POST {{API}}/clubs/tennis/matches/{{RES3}}/result
+Content-Type: application/json
+
+{
+  "team1_score": 21,
+  "team2_score": 15
+}
+
+### 3.16  On a cancelled match, MINE (expect 409)
+POST {{API}}/clubs/tennis/matches/{{MINE}}/result
+Content-Type: application/json
+
+{
+  "team1_score": 21,
+  "team2_score": 15
+}
+
+### 3.17  RES1: team 1 wins 21 to 15 (expect success)
+POST {{API}}/clubs/tennis/matches/{{RES1}}/result
+Content-Type: application/json
+
+{
+  "team1_score": 21,
+  "team2_score": 15
+}
+
+### 3.18  Check RES1 (expect status 2, scores 21 and 15, winner = team 1,
+###       team1_points 10, team2_points -5, referee still the coach)
+GET {{API}}/clubs/tennis/matches/{{RES1}}
+
+### 3.19  A second result on RES1 (expect 409, a finished match never changes)
+POST {{API}}/clubs/tennis/matches/{{RES1}}/result
+Content-Type: application/json
+
+{
+  "team1_score": 5,
+  "team2_score": 21
+}
+
+### 3.20  Check RES1 again (expect NOTHING changed, still 21 and 15)
+GET {{API}}/clubs/tennis/matches/{{RES1}}
+
+### 3.21  Cancel the finished RES1 (expect 409)
+POST {{API}}/clubs/tennis/matches/{{RES1}}/cancel
+
+### 3.22  Accept the finished RES1 (expect 409)
+POST {{API}}/clubs/tennis/matches/{{RES1}}/accept
+
+### 3.23  RES4: team 2 wins 12 to 21 (expect success)
+POST {{API}}/clubs/tennis/matches/{{RES4}}/result
+Content-Type: application/json
+
+{
+  "team1_score": 12,
+  "team2_score": 21
+}
+
+### 3.24  Check RES4 (expect winner = team 2, team1_points -5, team2_points 10)
+GET {{API}}/clubs/tennis/matches/{{RES4}}
+
+### 3.25  A leader who is NOT the referee, the coach plays COWN and nsila referees it (expect 403)
+POST {{API}}/clubs/tennis/matches/{{COWN}}/result
+Content-Type: application/json
+
+{
+  "team1_score": 21,
+  "team2_score": 10
+}
+
+### 3.26  Login as nsila, he is only a plain member now, but he IS the referee of COWN
+POST {{API}}/auth/login
+Content-Type: application/json
+
+{
+  "email": "user7@gmail.com",
+  "password": "abdellahnsila123#002"
+}
+
+### 3.27  The referee sends the result, his role does not matter (expect success)
+POST {{API}}/clubs/tennis/matches/{{COWN}}/result
+Content-Type: application/json
+
+{
+  "team1_score": 21,
+  "team2_score": 10
+}
+
+### 3.28  Match that does not exist (expect 404)
+POST {{API}}/clubs/tennis/matches/99999/result
+Content-Type: application/json
+
+{
+  "team1_score": 21,
+  "team2_score": 10
+}
+
+### 3.29  Id is text (expect 400)
+POST {{API}}/clubs/tennis/matches/abc/result
+Content-Type: application/json
+
+{
+  "team1_score": 21,
+  "team2_score": 10
+}
+
+### 3.30  Club that does not exist (expect 404)
+POST {{API}}/clubs/not-a-club/matches/{{RES1}}/result
+Content-Type: application/json
+
+{
+  "team1_score": 21,
+  "team2_score": 10
+}
+
+### 3.31  Not logged in (expect 401)
+POST {{API}}/auth/logout
+
+###
+POST {{API}}/clubs/tennis/matches/{{RES2}}/result
+Content-Type: application/json
+
+{
+  "team1_score": 21,
+  "team2_score": 10
+}
+
+
+############################################################
+#  DATABASE CHECK  (run in the terminal, not in this file)
+############################################################
+#
+#  docker exec -e PGPASSWORD=1337 database psql -h 127.0.0.1 -U club_service -d rackets_db -c "SELECT location, status, ref_id, cancelled_by, team1_score AS s1, team2_score AS s2, team1_points AS p1, team2_points AS p2, winner_id FROM club_schema.matches WHERE location LIKE 'T-%' ORDER BY id;"
+#
+#  What you must see at the end
+#
+#    location            status  ref  cancelled_by  scores   points
+#    ------------------  ------  ---  ------------  -------  --------
+#    T-ACCEPT               3     1        4          0-0      0/0
+#    T-OWN                  3     1        1          0-0      0/0
+#    T-MINE                 3    null      4          0-0      0/0
+#    T-BYLEADER             3    null      1          0-0      0/0
+#    T-PAST-COACH-OWN       2     4       null       21-10    10/-5
+#    T-COACH-PENDING        3    null      1          0-0      0/0
+#    T-PAST-EXPIRED         3    null      1          0-0      0/0
+#    T-PAST-LATE            3     1        1          0-0      0/0
+#    T-PAST-RESULT-1        2     1       null       21-15    10/-5
+#    T-FUTURE-RESULT        1     1       null        0-0      0/0
+#    T-PENDING-RESULT       0    null     null        0-0      0/0
+#    T-PAST-RESULT-4        2     1       null       12-21    -5/10
+#
+############################################################
