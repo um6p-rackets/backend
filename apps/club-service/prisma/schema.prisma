@@ -176,7 +176,6 @@ model Match {
 model ClubDocument {
   id          Int     @id @default(autoincrement())
   club_id     Int
-  key         Int
   title       String  @db.VarChar(255)
   description String?
   path        String
