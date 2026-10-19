@@ -427,7 +427,11 @@ export class MatchesService {
     );
 
     const match = await this.prisma.match.findUnique({
-      where: { club_id: club.id, id: match_id }
+      where: { club_id: club.id, id: match_id },
+      include: {
+        team1: teamInclude,
+        team2: teamInclude,
+      },
     });
     if (!match) throw rpcError(404, 'Match not found', 'Not Found');
 
@@ -438,6 +442,31 @@ export class MatchesService {
         'Bad Request',
       );
     }
+
+    console.log('match.scheduled_at:', match.scheduled_at, 'new Date():', new Date());
+    if (match.scheduled_at <= new Date()) {
+      throw rpcError(
+        422,
+        'Cannot accept a match whose scheduled time has already passed',
+        'Unprocessable Entity',
+      );
+    }
+
+    // leader+ can't accept a match that they are part of
+    const isInMatch =
+      match.team1.player1_id === member.id ||
+      match.team1.player2_id === member.id ||
+      match.team2.player1_id === member.id ||
+      match.team2.player2_id === member.id;
+
+    if (isInMatch) {
+      throw rpcError(
+        403,
+        'You cannot accept a match that you are part of',
+        'Forbidden',
+      );
+    }
+    
 
     // accept the match
     await this.prisma.match.update({
@@ -484,7 +513,7 @@ export class MatchesService {
       match.team2.player1_id === member.id ||
       match.team2.player2_id === member.id;
 
-    if (!isInMatch && member.role !== MemberRole.LEADER) {
+    if (!isInMatch && member.role < MemberRole.LEADER) {
       throw rpcError(
         403,
         'You do not have permission to cancel this match',
@@ -492,8 +521,8 @@ export class MatchesService {
       );
     }
 
-    // if the match is confirmed, only a leader can cancel it
-    if (match.status === MatchStatus.CONFIRMED && member.role !== MemberRole.LEADER) {
+    // if the match is confirmed, only a leader+ can cancel it
+    if (match.status === MatchStatus.CONFIRMED && member.role < MemberRole.LEADER) {
       throw rpcError(
         403,
         'Only a leader can cancel a confirmed match',
@@ -514,7 +543,7 @@ export class MatchesService {
     slug: string,
     user_id: number,
     match_id: number,
-    body: MatchResultDto,
+    result: MatchResultDto,
   ): Promise<{ status: number; message: string }> {
     const { club, member } = await this.clubAccessService.requireRole(
       slug,
@@ -551,9 +580,9 @@ export class MatchesService {
 
     // determine the winner
     let winner_id: number | null = null;
-    if (body.team1_score > body.team2_score) {
+    if (result.team1_score > result.team2_score) {
       winner_id = match.team1.id;
-    } else if (body.team2_score > body.team1_score) {
+    } else if (result.team2_score > result.team1_score) {
       winner_id = match.team2.id;
     }
 
@@ -561,10 +590,10 @@ export class MatchesService {
     await this.prisma.match.update({
       where: { club_id: club.id, id: match_id },
       data: {
-        team1_score: body.team1_score,
-        team2_score: body.team2_score,
-        team1_points: body.team1_score > body.team2_score ? 3 : body.team1_score === body.team2_score ? 1 : 0,
-        team2_points: body.team2_score > body.team1_score ? 3 : body.team1_score === body.team2_score ? 1 : 0,
+        team1_score: result.team1_score,
+        team2_score: result.team2_score,
+        team1_points: result.team1_score > result.team2_score ? 3 : result.team1_score === result.team2_score ? 1 : 0,
+        team2_points: result.team2_score > result.team1_score ? 3 : result.team1_score === result.team2_score ? 1 : 0,
         winner_id: winner_id,
         status: MatchStatus.FINISHED,
       },

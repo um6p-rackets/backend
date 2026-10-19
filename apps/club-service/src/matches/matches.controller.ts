@@ -35,7 +35,7 @@ export class MatchesController {
   }
 
   @MessagePattern(CLUB_PATTERNS.POST_CLUB_MATCH_RESULT)
-  async submitMatchResult(data: { slug: string; user_id: number; match_id: number; body: MatchResultDto }) {
-    return await this.matchesService.submitMatchResult(data.slug, data.user_id, data.match_id, data.body);
+  async submitMatchResult(data: { slug: string; user_id: number; match_id: number; result: MatchResultDto }) {
+    return await this.matchesService.submitMatchResult(data.slug, data.user_id, data.match_id, data.result);
   }
 }
