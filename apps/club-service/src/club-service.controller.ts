@@ -31,4 +31,9 @@ export class ClubServiceController {
   async updateClub(data: { club_slug: string; user_id: number; body: UpdateClubDto }): Promise<Club> {
     return this.clubServiceService.updateClub(data.club_slug, data.user_id, data.body);
   }
+
+  @MessagePattern(CLUB_PATTERNS.GET_CLUB_LEADERBOARD)
+  async getClubLeaderboard(data: { club_slug: string; user_id: number; page: number; limit: number }) {
+    return this.clubServiceService.getClubLeaderboard(data.club_slug, data.user_id, data.page, data.limit);
+  }
 }

@@ -1,0 +1,299 @@
+############################################################
+#                                                          #
+#                       LEADERBOARD                        #
+#                Test: GET /:slug/leaderboard              #
+#                                                          #
+############################################################
+#
+#  How points work
+#    every PLAYER of a finished match gets the points of his team:
+#    winner team +10 each, loser team -5 each
+#    pending, upcoming and cancelled matches never count
+#
+#  Order
+#    1. points (highest first)   2. wins   3. older member first
+#    everyone appears, with 0 points if they never played
+#
+#  Real users: member 1 (coach_tennis) and member 4 (nsila) show a
+#  login and names. The other seeded members are not in the auth
+#  service, so they show only their member_id.
+#
+#  EXPECTED RANKING  (fresh seed + matches parts 1, 2 and 3 done)
+#
+#    rank  member  points  wins  losses
+#    ----  ------  ------  ----  ------
+#      1     4       15      2      1      nsila
+#      2     1       10      1      0      coach_tennis
+#      3     7       10      1      0
+#      4     8       10      1      0
+#      5     9       10      1      0
+#      6     2        0      0      0
+#      7     3        0      0      0
+#      8     5       -5      1      3
+#      9     6       -5      0      1
+#     10    10       -5      0      1
+#     11    11       -5      0      1
+#
+#  If you did not run those parts, your numbers are different:
+#  use the SQL check at the bottom to see the real ones.
+#
+############################################################
+
+@API = http://localhost:3000/api/v1
+
+# filled automatically in section F (do not edit)
+@LIVE = {{live.response.body.$.pending_match_id}}
+
+
+############################################################
+#  0.  SETUP
+############################################################
+
+### 0.1  Login as nsila (member 4, plain member)
+POST {{API}}/auth/login
+Content-Type: application/json
+
+{
+  "email": "user7@gmail.com",
+  "password": "abdellahnsila123#002"
+}
+
+
+############################################################
+#  A.  THE FULL RANKING
+############################################################
+
+### A1  All 11 members in one page
+###     expect: total 11 and EXACTLY the table at the top of this file
+GET {{API}}/clubs/tennis/leaderboard?limit=50
+
+### A2  No query at all
+###     expect: page 1 and limit 10 (the default of the contract),
+###     rank 1 = member 4, total 11
+GET {{API}}/clubs/tennis/leaderboard
+
+### A3  Check the shape of ONE item
+###     expect: rank, points, wins, losses and player { member_id, ... }
+###     rank 1 has player.login of nsila, rank 2 has coach_tennis
+GET {{API}}/clubs/tennis/leaderboard?limit=2
+
+
+############################################################
+#  B.  PAGINATION  (rank keeps counting across pages)
+############################################################
+
+### B1  Page 1, 3 per page
+###     expect: ranks 1, 2, 3 = members 4, 1, 7
+GET {{API}}/clubs/tennis/leaderboard?limit=3&page=1
+
+### B2  Page 2, 3 per page
+###     expect: ranks 4, 5, 6 = members 8, 9, 2   (rank starts at 4, not 1)
+GET {{API}}/clubs/tennis/leaderboard?limit=3&page=2
+
+### B3  Page 4, 3 per page
+###     expect: only 2 items, ranks 10 and 11 = members 10, 11
+GET {{API}}/clubs/tennis/leaderboard?limit=3&page=4
+
+### B4  Page after the last one
+###     expect: 200, data [], total still 11
+GET {{API}}/clubs/tennis/leaderboard?limit=3&page=5
+
+
+############################################################
+#  C.  BAD QUERIES  (all expect 400)
+############################################################
+
+### C1  Page 0
+GET {{API}}/clubs/tennis/leaderboard?page=0
+
+### C2  Page is text
+GET {{API}}/clubs/tennis/leaderboard?page=abc
+
+### C3  Limit 0
+GET {{API}}/clubs/tennis/leaderboard?limit=0
+
+### C4  Limit above 50
+GET {{API}}/clubs/tennis/leaderboard?limit=51
+
+### C5  Limit is text
+GET {{API}}/clubs/tennis/leaderboard?limit=abc
+
+### C6  Property that does not exist
+GET {{API}}/clubs/tennis/leaderboard?foo=1
+
+
+############################################################
+#  D.  WHO CAN READ
+############################################################
+
+### D1  Login as the tennis coach
+POST {{API}}/auth/login
+Content-Type: application/json
+
+{
+  "email": "coach.tennis@example.com",
+  "password": "abdellahnsila123#002"
+}
+
+### D2  A leader sees the same ranking as a plain member
+###     expect: the same table as A1
+GET {{API}}/clubs/tennis/leaderboard?limit=50
+
+### D3  Login as the PADEL coach, not a member of tennis
+POST {{API}}/auth/login
+Content-Type: application/json
+
+{
+  "email": "coach.padel@example.com",
+  "password": "abdellahnsila123#002"
+}
+
+### D4  Padel coach reads tennis (expect 403)
+GET {{API}}/clubs/tennis/leaderboard
+
+### D5  Padel coach reads his OWN club
+###     expect: total 11, only padel members (member ids 12 to 22),
+###     rank 1 = member 15 with 10 points, no member id from 1 to 11
+GET {{API}}/clubs/padel/leaderboard?limit=50
+
+### D6  Club that does not exist (expect 404)
+GET {{API}}/clubs/not-a-club/leaderboard
+
+### D7  Not logged in (expect 401)
+POST {{API}}/auth/logout
+
+###
+GET {{API}}/clubs/tennis/leaderboard
+
+
+############################################################
+#  E.  A MEMBER WHO LEAVES DISAPPEARS, AND COMES BACK WITH HIS POINTS
+############################################################
+
+### E1  Login as the tennis coach
+POST {{API}}/auth/login
+Content-Type: application/json
+
+{
+  "email": "coach.tennis@example.com",
+  "password": "abdellahnsila123#002"
+}
+
+### E2  Remove member 11 (expect success)
+DELETE {{API}}/clubs/tennis/members/11
+
+### E3  Leaderboard without him
+###     expect: total 10, member 11 is gone, member 10 is now last (rank 10)
+GET {{API}}/clubs/tennis/leaderboard?limit=50
+
+### E4  Add him back, user 15 (expect success, the SAME member id 11)
+POST {{API}}/clubs/tennis/members
+Content-Type: application/json
+
+{
+  "user_id": 15
+}
+
+### E5  Leaderboard with him again
+###     expect: total 11, member 11 is back at rank 11 with -5 points,
+###     0 wins and 1 loss (his points were kept)
+GET {{API}}/clubs/tennis/leaderboard?limit=50
+
+
+############################################################
+#  F.  LIVE UPDATE  (run this section once)
+#      a result changes the ranking, nothing else does
+############################################################
+
+### F1  Login as nsila
+POST {{API}}/auth/login
+Content-Type: application/json
+
+{
+  "email": "user7@gmail.com",
+  "password": "abdellahnsila123#002"
+}
+
+### F2  nsila (member 4) asks for a match against member 6
+# @name live
+POST {{API}}/clubs/tennis/matches/request
+Content-Type: application/json
+
+{
+  "mode": 1,
+  "opponent_ids": [6],
+  "location": "T-LIVE",
+  "scheduled_at": "{{$datetime iso8601 3 d}}"
+}
+
+### F3  A pending match changes nothing
+###     expect: nsila still has 15 points, same table as A1
+GET {{API}}/clubs/tennis/leaderboard?limit=50
+
+### F4  Login as the tennis coach
+POST {{API}}/auth/login
+Content-Type: application/json
+
+{
+  "email": "coach.tennis@example.com",
+  "password": "abdellahnsila123#002"
+}
+
+### F5  The coach accepts the match (he becomes the referee)
+POST {{API}}/clubs/tennis/matches/{{LIVE}}/accept
+
+### F6  A confirmed match changes nothing
+###     expect: same table as A1
+GET {{API}}/clubs/tennis/leaderboard?limit=50
+
+############################################################
+#  >>>  DATABASE STEP  (run in the terminal, not in this file)
+#
+#  The match must have started before a result is allowed.
+#
+#  docker exec -e PGPASSWORD=1337 database psql -h 127.0.0.1 -U club_service -d rackets_db -c "UPDATE club_schema.matches SET scheduled_at = now() - interval '2 hours' WHERE location = 'T-LIVE';"
+#
+#  expect: UPDATE 1
+############################################################
+
+### F7  The referee enters the result: nsila wins 21 to 10
+POST {{API}}/clubs/tennis/matches/{{LIVE}}/result
+Content-Type: application/json
+
+{
+  "team1_score": 21,
+  "team2_score": 10
+}
+
+### F8  Leaderboard after the result
+###     expect this NEW ranking:
+###
+###       rank  member  points  wins  losses
+###       ----  ------  ------  ----  ------
+###         1     4       25      3      1     (+10, was 15)
+###         2     1       10      1      0
+###         3     7       10      1      0
+###         4     8       10      1      0
+###         5     9       10      1      0
+###         6     2        0      0      0
+###         7     3        0      0      0
+###         8     5       -5      1      3
+###         9    10       -5      0      1
+###        10    11       -5      0      1
+###        11     6      -10      0      2     (-5, was rank 9)
+GET {{API}}/clubs/tennis/leaderboard?limit=50
+
+
+############################################################
+#  SQL CHECK  (run in the terminal, not in this file)
+############################################################
+#
+#  Same numbers as the leaderboard, straight from the database.
+#  Compare it with the response of A1 (or F8 after section F).
+#
+#  docker exec -e PGPASSWORD=1337 database psql -h 127.0.0.1 -U club_service -d rackets_db -c "WITH side AS (SELECT team1_id AS t, team1_points AS p, (winner_id = team1_id) AS won FROM club_schema.matches WHERE club_id = 1 AND status = 2 UNION ALL SELECT team2_id, team2_points, (winner_id = team2_id) FROM club_schema.matches WHERE club_id = 1 AND status = 2), played AS (SELECT tm.player1_id AS member_id, s.p, s.won FROM side s JOIN club_schema.teams tm ON tm.id = s.t UNION ALL SELECT tm.player2_id, s.p, s.won FROM side s JOIN club_schema.teams tm ON tm.id = s.t WHERE tm.player2_id IS NOT NULL) SELECT member_id, SUM(p) AS points, COUNT(*) FILTER (WHERE won) AS wins, COUNT(*) FILTER (WHERE NOT won) AS losses FROM played GROUP BY member_id ORDER BY points DESC, wins DESC, member_id;"
+#
+#  Members with no finished match do not appear here
+#  (the leaderboard shows them with 0 points).
+#
+############################################################

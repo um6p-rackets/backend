@@ -1,5 +1,5 @@
 import { CLUB_PATTERNS, CLUB_SERVICE } from '@app/contracts';
-import { Controller, Get, Inject, Param, Patch } from '@nestjs/common';
+import { Controller, Get, Inject, Param, Patch, Query } from '@nestjs/common';
 import { ClientProxy } from '@nestjs/microservices';
 
 import { CurrentUser } from '../common/decorators/current-user.decorator.js';
@@ -9,6 +9,7 @@ import { rpc } from '../../../../libs/common/src/helpers/rpc.helper.js';
 import { Body } from '@nestjs/common';
 import {
   ClubSlugParamDto,
+  PaginationQueryDto,
   UpdateClubDto,
 } from '@app/contracts/club/dto/index.js';
 
@@ -66,5 +67,22 @@ export class ClubController {
       body,
     });
     return response;
+  }
+
+  // GET /:slug/leaderboard
+  @Get(':slug/leaderboard')
+  async getClubLeaderboard(@Param() { slug }: ClubSlugParamDto,
+  @CurrentUser() user: AuthenticatedUser,
+  @Query() query: PaginationQueryDto,
+) {
+    console.log(
+      `[ClubController] Received request for club leaderboard for slug: ${slug}, and send request to Club Service`,
+    );
+    return await rpc(this.clubClient, CLUB_PATTERNS.GET_CLUB_LEADERBOARD, {
+      club_slug: slug,
+      user_id: user.id,
+      page: query.page,
+      limit: query.limit,
+    });
   }
 }
