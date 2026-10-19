@@ -1,7 +1,7 @@
-import { IsNumberString } from 'class-validator';
 import { ClubSlugParamDto } from './index.js';
+import { IsIdParam } from '@app/common';
 
 export class UpdateMemberRoleParamDto extends ClubSlugParamDto {
-  @IsNumberString({}, {message: 'member_id must be a number string'})
-  member_id: string;
+  @IsIdParam('member')
+  member_id: number;
 }
