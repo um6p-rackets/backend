@@ -16,11 +16,11 @@ export class EmailService {
 
     const resetLink = `${smtp.frontendUrl}/reset-password?token=${rawToken}`;
     const htmlTemplate = getPasswordResetTemplate(resetLink);
-    const sender = smtp.user;
+    const senderEmail = smtp.fromEmail;
 
     try {
       const info = await this.transporter.sendMail({
-        from: `"Rackets Support" <${sender}>`,
+        from: `"Rackets Support" <${senderEmail}>`,
         to: email,
         subject: 'Reset your password',
         html: htmlTemplate,

@@ -16,6 +16,7 @@ export const smtpConfig = registerAs('smtp', () => {
 
   const user = process.env.SMTP_USER;
   const pass = process.env.SMTP_PASS || readSecret(process.env.SMTP_PASSWORD_FILE);
+  const fromEmail = process.env.SMTP_FROM_EMAIL;
   const frontendUrl = process.env.FRONTEND_URL;
 
   if (!host || !user || !pass) {
@@ -28,6 +29,7 @@ export const smtpConfig = registerAs('smtp', () => {
     secure,
     user,
     pass,
+    fromEmail,
     frontendUrl,
   };
 });
