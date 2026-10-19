@@ -48,6 +48,10 @@ export const CLUB_PATTERNS = {
   GET_CLUB_DOCUMENTS: 'club.get-club-documents',
   POST_CLUB_DOCUMENT_CREATE: 'club.post-club-document-create',
   DELETE_CLUB_DOCUMENT_DELETE: 'club.delete-club-document-delete',
+  // ================== ACHIEVEMENTS SERVICE ==================
+  GET_CLUB_ACHIEVEMENTS: 'club.get-club-achievements',
+  POST_CLUB_ACHIEVEMENT_CREATE: 'club.post-club-achievement-create',
+  DELETE_CLUB_ACHIEVEMENT_DELETE: 'club.delete-club-achievement-delete',
   
 } as const;
 

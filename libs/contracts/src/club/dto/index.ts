@@ -19,3 +19,4 @@ export * from './delete-session-query.dto.js';
 export * from './update-member-role-param.dto.js';
 export * from './delete-announcement-param.dto.js';
 export * from './delete-document-param.dto.js';
+export * from './delete-achievement-param.dto.js';

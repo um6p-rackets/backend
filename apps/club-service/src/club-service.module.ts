@@ -10,6 +10,7 @@ import { MembersModule } from './members/members.module.js';
 import { AuthClientModule } from './global-clients/auth-client.module.js';
 import { AnnouncementsModule } from './announcements/announcements.module.js';
 import { DocumentsModule } from './documents/documents.module.js';
+import { AchievementsModule } from './achievements/achievements.module.js';
 
 @Module({
   imports: [
@@ -25,6 +26,7 @@ import { DocumentsModule } from './documents/documents.module.js';
     AuthClientModule,
     AnnouncementsModule,
     DocumentsModule,
+    AchievementsModule,
   ],
   controllers: [ClubServiceController],
   providers: [
