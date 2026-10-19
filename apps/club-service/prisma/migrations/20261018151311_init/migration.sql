@@ -240,7 +240,7 @@ ALTER TABLE "sessions"
   ADD CONSTRAINT "sessions_time_check"     CHECK ("end_at" > "start_at");
 
 ALTER TABLE "teams"   ADD CONSTRAINT teams_players_chk   CHECK (player1_id <> player2_id);
-ALTER TABLE "matches" ADD CONSTRAINT matches_status_chk  CHECK (status IN (0, 1, 2));
+ALTER TABLE "matches" ADD CONSTRAINT matches_status_chk  CHECK (status IN (0, 1, 2, 3));
 ALTER TABLE "matches" ADD CONSTRAINT matches_teams_chk   CHECK (team1_id <> team2_id);
 ALTER TABLE "matches" ADD CONSTRAINT matches_winner_chk  CHECK (winner_id IS NULL OR (status = 2 AND winner_id IN (team1_id, team2_id)));
 
