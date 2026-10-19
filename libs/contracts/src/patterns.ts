@@ -59,6 +59,7 @@ export const CLUB_PATTERNS = {
   POST_CLUB_MATCH_ACCEPT: 'club.post-club-match-accept',
   POST_CLUB_MATCH_REJECT: 'club.post-club-match-reject',
   POST_CLUB_MATCH_CANCEL: 'club.post-club-match-cancel',
+  POST_CLUB_MATCH_RESULT: 'club.post-club-match-result',
   
 } as const;
 
