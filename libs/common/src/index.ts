@@ -8,3 +8,4 @@ export * from './dates.js';
 export * from './auth/auth.constants.js';
 export * from './auth/authenticated-user.js';
 export * from './helpers/rpc.helper.js';
+export * from './decorators/id-param.decorator.js';

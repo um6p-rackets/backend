@@ -1,9 +1,7 @@
-import { IsNumberString } from "class-validator";
 import { ClubSlugParamDto } from "./club-slug-param.dto.js";
+import { IsIdParam } from "@app/common";
 
-
-
-export class GetMatchParamDto  extends ClubSlugParamDto {
-  @IsNumberString({}, {message: 'match id must be a number string'})
-  match_id: string;
+export class GetMatchParamDto extends ClubSlugParamDto {
+  @IsIdParam('match')
+  match_id: number;
 }
