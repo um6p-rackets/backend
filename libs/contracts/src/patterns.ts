@@ -55,6 +55,7 @@ export const CLUB_PATTERNS = {
   // ================== MATCHES SERVICE ==================
   GET_CLUB_MATCHES: 'club.get-club-matches',
   POST_CLUB_MATCH_REQUEST: 'club.post-club-match-request',
+  GET_CLUB_MATCH: 'club.get-club-match',
   POST_CLUB_MATCH_ACCEPT: 'club.post-club-match-accept',
   POST_CLUB_MATCH_REJECT: 'club.post-club-match-reject',
   POST_CLUB_MATCH_CANCEL: 'club.post-club-match-cancel',

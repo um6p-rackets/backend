@@ -17,4 +17,9 @@ export class MatchesController {
   async getMatches(data: { slug: string; user_id: number; query: MatchesQueryDto }) {
     return await this.matchesService.getMatches(data.slug, data.user_id, data.query);
   }
+
+  @MessagePattern(CLUB_PATTERNS.GET_CLUB_MATCH)
+  async getMatch(data: { slug: string; user_id: number; match_id: number }) {
+    return await this.matchesService.getMatch(data.slug, data.user_id, data.match_id);
+  }
 }

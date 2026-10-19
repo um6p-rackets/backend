@@ -329,4 +329,138 @@ export class MatchesService {
       total: totalMatches,
     };
   }
+
+  async getMatch(
+    slug: string,
+    user_id: number,
+    match_id: number,
+  ): Promise<MatchDetail> {
+    const { club, member } = await this.clubAccessService.requireRole(
+      slug,
+      user_id,
+      MemberRole.MEMBER,
+    );
+    
+    const match = await this.prisma.match.findUnique({
+      where: { id: match_id },
+      include: {
+        club: { select: { id: true, name: true, slug: true } },
+        team1: {
+          include: {
+            player1: { select: { id: true, user_id: true } },
+            player2: { select: { id: true, user_id: true } },
+          },
+        },
+        team2: {
+          include: {
+            player1: { select: { id: true, user_id: true } },
+            player2: { select: { id: true, user_id: true } },
+          },
+        },
+        referee: { select: { id: true, user_id: true } },
+      },
+    });
+
+    if (!match) {
+      throw rpcError(404, 'Match not found', 'Not Found');
+    }
+
+    // Check if the member is part of the match or is the referee
+    const isMemberInMatch =
+      match.team1.player1_id === member.id ||
+      match.team1.player2_id === member.id ||
+      match.team2.player1_id === member.id ||
+      match.team2.player2_id === member.id ||
+      match.ref_id === member.id;
+
+    // check why isMemberInMatch is false even if the member is part of the match
+    console.log('member.id:', member.id);
+
+    console.log('isMemberInMatch:', isMemberInMatch);
+    console.log('match.team1.player1_id:', match.team1.player1_id);
+    console.log('match.team1.player2_id:', match.team1.player2_id);
+    console.log('match.team2.player1_id:', match.team2.player1_id);
+    console.log('match.team2.player2_id:', match.team2.player2_id);
+    console.log('match.ref_id:', match.ref_id);
+
+    if (!isMemberInMatch && member.role === MemberRole.MEMBER && match.status === MatchStatus.PENDING) {
+      throw rpcError(
+        403,
+        'You do not have permission to view this match',
+        'Forbidden',
+      );
+    }
+
+    // Fetch user info for all players and referee
+    const playerIds = [
+      match.team1.player1_id,
+      match.team1.player2_id,
+      match.team2.player1_id,
+      match.team2.player2_id,
+      match.ref_id,
+    ].filter((id): id is number => id !== null);
+
+    const users: User[] = await rpc<User[]>(
+      this.authClient,
+      AUTH_PATTERNS.GET_USERS_BY_IDS,
+      { user_ids: playerIds },
+    );
+
+    const userIdToUserMap = new Map<number, User>();
+    users.forEach((user) => {
+      userIdToUserMap.set(user.id, user);
+    });
+
+    const team1Player1User = userIdToUserMap.get(match.team1.player1_id);
+    const team1Player2User = match.team1.player2_id
+      ? userIdToUserMap.get(match.team1.player2_id)
+      : null;
+    const team2Player1User = userIdToUserMap.get(match.team2.player1_id);
+    const team2Player2User = match.team2.player2_id
+      ? userIdToUserMap.get(match.team2.player2_id)
+      : null;
+    const refereeUser = match.ref_id
+      ? userIdToUserMap.get(match.ref_id)
+      : null;
+
+    const team1_p1: Player | undefined = {
+      ...team1Player1User!,
+      member_id: match.team1.player1_id,
+    };
+    const team1_p2: Player | null = team1Player2User
+      ? { ...team1Player2User, member_id: match.team1.player2_id! }
+      : null;
+    const team2_p1: Player | undefined = {
+      ...team2Player1User!,
+      member_id: match.team2.player1_id,
+    };
+    const team2_p2: Player | null = team2Player2User
+      ? { ...team2Player2User, member_id: match.team2.player2_id! }
+      : null;
+    const referee: Player | null = refereeUser
+      ? { ...refereeUser, member_id: match.ref_id! }
+      : null;
+
+    return {
+      ...match,
+      team1: {
+        ...match.team1,
+        player1: team1_p1!,
+        player2: team1_p2,
+        created_at: match.team1.created_at.toISOString(),
+      },
+      team2: {
+        ...match.team2,
+        player1: team2_p1!,
+        player2: team2_p2,
+        created_at: match.team2.created_at.toISOString(),
+      },
+      scheduled_at: match.scheduled_at.toISOString(),
+      cancelled_at: match.cancelled_at
+        ? match.cancelled_at.toISOString()
+        : null,
+      created_at: match.created_at.toISOString(),
+      referee: referee,
+    };
+  }
 }

@@ -15,6 +15,7 @@ import { type AuthenticatedUser } from '@app/common';
 import { Body } from '@nestjs/common';
 import {
   ClubSlugParamDto,
+  GetMatchParamDto,
   MatchesQueryDto,
   MatchRequestDto,
   PaginationQueryDto,
@@ -55,6 +56,19 @@ export class ClubMatchesController {
       slug,
       user_id: user.id,
       query,
+    });
+  }
+
+  // GET /clubs/:slug/matches/:match_id returns one MatchDetail
+  @Get(':match_id')
+  async getMatch(
+    @Param() { slug, match_id }: GetMatchParamDto,
+    @CurrentUser() user: AuthenticatedUser,
+  ) {
+    return this.clubClient.send(CLUB_PATTERNS.GET_CLUB_MATCH, {
+      slug,
+      user_id: user.id,
+      match_id: parseInt(match_id, 10), // Convert match_id to number
     });
   }
 }
