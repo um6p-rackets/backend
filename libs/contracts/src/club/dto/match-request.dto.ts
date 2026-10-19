@@ -6,6 +6,7 @@ import {
   MaxLength,
 } from 'class-validator';
 import { MatchMode, MatchRequestBody } from '../club.types.js';
+import { Transform } from 'class-transformer';
 
 export class MatchRequestDto implements MatchRequestBody {
   @IsEnum(MatchMode)
@@ -18,7 +19,9 @@ export class MatchRequestDto implements MatchRequestBody {
   @IsInt({ each: true }) @IsPositive({ each: true })
   opponent_ids: number[];
 
-  @IsOptional() @IsString() @MaxLength(100)
+  @IsOptional()
+  @Transform(({ value }) => (typeof value === 'string' ? value.trim() : value))
+  @IsString() @MaxLength(100)
   location?: string;
 
   @IsDateString()
