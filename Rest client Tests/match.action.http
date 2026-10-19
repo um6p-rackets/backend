@@ -1,0 +1,14 @@
+@API = http://localhost:3000/api/v1
+@PENDING_MATCH = 34
+
+### 0.a login as tennis coach
+POST {{API}}/auth/login
+Content-Type: application/json
+
+{
+  "email": "coach.tennis@example.com",
+  "password": "abdellahnsila123#002"
+}
+
+### 1 Accept pending match (seed #34, nsila is player1)
+POST {{API}}/clubs/tennis/matches/{{PENDING_MATCH}}/accept
