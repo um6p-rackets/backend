@@ -1,0 +1,45 @@
+import { CLUB_PATTERNS, CLUB_SERVICE } from '@app/contracts';
+import {
+  Controller,
+  Delete,
+  Get,
+  Inject,
+  Param,
+  Post,
+  Query,
+} from '@nestjs/common';
+import { ClientProxy } from '@nestjs/microservices';
+
+import { CurrentUser } from '../common/decorators/current-user.decorator.js';
+import { type AuthenticatedUser } from '@app/common';
+import { Body } from '@nestjs/common';
+import {
+  ClubSlugParamDto,
+  MatchRequestDto,
+  PaginationQueryDto,
+} from '@app/contracts/club/dto/index.js';
+
+@Controller('clubs/:slug/matches')
+export class ClubMatchesController {
+  constructor(@Inject(CLUB_SERVICE) private readonly clubClient: ClientProxy) {}
+
+  // POST /clubs/:slug/matches/request
+  @Post('request')
+  async requestMatch(
+    @Param() { slug }: ClubSlugParamDto,
+    @CurrentUser() user: AuthenticatedUser,
+    @Body() body: MatchRequestDto,
+  ) {
+    console.log(
+      '[ClubMatchesController] requestMatch called with slug:',
+      slug,
+      'user:',
+      user,
+    );
+    return this.clubClient.send(CLUB_PATTERNS.POST_CLUB_MATCH_REQUEST, {
+      slug,
+      user_id: user.id,
+      body,
+    });
+  }
+}
