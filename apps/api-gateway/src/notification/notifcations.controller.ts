@@ -24,6 +24,7 @@ import {
   MarkAsReadDto,
 } from '@app/contracts';
 import { CurrentUser } from '../common/decorators/current-user.decorator.js';
+import { Public } from '../common/decorators/public.decorator.js';
 
 @Controller('notifications')
 export class NotificationsController {

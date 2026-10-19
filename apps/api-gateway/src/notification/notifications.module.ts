@@ -5,7 +5,7 @@ import { ConfigService } from '@nestjs/config';
 import { QUEUES } from '@app/contracts/queues.js';
 import { NOTIFICATION_SERVICE } from '@app/contracts';
 import { rmqOptions } from '@app/rmq';
-import { NotificationController } from './notifcations.controller.js';
+import { NotificationsController } from './notifcations.controller.js';
 
 @Module({
   imports: [
