@@ -2,7 +2,10 @@ import {
   Club,
   ClubMemberStatus,
   ClubWithMembersCountAndCoachFullName,
+  LeaderboardEntry,
+  MatchStatus,
   MemberRole,
+  Paginated,
 } from '@app/contracts/club/club.types.js';
 import { rpcError } from '@app/contracts/errors.js';
 import { Inject, Injectable } from '@nestjs/common';
@@ -75,7 +78,9 @@ export class ClubServiceService {
       ...club,
       created_at: club.created_at.toISOString(),
       members_count: membersCount,
-      coach_full_name: coach ? `${coach.first_name} ${coach.last_name}` : 'No Coach',
+      coach_full_name: coach
+        ? `${coach.first_name} ${coach.last_name}`
+        : 'No Coach',
     };
   }
 
@@ -141,6 +146,90 @@ export class ClubServiceService {
     return {
       ...updatedClub,
       created_at: updatedClub.created_at.toISOString(),
+    };
+  }
+
+  async getClubLeaderboard(
+    clubSlug: string,
+    user_id: number,
+    page: number,
+    limit: number,
+  ): Promise<Paginated<LeaderboardEntry>> {
+    const { club } = await this.clubAccessService.requireRole(
+      clubSlug,
+      user_id,
+      MemberRole.MEMBER,
+    );
+
+    const [members, matches] = await Promise.all([
+      // active members, so everyone appears, even with 0 points
+      this.prisma.member.findMany({
+        where: { club_id: club.id, left_at: null },
+        select: { id: true, user_id: true },
+      }),
+      // finished matches only
+      this.prisma.match.findMany({
+        where: { club_id: club.id, status: MatchStatus.FINISHED },
+        select: {
+          winner_id: true,
+          team1_id: true,
+          team2_id: true,
+          team1_points: true,
+          team2_points: true,
+          team1: { select: { player1_id: true, player2_id: true } },
+          team2: { select: { player1_id: true, player2_id: true } },
+        },
+      }),
+    ]);
+
+    // points, wins and losses per member id
+    const stats = new Map<number,{ points: number; wins: number; losses: number }>();
+    const add = (memberId: number | null, points: number, won: boolean) => {
+      if (memberId === null) return; // singles: no player 2
+      const s = stats.get(memberId) ?? { points: 0, wins: 0, losses: 0 };
+      s.points += points;
+      if (won) s.wins++;
+      else s.losses++;
+      stats.set(memberId, s);
+    };
+
+    for (const m of matches) {
+      for (const id of [m.team1.player1_id, m.team1.player2_id])
+        add(id, m.team1_points, m.winner_id === m.team1_id);
+      for (const id of [m.team2.player1_id, m.team2.player2_id])
+        add(id, m.team2_points, m.winner_id === m.team2_id);
+    }
+
+    // order: points, then wins, then the older member first
+    const ranked = members
+      .map((m) => ({
+        ...m,
+        ...(stats.get(m.id) ?? { points: 0, wins: 0, losses: 0 }),
+      }))
+      .sort((a, b) => b.points - a.points || b.wins - a.wins || a.id - b.id);
+
+    const pageRows = ranked.slice((page - 1) * limit, page * limit);
+
+    const users = await rpc<User[]>(
+      this.authClient,
+      AUTH_PATTERNS.GET_USERS_BY_IDS,
+      {
+        user_ids: pageRows.map((r) => r.user_id),
+      },
+    );
+    const userById = new Map(users.map((u) => [u.id, u]));
+
+    return {
+      data: pageRows.map((r, i) => ({
+        rank: (page - 1) * limit + i + 1,
+        player: { ...userById.get(r.user_id)!, member_id: r.id },
+        points: r.points,
+        wins: r.wins,
+        losses: r.losses,
+      })),
+      page,
+      limit,
+      total: ranked.length,
     };
   }
 }
