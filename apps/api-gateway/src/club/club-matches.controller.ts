@@ -86,19 +86,6 @@ export class ClubMatchesController {
     });
   }
 
-  // POST /clubs/:slug/matches/:id/reject
-  @Post(':match_id/reject')
-  async rejectMatch(
-    @Param() { slug, match_id }: GetMatchParamDto,
-    @CurrentUser() user: AuthenticatedUser,
-  ) {
-    return this.clubClient.send(CLUB_PATTERNS.POST_CLUB_MATCH_REJECT, {
-      slug,
-      user_id: user.id,
-      match_id: match_id,
-    });
-  }
-
   // POST /clubs/:slug/matches/:id/cancel
   @Post(':match_id/cancel')
   async cancelMatch(
