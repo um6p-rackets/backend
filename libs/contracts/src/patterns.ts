@@ -64,3 +64,11 @@ export const CLUB_PATTERNS = {
 
 
 // ================= NOTIFICATION SERVICE ==================
+
+export const NOTIFICATION_PATTERNS = {
+  HELLO : 'notification.hello',
+  GET_INBOX: 'notification.get-inbox',
+  CREATE_NOTIFICATION: 'notification.create',
+  MARK_AS_READ: 'notification.mark-as-read',
+  MARK_ALL_AS_READ: 'notification.mark-all-as-read',
+} as const;
