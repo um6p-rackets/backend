@@ -11,4 +11,4 @@ Content-Type: application/json
 }
 
 ### 1 Accept pending match (seed #34, nsila is player1)
-POST {{API}}/clubs/tennis/matches/{{PENDING_MATCH}}/accept
+POST {{API}}/clubs/tennis/matches/{{PENDING_MATCH}}/cancel
