@@ -33,9 +33,9 @@
 ############################################################
 
 @API = http://localhost:3000/api/v1
-@PENDING_MINE = 6
-@PENDING_COACH = 12
-@PADEL_MATCH = 20
+@PENDING_MINE = 26
+@PENDING_COACH = 26
+@PADEL_MATCH = 6
 
 
 ############################################################
@@ -60,7 +60,7 @@ Content-Type: application/json
 ###     expect: 200, status 2, scores filled, winner_id filled,
 ###     team1_points and team2_points filled, referee filled,
 ###     team1.player1 and team2.player1 filled, player2 null on both
-GET {{API}}/clubs/tennis/matches/1
+GET {{API}}/clubs/tennis/matches?status=pending&mine=1
 
 ### A2  Finished doubles (seed #3)
 ###     expect: 200, status 2, mode doubles, all 4 players filled
@@ -93,6 +93,9 @@ GET {{API}}/clubs/tennis/matches/1
 ############################################################
 #  B.  PENDING VISIBILITY  (still nsila, plain member)
 ############################################################
+
+### B0. list all pending matches (expect 200)
+GET {{API}}/clubs/tennis/matches?status=pending
 
 ### B1  The coach's pending request (H4), nsila is not in it
 ###     expect: 404
