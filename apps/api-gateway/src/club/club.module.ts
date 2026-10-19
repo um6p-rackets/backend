@@ -10,6 +10,7 @@ import { ClubAnnouncementsController } from './club-announcements.controller.js'
 import { ClubDocumentsController } from './club-documents.controller.js';
 import { ClubMembersController } from './club-members.controller.js';
 import { ClubSessionsController } from './club-sessions.controller.js';
+import { ClubMatchesController } from './club-matches.controller.js';
 
 @Module({
   imports: [
@@ -34,6 +35,7 @@ import { ClubSessionsController } from './club-sessions.controller.js';
     ClubDocumentsController,
     ClubMembersController,
     ClubSessionsController,
+    ClubMatchesController,
   ],
 })
 export class ClubModule {}

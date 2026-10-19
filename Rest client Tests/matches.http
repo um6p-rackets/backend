@@ -1,0 +1,620 @@
+############################################################
+#                                                          #
+#                    MATCHES  -  PART 1                    #
+#               Test: POST /matches/request                #
+#                                                          #
+############################################################
+#
+#  Who is who (tennis club, from the seed)
+#    me (nsila) ........ member 4  (user 8, user7@gmail.com)
+#    plain members ..... member 5, 6, 7
+#    tennis coach ...... member 1
+#    padel coach ....... member 12 (a member of ANOTHER club)
+#    member 11 ......... user 15, removed in D4 and restored in H5
+#
+#  Error codes
+#    400 = the DTO refused the body (shape, type, size)
+#    422 = the service refused it (match rules)
+#
+############################################################
+
+@API = http://localhost:3000/api/v1
+
+@ME = 4
+@P1 = 5
+@P2 = 6
+@P3 = 7
+@COACH = 1
+@OTHER_CLUB_MEMBER = 12
+@LEFT_MEMBER = 11
+
+
+############################################################
+#  0.  SETUP
+############################################################
+
+### 0.1  Login as nsila (member 4)
+POST {{API}}/auth/login
+Content-Type: application/json
+
+{
+  "email": "user7@gmail.com",
+  "password": "abdellahnsila123#002"
+}
+
+### 0.2  Check the ids: members 5, 6, 7 must be plain members of tennis
+GET {{API}}/clubs/tennis/members?role=0
+
+
+############################################################
+#  A.  VALID REQUESTS  (all expect success)
+############################################################
+
+### A1  Singles with a location
+###     expect: { message, pending_match_id }
+# @name singles
+POST {{API}}/clubs/tennis/matches/request
+Content-Type: application/json
+
+{
+  "mode": 1,
+  "opponent_ids": [{{P1}}],
+  "location": "Court 1",
+  "scheduled_at": "{{$datetime iso8601 3 d}}"
+}
+
+### A2  Doubles (me + partner vs 2 opponents)
+# @name doubles
+POST {{API}}/clubs/tennis/matches/request
+Content-Type: application/json
+
+{
+  "mode": 2,
+  "partner_id": {{P1}},
+  "opponent_ids": [{{P2}}, {{P3}}],
+  "location": "double court",
+  "scheduled_at": "{{$datetime iso8601 4 d}}"
+}
+
+### A3  Singles without a location (location saved as null)
+POST {{API}}/clubs/tennis/matches/request
+Content-Type: application/json
+
+{
+  "mode": 1,
+  "opponent_ids": [{{P2}}],
+  "scheduled_at": "{{$datetime iso8601 5 d}}"
+}
+
+### A4  Location with spaces around it (saved trimmed as "Court 3")
+POST {{API}}/clubs/tennis/matches/request
+Content-Type: application/json
+
+{
+  "mode": 1,
+  "opponent_ids": [{{P3}}],
+  "location": "   Court 3   ",
+  "scheduled_at": "{{$datetime iso8601 6 d}}"
+}
+
+### A5  Location sent as null
+POST {{API}}/clubs/tennis/matches/request
+Content-Type: application/json
+
+{
+  "mode": 1,
+  "opponent_ids": [{{P1}}],
+  "location": null,
+  "scheduled_at": "{{$datetime iso8601 7 d}}"
+}
+
+
+############################################################
+#  B.  MODE AND NUMBER OF PLAYERS
+############################################################
+
+### B1  Singles with a partner (expect 422)
+POST {{API}}/clubs/tennis/matches/request
+Content-Type: application/json
+
+{
+  "mode": 1,
+  "partner_id": {{P1}},
+  "opponent_ids": [{{P2}}],
+  "location": "this should not be saved",
+  "scheduled_at": "{{$datetime iso8601 3 d}}"
+}
+
+### B2  Singles with 2 opponents (expect 422)
+POST {{API}}/clubs/tennis/matches/request
+Content-Type: application/json
+
+{
+  "mode": 1,
+  "opponent_ids": [{{P1}}, {{P2}}],
+  "scheduled_at": "{{$datetime iso8601 3 d}}"
+}
+
+### B3  Doubles without a partner (expect 422)
+POST {{API}}/clubs/tennis/matches/request
+Content-Type: application/json
+
+{
+  "mode": 2,
+  "opponent_ids": [{{P2}}, {{P3}}],
+  "scheduled_at": "{{$datetime iso8601 3 d}}"
+}
+
+### B4  Doubles with only 1 opponent (expect 422)
+POST {{API}}/clubs/tennis/matches/request
+Content-Type: application/json
+
+{
+  "mode": 2,
+  "partner_id": {{P1}},
+  "opponent_ids": [{{P2}}],
+  "scheduled_at": "{{$datetime iso8601 3 d}}"
+}
+
+### B5  Doubles with 3 opponents (expect 400, max 2)
+POST {{API}}/clubs/tennis/matches/request
+Content-Type: application/json
+
+{
+  "mode": 2,
+  "partner_id": {{P1}},
+  "opponent_ids": [{{P2}}, {{P3}}, 8],
+  "scheduled_at": "{{$datetime iso8601 3 d}}"
+}
+
+### B6  Empty opponent list (expect 400)
+POST {{API}}/clubs/tennis/matches/request
+Content-Type: application/json
+
+{
+  "mode": 1,
+  "opponent_ids": [],
+  "scheduled_at": "{{$datetime iso8601 3 d}}"
+}
+
+### B7  opponent_ids missing (expect 400)
+POST {{API}}/clubs/tennis/matches/request
+Content-Type: application/json
+
+{
+  "mode": 1,
+  "scheduled_at": "{{$datetime iso8601 3 d}}"
+}
+
+
+############################################################
+#  C.  WHO CAN PLAY WITH WHO
+############################################################
+
+### C1  I am my own opponent (expect 422)
+POST {{API}}/clubs/tennis/matches/request
+Content-Type: application/json
+
+{
+  "mode": 1,
+  "opponent_ids": [{{ME}}],
+  "scheduled_at": "{{$datetime iso8601 3 d}}"
+}
+
+### C2  I am my own partner (expect 422)
+POST {{API}}/clubs/tennis/matches/request
+Content-Type: application/json
+
+{
+  "mode": 2,
+  "partner_id": {{ME}},
+  "opponent_ids": [{{P2}}, {{P3}}],
+  "scheduled_at": "{{$datetime iso8601 3 d}}"
+}
+
+### C3  My partner is also an opponent (expect 422)
+POST {{API}}/clubs/tennis/matches/request
+Content-Type: application/json
+
+{
+  "mode": 2,
+  "partner_id": {{P1}},
+  "opponent_ids": [{{P1}}, {{P2}}],
+  "scheduled_at": "{{$datetime iso8601 3 d}}"
+}
+
+### C4  Same opponent twice (expect 400, ids must be unique)
+POST {{API}}/clubs/tennis/matches/request
+Content-Type: application/json
+
+{
+  "mode": 2,
+  "partner_id": {{P1}},
+  "opponent_ids": [{{P2}}, {{P2}}],
+  "scheduled_at": "{{$datetime iso8601 3 d}}"
+}
+
+
+############################################################
+#  D.  MEMBER IDS MUST BE ACTIVE MEMBERS OF THIS CLUB
+############################################################
+
+### D1  Opponent that does not exist (expect 422)
+POST {{API}}/clubs/tennis/matches/request
+Content-Type: application/json
+
+{
+  "mode": 1,
+  "opponent_ids": [99999],
+  "scheduled_at": "{{$datetime iso8601 3 d}}"
+}
+
+### D2  Partner that does not exist (expect 422)
+POST {{API}}/clubs/tennis/matches/request
+Content-Type: application/json
+
+{
+  "mode": 2,
+  "partner_id": 99999,
+  "opponent_ids": [{{P2}}, {{P3}}],
+  "scheduled_at": "{{$datetime iso8601 3 d}}"
+}
+
+### D3  Opponent is a member of ANOTHER club, the padel coach (expect 422)
+POST {{API}}/clubs/tennis/matches/request
+Content-Type: application/json
+
+{
+  "mode": 1,
+  "opponent_ids": [{{OTHER_CLUB_MEMBER}}],
+  "scheduled_at": "{{$datetime iso8601 3 d}}"
+}
+
+### D4  Opponent who LEFT the club (3 steps)
+###     D4a  login as the tennis coach
+POST {{API}}/auth/login
+Content-Type: application/json
+
+{
+  "email": "coach.tennis@example.com",
+  "password": "abdellahnsila123#002"
+}
+
+### D4b  remove member 11 (expect success)
+DELETE {{API}}/clubs/tennis/members/{{LEFT_MEMBER}}
+
+### D4c  login back as nsila
+POST {{API}}/auth/login
+Content-Type: application/json
+
+{
+  "email": "user7@gmail.com",
+  "password": "abdellahnsila123#002"
+}
+
+### D4d  request with the member who left (expect 422)
+POST {{API}}/clubs/tennis/matches/request
+Content-Type: application/json
+
+{
+  "mode": 1,
+  "opponent_ids": [{{LEFT_MEMBER}}],
+  "scheduled_at": "{{$datetime iso8601 3 d}}"
+}
+
+### D5  Opponent id 0 (expect 400)
+POST {{API}}/clubs/tennis/matches/request
+Content-Type: application/json
+
+{
+  "mode": 1,
+  "opponent_ids": [0],
+  "scheduled_at": "{{$datetime iso8601 3 d}}"
+}
+
+### D6  Opponent id negative (expect 400)
+POST {{API}}/clubs/tennis/matches/request
+Content-Type: application/json
+
+{
+  "mode": 1,
+  "opponent_ids": [-5],
+  "scheduled_at": "{{$datetime iso8601 3 d}}"
+}
+
+### D7  Opponent id is text (expect 400)
+POST {{API}}/clubs/tennis/matches/request
+Content-Type: application/json
+
+{
+  "mode": 1,
+  "opponent_ids": ["abc"],
+  "scheduled_at": "{{$datetime iso8601 3 d}}"
+}
+
+### D8  opponent_ids is not an array (expect 400)
+POST {{API}}/clubs/tennis/matches/request
+Content-Type: application/json
+
+{
+  "mode": 1,
+  "opponent_ids": 5,
+  "scheduled_at": "{{$datetime iso8601 3 d}}"
+}
+
+
+############################################################
+#  E.  DATE  (scheduled_at must be in the future)
+############################################################
+
+### E1  Yesterday (expect 422)
+POST {{API}}/clubs/tennis/matches/request
+Content-Type: application/json
+
+{
+  "mode": 1,
+  "opponent_ids": [{{P1}}],
+  "scheduled_at": "{{$datetime iso8601 -1 d}}"
+}
+
+### E2  Right now (expect 422, it is not in the future)
+POST {{API}}/clubs/tennis/matches/request
+Content-Type: application/json
+
+{
+  "mode": 1,
+  "opponent_ids": [{{P1}}],
+  "scheduled_at": "{{$datetime iso8601}}"
+}
+
+### E3  scheduled_at missing (expect 400)
+POST {{API}}/clubs/tennis/matches/request
+Content-Type: application/json
+
+{
+  "mode": 1,
+  "opponent_ids": [{{P1}}]
+}
+
+### E4  Not a date (expect 400)
+POST {{API}}/clubs/tennis/matches/request
+Content-Type: application/json
+
+{
+  "mode": 1,
+  "opponent_ids": [{{P1}}],
+  "scheduled_at": "tomorrow"
+}
+
+### E5  Impossible date (expect 400)
+POST {{API}}/clubs/tennis/matches/request
+Content-Type: application/json
+
+{
+  "mode": 1,
+  "opponent_ids": [{{P1}}],
+  "scheduled_at": "2026-13-45T10:00:00.000Z"
+}
+
+
+############################################################
+#  F.  LOCATION  (max 100 characters)
+############################################################
+
+### F1  Exactly 100 characters (expect success)
+POST {{API}}/clubs/tennis/matches/request
+Content-Type: application/json
+
+{
+  "mode": 1,
+  "opponent_ids": [{{P1}}],
+  "location": "1234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890",
+  "scheduled_at": "{{$datetime iso8601 8 d}}"
+}
+
+### F2  101 characters (expect 400)
+POST {{API}}/clubs/tennis/matches/request
+Content-Type: application/json
+
+{
+  "mode": 1,
+  "opponent_ids": [{{P1}}],
+  "location": "12345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901",
+  "scheduled_at": "{{$datetime iso8601 8 d}}"
+}
+
+### F3  Location is a number (expect 400)
+POST {{API}}/clubs/tennis/matches/request
+Content-Type: application/json
+
+{
+  "mode": 1,
+  "opponent_ids": [{{P1}}],
+  "location": 123,
+  "scheduled_at": "{{$datetime iso8601 8 d}}"
+}
+
+
+############################################################
+#  G.  BODY SHAPE
+############################################################
+
+### G1  Empty body (expect 400)
+POST {{API}}/clubs/tennis/matches/request
+Content-Type: application/json
+
+{}
+
+### G2  mode 3 does not exist (expect 400)
+POST {{API}}/clubs/tennis/matches/request
+Content-Type: application/json
+
+{
+  "mode": 3,
+  "opponent_ids": [{{P1}}],
+  "scheduled_at": "{{$datetime iso8601 3 d}}"
+}
+
+### G3  mode sent as text (expect 400)
+POST {{API}}/clubs/tennis/matches/request
+Content-Type: application/json
+
+{
+  "mode": "1",
+  "opponent_ids": [{{P1}}],
+  "scheduled_at": "{{$datetime iso8601 3 d}}"
+}
+
+### G4  mode missing (expect 400)
+POST {{API}}/clubs/tennis/matches/request
+Content-Type: application/json
+
+{
+  "opponent_ids": [{{P1}}],
+  "scheduled_at": "{{$datetime iso8601 3 d}}"
+}
+
+### G5  Old field requested_ref_id was removed (expect 400)
+POST {{API}}/clubs/tennis/matches/request
+Content-Type: application/json
+
+{
+  "mode": 1,
+  "opponent_ids": [{{P1}}],
+  "requested_ref_id": {{COACH}},
+  "scheduled_at": "{{$datetime iso8601 3 d}}"
+}
+
+### G6  Client tries to choose the referee (expect 400)
+POST {{API}}/clubs/tennis/matches/request
+Content-Type: application/json
+
+{
+  "mode": 1,
+  "opponent_ids": [{{P1}}],
+  "ref_id": {{COACH}},
+  "scheduled_at": "{{$datetime iso8601 3 d}}"
+}
+
+### G7  Client tries to choose the status (expect 400)
+POST {{API}}/clubs/tennis/matches/request
+Content-Type: application/json
+
+{
+  "mode": 1,
+  "opponent_ids": [{{P1}}],
+  "status": 1,
+  "scheduled_at": "{{$datetime iso8601 3 d}}"
+}
+
+### G8  Client tries to choose the requester (expect 400)
+POST {{API}}/clubs/tennis/matches/request
+Content-Type: application/json
+
+{
+  "mode": 1,
+  "player1_id": {{P1}},
+  "opponent_ids": [{{P2}}],
+  "scheduled_at": "{{$datetime iso8601 3 d}}"
+}
+
+
+############################################################
+#  H.  ACCESS
+############################################################
+
+### H1  Club that does not exist (expect 404)
+POST {{API}}/clubs/not-a-club/matches/request
+Content-Type: application/json
+
+{
+  "mode": 1,
+  "opponent_ids": [{{P1}}],
+  "scheduled_at": "{{$datetime iso8601 3 d}}"
+}
+
+### H2  Not logged in (expect 401)
+POST {{API}}/auth/logout
+
+###
+POST {{API}}/clubs/tennis/matches/request
+Content-Type: application/json
+
+{
+  "mode": 1,
+  "opponent_ids": [{{P1}}],
+  "scheduled_at": "{{$datetime iso8601 3 d}}"
+}
+
+### H3  Login as the PADEL coach, not a member of tennis
+POST {{API}}/auth/login
+Content-Type: application/json
+
+{
+  "email": "coach.padel@example.com",
+  "password": "abdellahnsila123#002"
+}
+
+###      request in tennis (expect 403)
+POST {{API}}/clubs/tennis/matches/request
+Content-Type: application/json
+
+{
+  "mode": 1,
+  "opponent_ids": [{{P1}}],
+  "scheduled_at": "{{$datetime iso8601 3 d}}"
+}
+
+### H4  Login as the TENNIS coach, a leader can also request (expect success)
+POST {{API}}/auth/login
+Content-Type: application/json
+
+{
+  "email": "coach.tennis@example.com",
+  "password": "abdellahnsila123#002"
+}
+
+###
+POST {{API}}/clubs/tennis/matches/request
+Content-Type: application/json
+
+{
+  "mode": 1,
+  "opponent_ids": [{{P1}}],
+  "scheduled_at": "{{$datetime iso8601 3 d}}"
+}
+
+### H5  Restore member 11 (user 15), removed in D4 (expect success)
+POST {{API}}/clubs/tennis/members
+Content-Type: application/json
+
+{
+  "user_id": 15
+}
+
+### H6  Login back as nsila for the next part
+POST {{API}}/auth/login
+Content-Type: application/json
+
+{
+  "email": "user7@gmail.com",
+  "password": "abdellahnsila123#002"
+}
+
+
+############################################################
+#  DATABASE CHECK  (run in the terminal, not in this file)
+############################################################
+#
+#  docker exec -e PGPASSWORD=1337 database psql -h 127.0.0.1 -U club_service -d rackets_db -c "SELECT id, mode, status, ref_id, location, scheduled_at, team1_id, team2_id FROM club_schema.matches ORDER BY id DESC LIMIT 10;"
+#
+#  What to see for every match created above:
+#    status = 0 (pending)       ref_id = NULL (no referee yet)
+#    location trimmed (A4)      location NULL (A3, A5)
+#    A1: team1 = member 4 alone, team2 = member 5 alone
+#    A2: team1 = member 4 + 5,   team2 = member 6 + 7
+#
+#  The names "singles" and "doubles" (# @name) are saved:
+#    {{singles.response.body.pending_match_id}}
+#    {{doubles.response.body.pending_match_id}}
+#  Use them in part 2 (accept) without copying ids by hand.

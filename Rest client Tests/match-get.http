@@ -1,0 +1,259 @@
+############################################################
+#                                                          #
+#                    MATCHES  -  PART 3                    #
+#               Test: GET /matches/:id (detail)            #
+#                                                          #
+############################################################
+#
+#  Rules under test
+#    id ....... positive integer (anything else = 400)
+#    access ... club members only (non-member = 403)
+#    scope .... the match must belong to the club in the URL
+#               (other club's match = 404)
+#    pending .. a plain member sees ONLY their own pending matches,
+#               another person's pending match = 404 (not 403,
+#               so its existence is not leaked). A leader sees all.
+#    players .. come from the auth service (login, first_name,
+#               last_name, member_id)
+#
+#  Data the tests expect (same state as part 2: fresh seed + part 1
+#  run once + part 2 step 0.2)
+#
+#    id 1   finished   member 4 vs 5          singles
+#    id 2   finished   member 6 vs 7          singles
+#    id 3   finished   doubles 8+9 vs 10+11
+#    id 4   upcoming   member 4 vs 6          referee filled
+#    id 5   cancelled  member 5 vs 7
+#    id 6..11  pending, made by nsila (member 4 is a player)
+#    id 12  pending, made by the coach (H4), coach vs member 5
+#
+#  The pending ids (6..12) depend on the order of part 1.
+#  Check them with the DB query at the bottom before you start.
+#
+############################################################
+
+@API = http://localhost:3000/api/v1
+@PENDING_MINE = 6
+@PENDING_COACH = 12
+@PADEL_MATCH = 20
+
+
+############################################################
+#  0.  SETUP
+############################################################
+
+### 0.1  Login as nsila (member 4, plain member)
+POST {{API}}/auth/login
+Content-Type: application/json
+
+{
+  "email": "user7@gmail.com",
+  "password": "abdellahnsila123#002"
+}
+
+
+############################################################
+#  A.  DETAIL BY STATUS  (logged in as nsila)
+############################################################
+
+### A1  Finished singles (seed #1)
+###     expect: 200, status 2, scores filled, winner_id filled,
+###     team1_points and team2_points filled, referee filled,
+###     team1.player1 and team2.player1 filled, player2 null on both
+GET {{API}}/clubs/tennis/matches/1
+
+### A2  Finished doubles (seed #3)
+###     expect: 200, status 2, mode doubles, all 4 players filled
+###     (8+9 vs 10+11), each with login, first_name, last_name, member_id
+GET {{API}}/clubs/tennis/matches/3
+
+### A3  Upcoming (seed #4)
+###     expect: 200, status 1, referee filled, scores null,
+###     winner_id null, points null
+GET {{API}}/clubs/tennis/matches/4
+
+### A4  Cancelled (seed #5, nsila is not a player)
+###     expect: 200, status 3, cancelled_at filled
+###     (finished and cancelled matches are visible to every member)
+GET {{API}}/clubs/tennis/matches/5
+
+### A5  Own pending match
+###     expect: 200, status 0, referee null, scores null,
+###     member 4 is one of the players
+GET {{API}}/clubs/tennis/matches/{{PENDING_MINE}}
+
+### A6  Shape check (use A1)
+###     expect: id, status, mode, location, scheduled_at, cancelled_at,
+###     club { id, name, slug: "tennis" }, team1, team2, referee,
+###     winner_id, scores, team1_points, team2_points
+###     and NO password, email or other private auth field
+GET {{API}}/clubs/tennis/matches/1
+
+
+############################################################
+#  B.  PENDING VISIBILITY  (still nsila, plain member)
+############################################################
+
+### B1  The coach's pending request (H4), nsila is not in it
+###     expect: 404
+GET {{API}}/clubs/tennis/matches/{{PENDING_COACH}}
+
+
+############################################################
+#  C.  LEADER  (login as the tennis coach)
+############################################################
+
+### C1  Login as the tennis coach
+POST {{API}}/auth/login
+Content-Type: application/json
+
+{
+  "email": "coach.tennis@example.com",
+  "password": "abdellahnsila123#002"
+}
+
+### C2  The coach reads nsila's pending match
+###     expect: 200, same body as A5
+GET {{API}}/clubs/tennis/matches/{{PENDING_MINE}}
+
+### C3  The coach reads his own H4 request
+###     expect: 200, status 0
+GET {{API}}/clubs/tennis/matches/{{PENDING_COACH}}
+
+### C4  The coach reads a finished match (expect 200)
+GET {{API}}/clubs/tennis/matches/1
+
+
+############################################################
+#  D.  BAD ID  (logged in as the coach, all expect 400)
+############################################################
+
+### D1  Text
+GET {{API}}/clubs/tennis/matches/abc
+
+### D2  Zero
+GET {{API}}/clubs/tennis/matches/0
+
+### D3  Negative
+GET {{API}}/clubs/tennis/matches/-1
+
+### D4  Decimal
+GET {{API}}/clubs/tennis/matches/1.5
+
+### D5  Number too big for an integer column (expect 400, not 500)
+GET {{API}}/clubs/tennis/matches/99999999999
+
+
+############################################################
+#  E.  NOT FOUND  (all expect 404)
+############################################################
+
+### E1  Match that does not exist
+GET {{API}}/clubs/tennis/matches/99999
+
+### E2  Club that does not exist
+GET {{API}}/clubs/not-a-club/matches/1
+
+### E3  Match of ANOTHER club read through the tennis URL
+###     expect: 404, it must not leak across clubs
+GET {{API}}/clubs/tennis/matches/{{PADEL_MATCH}}
+
+
+############################################################
+#  F.  ACCESS
+############################################################
+
+### F1  Not logged in (expect 401)
+POST {{API}}/auth/logout
+
+###
+GET {{API}}/clubs/tennis/matches/1
+
+### F2  Login as the PADEL coach, not a member of tennis
+POST {{API}}/auth/login
+Content-Type: application/json
+
+{
+  "email": "coach.padel@example.com",
+  "password": "abdellahnsila123#002"
+}
+
+###      expect: 403
+GET {{API}}/clubs/tennis/matches/1
+
+### F3  The padel coach reads a padel match through the padel URL
+###     expect: 200, club.slug = padel
+GET {{API}}/clubs/padel/matches/{{PADEL_MATCH}}
+
+### F4  The padel coach reads a tennis match through the padel URL
+###     expect: 404
+GET {{API}}/clubs/padel/matches/1
+
+### F5  A member who left cannot read (4 steps)
+###     F5a  login as the tennis coach
+POST {{API}}/auth/login
+Content-Type: application/json
+
+{
+  "email": "coach.tennis@example.com",
+  "password": "abdellahnsila123#002"
+}
+
+### F5b  remove nsila (member 4)
+DELETE {{API}}/clubs/tennis/members/4
+
+### F5c  login as nsila
+POST {{API}}/auth/login
+Content-Type: application/json
+
+{
+  "email": "user7@gmail.com",
+  "password": "abdellahnsila123#002"
+}
+
+### F5d  nsila reads a match he played in (expect 403)
+GET {{API}}/clubs/tennis/matches/1
+
+### F6  Restore nsila (3 steps)
+###     F6a  login as the tennis coach
+POST {{API}}/auth/login
+Content-Type: application/json
+
+{
+  "email": "coach.tennis@example.com",
+  "password": "abdellahnsila123#002"
+}
+
+### F6b  add user 8 back (expect the SAME member id 4)
+POST {{API}}/clubs/tennis/members
+Content-Type: application/json
+
+{
+  "user_id": 8
+}
+
+### F6c  login as nsila and read again (expect 200)
+POST {{API}}/auth/login
+Content-Type: application/json
+
+{
+  "email": "user7@gmail.com",
+  "password": "abdellahnsila123#002"
+}
+
+###
+GET {{API}}/clubs/tennis/matches/1
+
+
+############################################################
+#  DATABASE CHECK  (run in the terminal, not in this file)
+############################################################
+#
+#  1. Real ids and statuses (use them for PENDING_MINE / PENDING_COACH)
+#
+#  docker exec -e PGPASSWORD=1337 database psql -h 127.0.0.1 -U club_service -d rackets_db -c "SELECT m.id, m.club_id, m.status, m.ref_id, m.scheduled_at FROM club_schema.matches m ORDER BY m.id;"
+#
+#  2. Pick PADEL_MATCH: any id with club_id other than 1
+#     (the club_id of padel). Put it at the top of the file.
+#
+############################################################

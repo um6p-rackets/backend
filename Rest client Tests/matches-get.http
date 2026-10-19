@@ -1,0 +1,336 @@
+############################################################
+#                                                          #
+#                    MATCHES  -  PART 2                    #
+#                 Test: GET /matches (list)                #
+#                                                          #
+############################################################
+#
+#  Rules under test
+#    status ... all | pending | upcoming | completed | cancelled
+#               (lowercase only, anything else = 400)
+#    mine ..... true = only matches where I play or referee
+#    page ..... from 1,  limit ... 1 to 50 (default 20)
+#    sort ..... pending + upcoming: scheduled_at ASCENDING
+#               all, completed, cancelled: scheduled_at DESCENDING
+#    pending .. a plain member sees ONLY their own pending
+#               matches (also inside status=all), a leader sees all
+#
+#  Data the tests expect (fresh seed + part 1 run once + step 0.3)
+#
+#    seed #1  finished   member 4 vs 5          7 days ago
+#    seed #2  finished   member 6 vs 7          3 days ago
+#    seed #3  finished   doubles 8+9 vs 10+11   1 day ago
+#    seed #4  upcoming   member 4 vs 6          in 2 days
+#    seed #5  cancelled  member 5 vs 7          (made by hand in 0.3)
+#    part 1   pending    6 matches by nsila (A1 to A5 and F1)
+#    part 1   pending    1 match by the coach (H4), coach vs member 5
+#
+#  Expected totals
+#    +-----------+-----+---------+----------+-----------+--------+
+#    | login     | all | pending | upcoming | completed | cancel |
+#    +-----------+-----+---------+----------+-----------+--------+
+#    | nsila     | 11  |    6    |    1     |     3     |   1    |
+#    | tennis    | 12  |    7    |    1     |     3     |   1    |
+#    | coach     |     |         |          |           |        |
+#    +-----------+-----+---------+----------+-----------+--------+
+#    with mine=true:  nsila = 8 (6 pending, 1 upcoming, 1 completed)
+#                     coach = 1 (only the H4 request)
+#
+############################################################
+
+@API = http://localhost:3000/api/v1
+
+
+############################################################
+#  0.  SETUP
+############################################################
+
+### 0.1  Login as nsila (member 4, a plain member)
+POST {{API}}/auth/login
+Content-Type: application/json
+
+{
+  "email": "user7@gmail.com",
+  "password": "abdellahnsila123#002"
+}
+
+### 0.2  Make seed match #5 cancelled BY HAND (the cancel route comes in part 5).
+###      Run this in the terminal, not in this file:
+###
+###  docker exec -e PGPASSWORD=1337 database psql -h 127.0.0.1 -U club_service -d rackets_db -c "UPDATE club_schema.matches SET status = 3, cancelled_at = now() WHERE id = 5;"
+###
+###      expect: UPDATE 1
+
+
+############################################################
+#  A.  BASIC LIST  (logged in as nsila)
+############################################################
+
+### A1  Default list
+###     expect: 200 and { data, page: 1, limit: 20, total: 11 }
+###     each item: id, status, mode, location, scheduled_at, cancelled_at,
+###                club { id, name, slug }, team1 / team2 with player1 and
+###                player2 (login, first_name, last_name, member_id),
+###                referee (null while pending)
+GET {{API}}/clubs/tennis/matches
+
+### A2  status=all (same as A1, total 11)
+GET {{API}}/clubs/tennis/matches?status=all
+
+### A3  status=pending
+###     expect: total 6, member 4 is a player in EVERY item (not the coach's H4 request)
+GET {{API}}/clubs/tennis/matches?status=pending
+
+### A4  status=upcoming
+###     expect: total 1, seed #4 (member 4 vs 6), status 1, referee filled
+GET {{API}}/clubs/tennis/matches?status=upcoming
+
+### A5  status=completed
+###     expect: total 3, status 2, winner_id and scores filled
+GET {{API}}/clubs/tennis/matches?status=completed
+
+### A6  status=cancelled
+###     expect: total 1, seed #5 (members 5 and 7), status 3, cancelled_at filled
+GET {{API}}/clubs/tennis/matches?status=cancelled
+
+
+############################################################
+#  B.  MINE FILTER  (still nsila)
+############################################################
+
+### B1  mine=true (expect total 8)
+GET {{API}}/clubs/tennis/matches?mine=true
+
+### B2  mine=false (same as the default list, total 11)
+GET {{API}}/clubs/tennis/matches?mine=false
+
+### B3  mine + pending (expect 6, the 6 requests from part 1)
+GET {{API}}/clubs/tennis/matches?mine=true&status=pending
+
+### B4  mine + upcoming (expect 1, seed #4)
+GET {{API}}/clubs/tennis/matches?mine=true&status=upcoming
+
+### B5  mine + completed (expect 1, seed #1: member 4 vs 5)
+GET {{API}}/clubs/tennis/matches?mine=true&status=completed
+
+### B6  mine + cancelled (expect total 0, data [], nsila is not in seed #5)
+GET {{API}}/clubs/tennis/matches?mine=true&status=cancelled
+
+
+############################################################
+#  C.  PAGINATION
+############################################################
+
+### C1  Page 1, 2 per page (expect 2 items, total still 11)
+GET {{API}}/clubs/tennis/matches?limit=2&page=1
+
+### C2  Page 2, 2 per page (expect 2 DIFFERENT items, no id from C1)
+GET {{API}}/clubs/tennis/matches?limit=2&page=2
+
+### C3  Last page, 2 per page (expect 1 item, 11 = 5 x 2 + 1)
+GET {{API}}/clubs/tennis/matches?limit=2&page=6
+
+### C4  Page far after the end (expect 200, data [], total still 11)
+GET {{API}}/clubs/tennis/matches?page=999
+
+### C5  Biggest allowed limit (expect 200, 11 items)
+GET {{API}}/clubs/tennis/matches?limit=50
+
+### C6  Page 0 (expect 400)
+GET {{API}}/clubs/tennis/matches?page=0
+
+### C7  Limit 0 (expect 400)
+GET {{API}}/clubs/tennis/matches?limit=0
+
+### C8  Limit above 50 (expect 400)
+GET {{API}}/clubs/tennis/matches?limit=51
+
+### C9  Limit is text (expect 400)
+GET {{API}}/clubs/tennis/matches?limit=abc
+
+### C10 Pagination with a filter (expect 2 items of 6, total 6)
+GET {{API}}/clubs/tennis/matches?status=pending&limit=2&page=1
+
+
+############################################################
+#  D.  SORT ORDER  (read the scheduled_at of each item)
+############################################################
+
+### D1  pending: nearest FIRST (A1 request in 3 days comes first, F1 in 8 days last)
+GET {{API}}/clubs/tennis/matches?status=pending
+
+### D2  completed: newest FIRST (seed #3 yesterday, then #2, then #1)
+GET {{API}}/clubs/tennis/matches?status=completed
+
+### D3  all: furthest date FIRST (F1 in 8 days first, the finished seed #1 last)
+GET {{API}}/clubs/tennis/matches?status=all
+
+### D4  Two matches with the same date keep a stable order:
+###     page 1 and page 2 of limit=1 must never repeat or skip an item
+GET {{API}}/clubs/tennis/matches?status=all&limit=1&page=1
+
+###
+GET {{API}}/clubs/tennis/matches?status=all&limit=1&page=2
+
+
+############################################################
+#  E.  WHO SEES WHAT  (plain member vs leader)
+############################################################
+
+### E1  nsila (plain member) sees only HIS pending matches
+###     expect: total 6, the coach's request (H4) is NOT in the list
+GET {{API}}/clubs/tennis/matches?status=pending
+
+### E2  nsila with status=all: the other people's pending matches are hidden
+###     expect: total 11 and no pending item without member 4
+GET {{API}}/clubs/tennis/matches?status=all
+
+### E3  Login as the tennis coach (a leader)
+POST {{API}}/auth/login
+Content-Type: application/json
+
+{
+  "email": "coach.tennis@example.com",
+  "password": "abdellahnsila123#002"
+}
+
+### E4  The coach sees ALL pending matches
+###     expect: total 7 (the 6 from nsila + his own H4 request)
+GET {{API}}/clubs/tennis/matches?status=pending
+
+### E5  The coach with status=all (expect total 12)
+GET {{API}}/clubs/tennis/matches?status=all
+
+### E6  The coach with mine=true (expect total 1, only the H4 request)
+GET {{API}}/clubs/tennis/matches?mine=true
+
+### E7  The coach can also see the other statuses (expect 3, 1, 1)
+GET {{API}}/clubs/tennis/matches?status=completed
+
+###
+GET {{API}}/clubs/tennis/matches?status=upcoming
+
+###
+GET {{API}}/clubs/tennis/matches?status=cancelled
+
+
+############################################################
+#  F.  BAD QUERIES  (all expect 400)
+############################################################
+
+### F1  Unknown status
+GET {{API}}/clubs/tennis/matches?status=finished
+
+### F2  Upper case status (values are lowercase only)
+GET {{API}}/clubs/tennis/matches?status=ALL
+
+### F3  Status given as a number
+GET {{API}}/clubs/tennis/matches?status=0
+
+### F4  Property that does not exist
+GET {{API}}/clubs/tennis/matches?foo=1
+
+### F5  Old filter name from the first contract
+GET {{API}}/clubs/tennis/matches?status=past
+
+
+############################################################
+#  G.  ACCESS
+############################################################
+
+### G1  Club that does not exist (expect 404)
+GET {{API}}/clubs/not-a-club/matches
+
+### G2  Not logged in (expect 401)
+POST {{API}}/auth/logout
+
+###
+GET {{API}}/clubs/tennis/matches
+
+### G3  Login as the PADEL coach, not a member of tennis
+POST {{API}}/auth/login
+Content-Type: application/json
+
+{
+  "email": "coach.padel@example.com",
+  "password": "abdellahnsila123#002"
+}
+
+###      read tennis matches (expect 403)
+GET {{API}}/clubs/tennis/matches
+
+### G4  The padel coach reads HIS OWN club
+###     expect: 200, only padel matches (club.slug = padel in every item)
+GET {{API}}/clubs/padel/matches
+
+### G5  A member who left cannot read (4 steps)
+###     G5a  login as the tennis coach
+POST {{API}}/auth/login
+Content-Type: application/json
+
+{
+  "email": "coach.tennis@example.com",
+  "password": "abdellahnsila123#002"
+}
+
+### G5b  remove nsila (member 4), expect success
+DELETE {{API}}/clubs/tennis/members/4
+
+### G5c  login as nsila
+POST {{API}}/auth/login
+Content-Type: application/json
+
+{
+  "email": "user7@gmail.com",
+  "password": "abdellahnsila123#002"
+}
+
+### G5d  nsila reads the list (expect 403)
+GET {{API}}/clubs/tennis/matches
+
+### G6  Restore nsila (3 steps)
+###     G6a  login as the tennis coach
+POST {{API}}/auth/login
+Content-Type: application/json
+
+{
+  "email": "coach.tennis@example.com",
+  "password": "abdellahnsila123#002"
+}
+
+### G6b  add user 8 back (expect success, the SAME member id 4)
+POST {{API}}/clubs/tennis/members
+Content-Type: application/json
+
+{
+  "user_id": 8
+}
+
+### G6c  login back as nsila and read again (expect 200, total 11)
+POST {{API}}/auth/login
+Content-Type: application/json
+
+{
+  "email": "user7@gmail.com",
+  "password": "abdellahnsila123#002"
+}
+
+###
+GET {{API}}/clubs/tennis/matches
+
+
+############################################################
+#  DATABASE CHECK  (run in the terminal, not in this file)
+############################################################
+#
+#  1. How many matches per status in tennis
+#
+#  docker exec -e PGPASSWORD=1337 database psql -h 127.0.0.1 -U club_service -d rackets_db -c "SELECT status, count(*) FROM club_schema.matches WHERE club_id = 1 GROUP BY status ORDER BY status;"
+#
+#     expect: 0 -> 7,  1 -> 1,  2 -> 3,  3 -> 1
+#
+#  2. The matches of member 4 (this number must equal mine=true, 8)
+#
+#  docker exec -e PGPASSWORD=1337 database psql -h 127.0.0.1 -U club_service -d rackets_db -c "SELECT m.id, m.status, m.scheduled_at FROM club_schema.matches m JOIN club_schema.teams t1 ON t1.id = m.team1_id JOIN club_schema.teams t2 ON t2.id = m.team2_id WHERE m.club_id = 1 AND (4 IN (t1.player1_id, t1.player2_id, t2.player1_id, t2.player2_id) OR m.ref_id = 4) ORDER BY m.id;"
+#
+############################################################

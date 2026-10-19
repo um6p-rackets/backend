@@ -52,6 +52,13 @@ export const CLUB_PATTERNS = {
   GET_CLUB_ACHIEVEMENTS: 'club.get-club-achievements',
   POST_CLUB_ACHIEVEMENT_CREATE: 'club.post-club-achievement-create',
   DELETE_CLUB_ACHIEVEMENT_DELETE: 'club.delete-club-achievement-delete',
+  // ================== MATCHES SERVICE ==================
+  GET_CLUB_MATCHES: 'club.get-club-matches',
+  POST_CLUB_MATCH_REQUEST: 'club.post-club-match-request',
+  GET_CLUB_MATCH: 'club.get-club-match',
+  POST_CLUB_MATCH_ACCEPT: 'club.post-club-match-accept',
+  POST_CLUB_MATCH_REJECT: 'club.post-club-match-reject',
+  POST_CLUB_MATCH_CANCEL: 'club.post-club-match-cancel',
   
 } as const;
 
