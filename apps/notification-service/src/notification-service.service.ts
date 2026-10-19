@@ -1,6 +1,10 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from './prisma/prisma.service.js';
-import { SenderType, NotificationCategory , NotificationType} from './generated/prisma/enums.js';
+import {
+  SenderType,
+  NotificationCategory,
+  NotificationType,
+} from './generated/prisma/enums.js';
 
 @Injectable()
 export class NotificationServiceService {
@@ -12,28 +16,28 @@ export class NotificationServiceService {
 
   // notification can only be created by system or user event
   async createNotification(data: {
-    eventId: string;
-    senderType: SenderType;
-    senderId?: bigint;
+    event_id: string;
+    sender_type: SenderType;
+    sender_id?: bigint;
     category: NotificationCategory;
     type: NotificationType; // for filtering notifications by type
-    clubId?: bigint;
-    receiverUserIds: bigint[];
-    dedupeKey?: string | null;
+    club_id?: bigint;
+    receiver_user_ids: bigint[];
+    dedupe_key?: string | null;
   }) {
     try {
       return await this.prisma.notification.create({
         data: {
-          eventId: data.eventId,   
-          senderType: data.senderType, // system = 1 , user = 2 
-          senderId: data.senderId, 
+          event_id: data.event_id,
+          sender_type: data.sender_type, // system = 1 , user = 2
+          sender_id: data.sender_id,
           category: data.category, // for filtering notifications by category
-          type : data.type,
-          clubId: data.clubId,
-          dedupeKey: data.dedupeKey, 
+          type: data.type,
+          club_id: data.club_id,
+          dedupe_key: data.dedupe_key,
           receivers: {
-            create: data.receiverUserIds.map((userId) => ({
-              receiverUserId: userId,
+            create: data.receiver_user_ids.map((userId) => ({
+              receiver_user_id: userId,
             })),
           },
         },
@@ -47,7 +51,7 @@ export class NotificationServiceService {
   // Retrieve a user's notifications
   async getInbox(userId: bigint, page = 1, limit = 20) {
     return this.prisma.notificationReceiver.findMany({
-      where: { receiverUserId: userId },
+      where: { receiver_user_id: userId },
       orderBy: { id: 'desc' },
       skip: (page - 1) * limit,
       take: limit,
@@ -56,11 +60,11 @@ export class NotificationServiceService {
   }
 
   // Mark one notification as read
-  async markAsRead(notificationId: bigint, userId: bigint) {
+  async markAsRead(notification_id: bigint, userId: bigint) {
     const receiver = await this.prisma.notificationReceiver.findFirst({
       where: {
-        notificationId: notificationId,
-        receiverUserId: userId,
+        notification_id: notification_id,
+        receiver_user_id: userId,
       },
     });
 
@@ -71,8 +75,8 @@ export class NotificationServiceService {
     return this.prisma.notificationReceiver.update({
       where: { id: receiver.id },
       data: {
-        isRead: true,
-        readAt: new Date(),
+        is_read: true,
+        read_at: new Date(),
       },
     });
   }
@@ -80,12 +84,12 @@ export class NotificationServiceService {
   async markAllAsRead(userId: bigint) {
     return this.prisma.notificationReceiver.updateMany({
       where: {
-        receiverUserId: userId,
-        isRead: false,
+        receiver_user_id: userId,
+        is_read: false,
       },
       data: {
-        isRead: true,
-        readAt: new Date(),
+        is_read: true,
+        read_at: new Date(),
       },
     });
   }

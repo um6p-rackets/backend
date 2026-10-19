@@ -3,5 +3,5 @@ import { IsNotEmpty, IsNumber } from 'class-validator';
 export class MarkAsReadDto {
   @IsNumber()
   @IsNotEmpty()
-  notificationId: number;
+  notification_id: number;
 }
