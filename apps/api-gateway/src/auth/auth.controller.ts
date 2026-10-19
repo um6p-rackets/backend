@@ -180,6 +180,7 @@ export class AuthController {
         return msg;
     }
 
+    @Public()
     @HttpCode(202)
     @Throttle({ default: { limit: REQUEST_LIMIT, ttl: REQUEST_TTL } })
     @Post('forget-password')
@@ -187,6 +188,7 @@ export class AuthController {
         return await rpc<SuccessResult>(this.authClient, AUTH_PATTERNS.FORGET_PASSWORD, { email: dto.email });
     }
 
+    @Public()
     @HttpCode(200)
     @Throttle({ default: { limit: REQUEST_LIMIT, ttl: REQUEST_TTL } })
     @Post('reset-password')
