@@ -74,7 +74,7 @@ export class ClubAchievementController {
     const response = this.clubClient.send(CLUB_PATTERNS.DELETE_CLUB_ACHIEVEMENT_DELETE, {
       slug: slug,
       user_id: user.id,
-      achievement_id: parseInt(achievement_id, 10),
+      achievement_id: achievement_id,
     });
     return response;
   }
