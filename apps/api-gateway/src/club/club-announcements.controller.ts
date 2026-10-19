@@ -82,7 +82,7 @@ export class ClubAnnouncementsController {
       {
         slug: slug,
         user_id: user.id,
-        announcement_id: parseInt(announcement_id, 10),
+        announcement_id: announcement_id,
       },
     );
     return response;

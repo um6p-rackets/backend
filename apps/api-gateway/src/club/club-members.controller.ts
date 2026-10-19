@@ -81,7 +81,7 @@ export class ClubMembersController {
         club_slug: slug,
         user_id: user.id,
         body,
-        member_id: parseInt(member_id, 10),
+        member_id: member_id,
       },
     );
     return response;
@@ -101,7 +101,7 @@ export class ClubMembersController {
       {
         club_slug: slug,
         user_id: user.id,
-        member_id: parseInt(member_id, 10),
+        member_id: member_id,
       },
     );
     return response;

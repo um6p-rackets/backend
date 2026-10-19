@@ -80,7 +80,7 @@ export class ClubDocumentsController {
       {
         slug: slug,
         user_id: user.id,
-        document_id: parseInt(document_id, 10),
+        document_id: document_id,
       },
     );
     return response;

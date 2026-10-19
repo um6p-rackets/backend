@@ -18,6 +18,7 @@ import {
   GetMatchParamDto,
   MatchesQueryDto,
   MatchRequestDto,
+  MatchResultDto,
   PaginationQueryDto,
 } from '@app/contracts/club/dto/index.js';
 
@@ -68,7 +69,48 @@ export class ClubMatchesController {
     return this.clubClient.send(CLUB_PATTERNS.GET_CLUB_MATCH, {
       slug,
       user_id: user.id,
-      match_id: parseInt(match_id, 10), // Convert match_id to number
+      match_id: match_id,
+    });
+  }
+
+  // POST /clubs/:slug/matches/:id/accept
+  @Post(':match_id/accept')
+  async acceptMatch(
+    @Param() { slug, match_id }: GetMatchParamDto,
+    @CurrentUser() user: AuthenticatedUser,
+  ) {
+    return this.clubClient.send(CLUB_PATTERNS.POST_CLUB_MATCH_ACCEPT, {
+      slug,
+      user_id: user.id,
+      match_id: match_id,
+    });
+  }
+
+  // POST /clubs/:slug/matches/:id/cancel
+  @Post(':match_id/cancel')
+  async cancelMatch(
+    @Param() { slug, match_id }: GetMatchParamDto,
+    @CurrentUser() user: AuthenticatedUser,
+  ) {
+    return this.clubClient.send(CLUB_PATTERNS.POST_CLUB_MATCH_CANCEL, {
+      slug,
+      user_id: user.id,
+      match_id: match_id,
+    });
+  }
+
+  // POST /clubs/:slug/matches/:id/result
+  @Post(':match_id/result')
+  async submitMatchResult(
+    @Param() { slug, match_id }: GetMatchParamDto,
+    @CurrentUser() user: AuthenticatedUser,
+    @Body() body: MatchResultDto,
+  ) {
+    return this.clubClient.send(CLUB_PATTERNS.POST_CLUB_MATCH_RESULT, {
+      slug,
+      user_id: user.id,
+      match_id: match_id,
+      result: body,
     });
   }
 }

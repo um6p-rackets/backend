@@ -6,6 +6,7 @@ import { AUTH_PATTERNS, AUTH_SERVICE, rpcError, User } from '@app/contracts';
 import {
   MatchesQueryDto,
   MatchRequestDto,
+  MatchResultDto,
 } from '@app/contracts/club/dto/index.js';
 import {
   MatchDetail,
@@ -16,6 +17,11 @@ import {
   UserSummary,
 } from '@app/contracts/club/index.js';
 import { rpc } from '@app/common';
+
+const memberSelect = { select: { id: true, user_id: true } } as const;
+const teamInclude = {
+  include: { player1: memberSelect, player2: memberSelect },
+} as const;
 
 @Injectable()
 export class MatchesService {
@@ -343,10 +349,6 @@ export class MatchesService {
       MemberRole.MEMBER,
     );
 
-    const memberSelect = { select: { id: true, user_id: true } } as const;
-    const teamInclude = {
-      include: { player1: memberSelect, player2: memberSelect },
-    } as const;
     const match = await this.prisma.match.findUnique({
       where: { club_id: club.id, id: match_id },
       include: {
@@ -411,5 +413,163 @@ export class MatchesService {
       cancelled_at: match.cancelled_at?.toISOString() ?? null,
       created_at: match.created_at.toISOString(),
     };
+  }
+
+  async acceptMatch(
+    slug: string,
+    user_id: number,
+    match_id: number,
+  ): Promise<{ status: number; message: string }> {
+    const { club, member } = await this.clubAccessService.requireRole(
+      slug,
+      user_id,
+      MemberRole.LEADER,
+    );
+
+    const match = await this.prisma.match.findUnique({
+      where: { club_id: club.id, id: match_id }
+    });
+    if (!match) throw rpcError(404, 'Match not found', 'Not Found');
+
+    if (match.status !== MatchStatus.PENDING) {
+      throw rpcError(
+        400,
+        'Only pending matches can be accepted',
+        'Bad Request',
+      );
+    }
+
+    // accept the match
+    await this.prisma.match.update({
+      where: { club_id: club.id, id: match_id },
+      data: { status: MatchStatus.CONFIRMED, ref_id: member.id },
+    });
+
+    return { status: 200, message: 'Match accepted successfully' };
+  }
+
+  async cancelMatch(
+    slug: string,
+    user_id: number,
+    match_id: number,
+  ): Promise<{ status: number; message: string }> {
+    const { club, member } = await this.clubAccessService.requireRole(
+      slug,
+      user_id,
+      MemberRole.MEMBER,
+    );
+
+    const match = await this.prisma.match.findUnique({
+      where: { club_id: club.id, id: match_id },
+      include: {
+        team1: teamInclude,
+        team2: teamInclude,
+      },
+    });
+
+    if (!match) throw rpcError(404, 'Match not found', 'Not Found');
+
+    if (match.status === MatchStatus.CANCELLED) {
+      throw rpcError(400, 'Match is already cancelled', 'Bad Request');
+    }
+
+    if (match.status === MatchStatus.FINISHED) {
+      throw rpcError(400, 'Finished matches cannot be cancelled', 'Bad Request');
+    }
+
+    // only the players in the match or a leader can cancel the match
+    const isInMatch =
+      match.team1.player1_id === member.id ||
+      match.team1.player2_id === member.id ||
+      match.team2.player1_id === member.id ||
+      match.team2.player2_id === member.id;
+
+    if (!isInMatch && member.role !== MemberRole.LEADER) {
+      throw rpcError(
+        403,
+        'You do not have permission to cancel this match',
+        'Forbidden',
+      );
+    }
+
+    // if the match is confirmed, only a leader can cancel it
+    if (match.status === MatchStatus.CONFIRMED && member.role !== MemberRole.LEADER) {
+      throw rpcError(
+        403,
+        'Only a leader can cancel a confirmed match',
+        'Forbidden',
+      );
+    }
+
+    // cancel the match
+    await this.prisma.match.update({
+      where: { club_id: club.id, id: match_id },
+      data: { status: MatchStatus.CANCELLED, cancelled_at: new Date(), cancelled_by: member.id },
+    });
+
+    return { status: 200, message: 'Match cancelled successfully' };
+  }
+
+  async submitMatchResult(
+    slug: string,
+    user_id: number,
+    match_id: number,
+    body: MatchResultDto,
+  ): Promise<{ status: number; message: string }> {
+    const { club, member } = await this.clubAccessService.requireRole(
+      slug,
+      user_id,
+      MemberRole.MEMBER,
+    );
+
+    const match = await this.prisma.match.findUnique({
+      where: { club_id: club.id, id: match_id },
+      include: {
+        team1: teamInclude,
+        team2: teamInclude,
+      },
+    });
+
+    if (!match) throw rpcError(404, 'Match not found', 'Not Found');
+
+    if (match.status !== MatchStatus.CONFIRMED) {
+      throw rpcError(
+        400,
+        'Only confirmed matches can have results submitted',
+        'Bad Request',
+      );
+    }
+
+    // only the referee can submit the result
+    if (match.ref_id !== member.id) {
+      throw rpcError(
+        403,
+        'You do not have permission to submit the result for this match',
+        'Forbidden',
+      );
+    }
+
+    // determine the winner
+    let winner_id: number | null = null;
+    if (body.team1_score > body.team2_score) {
+      winner_id = match.team1.id;
+    } else if (body.team2_score > body.team1_score) {
+      winner_id = match.team2.id;
+    }
+
+    // update the match with the result
+    await this.prisma.match.update({
+      where: { club_id: club.id, id: match_id },
+      data: {
+        team1_score: body.team1_score,
+        team2_score: body.team2_score,
+        team1_points: body.team1_score > body.team2_score ? 3 : body.team1_score === body.team2_score ? 1 : 0,
+        team2_points: body.team2_score > body.team1_score ? 3 : body.team1_score === body.team2_score ? 1 : 0,
+        winner_id: winner_id,
+        status: MatchStatus.FINISHED,
+      },
+    });
+
+    return { status: 200, message: 'Match result submitted successfully' };
   }
 }
