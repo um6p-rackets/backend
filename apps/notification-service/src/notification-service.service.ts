@@ -1,16 +1,22 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from './prisma/prisma.service.js';
+import { SenderType, NotificationCategory , NotificationType} from './generated/prisma/enums.js';
 
 @Injectable()
 export class NotificationServiceService {
   constructor(private readonly prisma: PrismaService) {}
 
-  // Create a notification and its recipients
+  async hello() {
+    return 'Hello from Notification Service!';
+  }
+
+  // notification can only be created by system or user event
   async createNotification(data: {
     eventId: string;
-    senderType: number;
+    senderType: SenderType;
     senderId?: bigint;
-    category: number;
+    category: NotificationCategory;
+    type: NotificationType; // for filtering notifications by type
     clubId?: bigint;
     receiverUserIds: bigint[];
     dedupeKey?: string | null;
@@ -18,12 +24,13 @@ export class NotificationServiceService {
     try {
       return await this.prisma.notification.create({
         data: {
-          eventId: data.eventId,
-          senderType: data.senderType, // system = 1 , user = 2, club = 3
-          senderId: data.senderId,
-          category: data.category,
+          eventId: data.eventId,   
+          senderType: data.senderType, // system = 1 , user = 2 
+          senderId: data.senderId, 
+          category: data.category, // for filtering notifications by category
+          type : data.type,
           clubId: data.clubId,
-          dedupeKey: data.dedupeKey,
+          dedupeKey: data.dedupeKey, 
           receivers: {
             create: data.receiverUserIds.map((userId) => ({
               receiverUserId: userId,

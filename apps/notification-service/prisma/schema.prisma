@@ -9,8 +9,9 @@ datasource db {
 
 // WHO caused the notification?
 enum SenderType {
-  USER
-  // SYSTEM for system-generated events, like announcements.
+  SYSTEM // for email notifications, the system will be the sender
+  USER // if a user caused the notification, the user will be the sender
+  // CLUB // this for annoncement notifications, the club service will be the sender
 }
 
 // WHAT area of the application does it belong to?
