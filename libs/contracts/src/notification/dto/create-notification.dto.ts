@@ -1,17 +1,28 @@
-import { IsArray, IsEnum, IsNotEmpty, IsNumber, IsOptional, IsString } from 'class-validator';
-import { NotificationCategory, NotificationType, SenderType } from '../notification.types.js';
+import {
+  IsArray,
+  IsEnum,
+  IsNotEmpty,
+  IsNumber,
+  IsOptional,
+  IsString,
+} from 'class-validator';
+import {
+  NotificationCategory,
+  NotificationType,
+  SenderType,
+} from '../notification.types.js';
 
 export class CreateNotificationDto {
   @IsString()
   @IsNotEmpty()
-  eventId: string;
+  event_id: string;
 
   @IsEnum(SenderType)
-  senderType: SenderType;
+  sender_type: SenderType;
 
   @IsOptional()
   @IsNumber()
-  senderId?: number;
+  sender_id?: number;
 
   @IsEnum(NotificationCategory)
   category: NotificationCategory;
@@ -21,13 +32,13 @@ export class CreateNotificationDto {
 
   @IsOptional()
   @IsNumber()
-  clubId?: number;
+  club_id?: number;
 
   @IsArray()
   @IsNumber({}, { each: true })
-  receiverUserIds: number[];
+  receiver_user_ids: number[];
 
   @IsOptional()
   @IsString()
-  dedupeKey?: string;
+  dedupe_key?: string;
 }

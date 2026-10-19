@@ -5,7 +5,7 @@ import { ConfigService } from '@nestjs/config';
 import { QUEUES } from '@app/contracts/queues.js';
 import { NOTIFICATION_SERVICE } from '@app/contracts';
 import { rmqOptions } from '@app/rmq';
-import { NotificationController } from './notifcation.controller.js';
+import { NotificationsController } from './notifcations.controller.js';
 
 @Module({
   imports: [
@@ -20,6 +20,6 @@ import { NotificationController } from './notifcation.controller.js';
       },
     ]),
   ],
-  controllers: [NotificationController],
+  controllers: [NotificationsController],
 })
-export class NotificationModule {}
+export class NotificationsModule {}

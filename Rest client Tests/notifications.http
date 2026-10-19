@@ -1,0 +1,32 @@
+@API = http://localhost:3000/api/v1
+
+################################################ Auth #######################################
+
+
+
+### 1. Login (run this first, cookies are saved for the next requests)
+POST {{API}}/auth/login
+Content-Type: application/json
+
+{
+  "email": "coach.tennis@example.com",
+  "password": "abdellahnsila123#002"
+}
+
+### 1a. Login with diffrent user account
+POST {{API}}/auth/login
+Content-Type: application/json
+
+{
+  "email": "user7@gmail.com",
+  "password": "abdellahnsila123#002"
+}
+
+### 1b. Log out (expect 200)
+POST {{API}}/auth/logout
+
+### 1c. /me (expect 401, not logged in)
+GET {{API}}/auth/me
+
+### 2a. Notifications - get hello
+GET {{API}}/notifications/hello
