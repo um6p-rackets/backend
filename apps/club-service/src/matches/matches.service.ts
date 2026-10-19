@@ -17,6 +17,11 @@ import {
 } from '@app/contracts/club/index.js';
 import { rpc } from '@app/common';
 
+const memberSelect = { select: { id: true, user_id: true } } as const;
+const teamInclude = {
+  include: { player1: memberSelect, player2: memberSelect },
+} as const;
+
 @Injectable()
 export class MatchesService {
   constructor(
@@ -343,10 +348,6 @@ export class MatchesService {
       MemberRole.MEMBER,
     );
 
-    const memberSelect = { select: { id: true, user_id: true } } as const;
-    const teamInclude = {
-      include: { player1: memberSelect, player2: memberSelect },
-    } as const;
     const match = await this.prisma.match.findUnique({
       where: { club_id: club.id, id: match_id },
       include: {
@@ -411,5 +412,42 @@ export class MatchesService {
       cancelled_at: match.cancelled_at?.toISOString() ?? null,
       created_at: match.created_at.toISOString(),
     };
+  }
+
+  async acceptMatch(
+    slug: string,
+    user_id: number,
+    match_id: number,
+  ): Promise<{ status: number; message: string }> {
+    const { club, member } = await this.clubAccessService.requireRole(
+      slug,
+      user_id,
+      MemberRole.LEADER,
+    );
+
+    const match = await this.prisma.match.findUnique({
+      where: { club_id: club.id, id: match_id },
+      include: {
+        team1: teamInclude,
+        team2: teamInclude,
+      },
+    });
+    if (!match) throw rpcError(404, 'Match not found', 'Not Found');
+
+    if (match.status !== MatchStatus.PENDING) {
+      throw rpcError(
+        400,
+        'Only pending matches can be accepted',
+        'Bad Request',
+      );
+    }
+
+    // accept the match
+    await this.prisma.match.update({
+      where: { club_id: club.id, id: match_id },
+      data: { status: MatchStatus.CONFIRMED, ref_id: member.id },
+    });
+
+    return { status: 200, message: 'Match accepted successfully' };
   }
 }

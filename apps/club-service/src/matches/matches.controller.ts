@@ -22,4 +22,25 @@ export class MatchesController {
   async getMatch(data: { slug: string; user_id: number; match_id: number }) {
     return await this.matchesService.getMatch(data.slug, data.user_id, data.match_id);
   }
+
+  // accept, reject, cancel, result match endpoints
+  @MessagePattern(CLUB_PATTERNS.POST_CLUB_MATCH_ACCEPT)
+  async acceptMatch(data: { slug: string; user_id: number; match_id: number }) {
+    return await this.matchesService.acceptMatch(data.slug, data.user_id, data.match_id);
+  }
+
+  // @MessagePattern(CLUB_PATTERNS.POST_CLUB_MATCH_REJECT)
+  // async rejectMatch(data: { slug: string; user_id: number; match_id: number }) {
+  //   return await this.matchesService.rejectMatch(data.slug, data.user_id, data.match_id);
+  // }
+
+  // @MessagePattern(CLUB_PATTERNS.POST_CLUB_MATCH_CANCEL)
+  // async cancelMatch(data: { slug: string; user_id: number; match_id: number }) {
+  //   return await this.matchesService.cancelMatch(data.slug, data.user_id, data.match_id);
+  // }
+
+  // @MessagePattern(CLUB_PATTERNS.POST_CLUB_MATCH_RESULT)
+  // async submitMatchResult(data: { slug: string; user_id: number; match_id: number; result: 'win' | 'lose' | 'draw' }) {
+  //   return await this.matchesService.submitMatchResult(data.slug, data.user_id, data.match_id, data.result);
+  // }
 }
