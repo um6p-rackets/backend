@@ -15,6 +15,7 @@ import { type AuthenticatedUser } from '@app/common';
 import { Body } from '@nestjs/common';
 import {
   ClubSlugParamDto,
+  MatchesQueryDto,
   MatchRequestDto,
   PaginationQueryDto,
 } from '@app/contracts/club/dto/index.js';
@@ -40,6 +41,20 @@ export class ClubMatchesController {
       slug,
       user_id: user.id,
       body,
+    });
+  }
+
+  // GET /clubs/:slug/matches?status=&mine=&page=&limit=
+  @Get()
+  async getMatches(
+    @Param() { slug }: ClubSlugParamDto,
+    @CurrentUser() user: AuthenticatedUser,
+    @Query() query: MatchesQueryDto,
+  ) {
+    return this.clubClient.send(CLUB_PATTERNS.GET_CLUB_MATCHES, {
+      slug,
+      user_id: user.id,
+      query,
     });
   }
 }
