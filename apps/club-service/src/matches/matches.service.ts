@@ -167,7 +167,9 @@ export class MatchesService {
 
     const whereClause: any = {
       club_id: club.id,
-      ...(statusFilter !== undefined && { status: matchStatusMap[statusFilter] }),
+      ...(statusFilter !== undefined && {
+        status: matchStatusMap[statusFilter],
+      }),
     };
 
     // member can't see other members pending matches, but can see their own pending matches
@@ -340,50 +342,38 @@ export class MatchesService {
       user_id,
       MemberRole.MEMBER,
     );
-    
+
+    const memberSelect = { select: { id: true, user_id: true } } as const;
+    const teamInclude = {
+      include: { player1: memberSelect, player2: memberSelect },
+    } as const;
     const match = await this.prisma.match.findUnique({
-      where: { id: match_id },
+      where: { club_id: club.id, id: match_id },
       include: {
         club: { select: { id: true, name: true, slug: true } },
-        team1: {
-          include: {
-            player1: { select: { id: true, user_id: true } },
-            player2: { select: { id: true, user_id: true } },
-          },
-        },
-        team2: {
-          include: {
-            player1: { select: { id: true, user_id: true } },
-            player2: { select: { id: true, user_id: true } },
-          },
-        },
-        referee: { select: { id: true, user_id: true } },
+        team1: teamInclude,
+        team2: teamInclude,
+        referee: memberSelect,
       },
     });
+    if (!match) throw rpcError(404, 'Match not found', 'Not Found');
 
-    if (!match) {
-      throw rpcError(404, 'Match not found', 'Not Found');
-    }
+    // everyone in this match: up to 4 players and the referee
+    const people = [
+      match.team1.player1,
+      match.team1.player2,
+      match.team2.player1,
+      match.team2.player2,
+      match.referee,
+    ].flatMap((m) => (m ? [m] : []));
 
-    // Check if the member is part of the match or is the referee
-    const isMemberInMatch =
-      match.team1.player1_id === member.id ||
-      match.team1.player2_id === member.id ||
-      match.team2.player1_id === member.id ||
-      match.team2.player2_id === member.id ||
-      match.ref_id === member.id;
-
-    // check why isMemberInMatch is false even if the member is part of the match
-    console.log('member.id:', member.id);
-
-    console.log('isMemberInMatch:', isMemberInMatch);
-    console.log('match.team1.player1_id:', match.team1.player1_id);
-    console.log('match.team1.player2_id:', match.team1.player2_id);
-    console.log('match.team2.player1_id:', match.team2.player1_id);
-    console.log('match.team2.player2_id:', match.team2.player2_id);
-    console.log('match.ref_id:', match.ref_id);
-
-    if (!isMemberInMatch && member.role === MemberRole.MEMBER && match.status === MatchStatus.PENDING) {
+    // a plain member cannot see a pending match they are not part of
+    const isInMatch = people.some((m) => m.id === member.id);
+    if (
+      !isInMatch &&
+      member.role === MemberRole.MEMBER &&
+      match.status === MatchStatus.PENDING
+    ) {
       throw rpcError(
         403,
         'You do not have permission to view this match',
@@ -391,76 +381,35 @@ export class MatchesService {
       );
     }
 
-    // Fetch user info for all players and referee
-    const playerIds = [
-      match.team1.player1_id,
-      match.team1.player2_id,
-      match.team2.player1_id,
-      match.team2.player2_id,
-      match.ref_id,
-    ].filter((id): id is number => id !== null);
-
-    const users: User[] = await rpc<User[]>(
+    // user info comes from the auth service
+    const users = await rpc<User[]>(
       this.authClient,
       AUTH_PATTERNS.GET_USERS_BY_IDS,
-      { user_ids: playerIds },
+      {
+        user_ids: people.map((m) => m.user_id),
+      },
     );
+    const userById = new Map(users.map((u) => [u.id, u]));
 
-    const userIdToUserMap = new Map<number, User>();
-    users.forEach((user) => {
-      userIdToUserMap.set(user.id, user);
+    const toPlayer = (m: { id: number; user_id: number }): Player => ({
+      ...userById.get(m.user_id)!,
+      member_id: m.id,
     });
-
-    const team1Player1User = userIdToUserMap.get(match.team1.player1_id);
-    const team1Player2User = match.team1.player2_id
-      ? userIdToUserMap.get(match.team1.player2_id)
-      : null;
-    const team2Player1User = userIdToUserMap.get(match.team2.player1_id);
-    const team2Player2User = match.team2.player2_id
-      ? userIdToUserMap.get(match.team2.player2_id)
-      : null;
-    const refereeUser = match.ref_id
-      ? userIdToUserMap.get(match.ref_id)
-      : null;
-
-    const team1_p1: Player | undefined = {
-      ...team1Player1User!,
-      member_id: match.team1.player1_id,
-    };
-    const team1_p2: Player | null = team1Player2User
-      ? { ...team1Player2User, member_id: match.team1.player2_id! }
-      : null;
-    const team2_p1: Player | undefined = {
-      ...team2Player1User!,
-      member_id: match.team2.player1_id,
-    };
-    const team2_p2: Player | null = team2Player2User
-      ? { ...team2Player2User, member_id: match.team2.player2_id! }
-      : null;
-    const referee: Player | null = refereeUser
-      ? { ...refereeUser, member_id: match.ref_id! }
-      : null;
+    const toTeam = (team: typeof match.team1) => ({
+      ...team,
+      player1: toPlayer(team.player1),
+      player2: team.player2 ? toPlayer(team.player2) : null,
+      created_at: team.created_at.toISOString(),
+    });
 
     return {
       ...match,
-      team1: {
-        ...match.team1,
-        player1: team1_p1!,
-        player2: team1_p2,
-        created_at: match.team1.created_at.toISOString(),
-      },
-      team2: {
-        ...match.team2,
-        player1: team2_p1!,
-        player2: team2_p2,
-        created_at: match.team2.created_at.toISOString(),
-      },
+      team1: toTeam(match.team1),
+      team2: toTeam(match.team2),
+      referee: match.referee ? toPlayer(match.referee) : null,
       scheduled_at: match.scheduled_at.toISOString(),
-      cancelled_at: match.cancelled_at
-        ? match.cancelled_at.toISOString()
-        : null,
+      cancelled_at: match.cancelled_at?.toISOString() ?? null,
       created_at: match.created_at.toISOString(),
-      referee: referee,
     };
   }
 }
