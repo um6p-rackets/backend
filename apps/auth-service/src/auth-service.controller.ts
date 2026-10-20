@@ -75,9 +75,9 @@ export class AuthServiceController {
 
   // get user by id
   @MessagePattern(AUTH_PATTERNS.GET_USER_BY_ID)
-  async getUserById(@Payload() data: { user_id: string }): Promise<User | null> {
+  async getUserById(@Payload() data: { user_id: number }): Promise<User | null> {
     console.log(`[AuthService] Received request for user by ID: ${data.user_id}`);
-    return await this.usersService.findById(Number(data.user_id));
+    return await this.usersService.findById(data.user_id);
   }
 
   // get user by login
