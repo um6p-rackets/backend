@@ -20,7 +20,7 @@ export class GoogleOAuthService {
         this.oauth2client = new OAuth2Client(cfg.clientId, cfg.clientSecret, cfg.redirectUri);
     }
 
-    async getAuthorizationUrl(): Promise<OAuthAuthorizationPayload> {
+    async getAuthorizationUrl(returnTo: string): Promise<OAuthAuthorizationPayload> {
         // Generate a code verifier and code challenge for PKCE
         const { codeVerifier, codeChallenge } = await this.oauth2client.generateCodeVerifierAsync();
 
@@ -45,7 +45,7 @@ export class GoogleOAuthService {
         // Create a JWT token to store the state, nonce, and code verifier for later verification
         // purpose: 'google-oauth' is used to identify the purpose of this token when verifying it later so that we can ensure that the token is being used for the correct purpose and not for any other malicious activity.
         const token = await this.jwt.signAsync(
-            { purpose: OAUTH_AUDIENCE, state, nonce, codeVerifier },
+            { purpose: OAUTH_AUDIENCE, state, nonce, codeVerifier, returnTo },
             { expiresIn: '10m', audience: OAUTH_AUDIENCE },
         );
         return { url, token };
@@ -54,7 +54,7 @@ export class GoogleOAuthService {
     async verifyCallback(
         query: { code?: unknown; state?: unknown },
         cookieToken?: unknown,
-    ): Promise<OAuthLoginDto> {
+    ): Promise<{profile: OAuthLoginDto; returnTo: string}> {
         // Query params can be arrays or objects (?code[]=x): accept strings only.
         if (
         typeof query.code !== 'string' || !query.code ||
@@ -110,13 +110,16 @@ export class GoogleOAuthService {
         }
 
         return {
-            provider: 'google',
-            subject: payload.sub,
-            email: payload.email,
-            email_verified: true,
-            first_name: payload.given_name ?? '',
-            last_name: payload.family_name ?? '',
-            picture: payload.picture ?? null,
+            profile: {
+                provider: 'google',
+                subject: payload.sub,
+                email: payload.email,
+                email_verified: true,
+                first_name: payload.given_name ?? '',
+                last_name: payload.family_name ?? '',
+                picture: payload.picture ?? null,
+            },
+            returnTo: saved.returnTo,
         };
     }
 }

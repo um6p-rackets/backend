@@ -71,6 +71,7 @@ export interface OAuthTx {
   state: string;
   nonce: string;
   codeVerifier: string;
+  returnTo: string;
 }
 
 export interface GetUserPayload {

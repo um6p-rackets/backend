@@ -42,7 +42,6 @@ ARG APP_NAME
 ENV NODE_ENV=production
 ENV EXEC_PATH=/usr/src/app/dist/apps/${APP_NAME}/main.js
 
-
 COPY --chown=node:node package*.json ./
 
 # install production dependencies and clean npm cache to reduce image size, --omit=dev flag is used to skip dev dependencies
