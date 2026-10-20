@@ -7,3 +7,4 @@ export * from './dto/update-user.dto.js';
 export * from './dto/forget-password.dto.js';
 export * from './dto/reset-password.dto.js';
 export * from './auth.types.js';
+export * from './dto/get-user-param.dto.js';
