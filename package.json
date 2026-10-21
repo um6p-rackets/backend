@@ -32,11 +32,11 @@
     "prisma:studio:notification": "prisma studio --config apps/notification-service/prisma7.config.ts",
     "db:migrate:dev:auth": "npm run prisma:auth-service -- migrate dev",
     "db:migrate:dev:club": "npm run prisma:club-service -- migrate dev",
+    "db:migrate:dev:notification": "npm run prisma:notification-service -- migrate dev",
     "db:generate": "npm run prisma:auth-service -- generate && npm run prisma:club-service -- generate && npm run prisma:notification-service -- generate",
     "db:migrate": "npm run prisma:auth-service -- migrate deploy && npm run prisma:club-service -- migrate deploy && npm run prisma:notification-service -- migrate deploy",
     "db:status": "npm run prisma:auth-service -- migrate status && npm run prisma:club-service -- migrate status && npm run prisma:notification-service -- migrate status",
-    "db:seed": "npm run prisma:auth-service -- db seed && npm run prisma:club-service -- db seed && npm run prisma:notification-service -- db seed",
-    "db:migrate:dev:notification": "npm run prisma:notification-service -- migrate dev --name schema_update && npm run prisma:notification-service -- generate"
+    "db:seed": "npm run prisma:auth-service -- db seed && npm run prisma:club-service -- db seed && npm run prisma:notification-service -- db seed"
   },
   "dependencies": {
     "@nestjs/common": "^12.0.1",

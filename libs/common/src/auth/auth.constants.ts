@@ -9,5 +9,5 @@ export const OAUTH_COOKIE = 'oauth_state';
 export const OAUTH_TTL_SECONDS = 10 * 60_000;            // Time To Live => 10 minutes
 export const OAUTH_AUDIENCE = 'google-oauth';
 
-export const REQUEST_LIMIT = 100;  // Max number of requests per 10 minutes for rate limiting
+export const REQUEST_LIMIT = 1000;  // Max number of requests per 10 minutes for rate limiting
 export const REQUEST_TTL = 1 * 60 * 1000;     // Time To Live  => 1 minutes for rate limiting

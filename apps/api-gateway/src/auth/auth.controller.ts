@@ -49,6 +49,7 @@ import { CurrentUser } from '../common/decorators/current-user.decorator.js';
 import { GoogleOAuthService } from './google-oauth.service.js';
 import googleOauthConfig from '../common/config/google-oauth.config.js';
 import { type ConfigType } from '@nestjs/config';
+import { safeReturnTo } from '@app/common/helpers/safe-return-to.js';
 
 @Controller('auth')
 export class AuthController {
@@ -130,8 +131,8 @@ export class AuthController {
     @Public()
     @Throttle({ default: { limit: REQUEST_LIMIT, ttl: REQUEST_TTL } })
     @Get('google/login')
-    async googleLogin(@Res() res: Response): Promise<void> {
-        const { url, token } = await this.googleOAuthService.getAuthorizationUrl();
+    async googleLogin(@Query('returnTo') returnTo: unknown, @Res() res: Response): Promise<void> {
+        const { url, token } = await this.googleOAuthService.getAuthorizationUrl(safeReturnTo(returnTo));
         setCookie(res, OAUTH_COOKIE, token, OAUTH_TTL_SECONDS, OAUTH_COOKIE_PATH);
         res.redirect(url);
     }
@@ -151,14 +152,16 @@ export class AuthController {
               return res.redirect(new URL('?error=oauth_cancelled', this.cfg.frontendRedirectUrl).toString());
         }
         try {
-            const profile = await this.googleOAuthService.verifyCallback(
+            const { profile, returnTo } = await this.googleOAuthService.verifyCallback(
                 { code, state },
                 req.cookies?.[OAUTH_COOKIE]
             );
             const { user, ...tokens } = await rpc<AuthResult>(this.authClient, AUTH_PATTERNS.OAUTH_LOGIN, profile);
             clearCookie(res, OAUTH_COOKIE, OAUTH_COOKIE_PATH);
             setAuthCookies(res, tokens);
-            res.redirect(this.cfg.frontendRedirectUrl);
+            const dest = new URL(returnTo, this.cfg.frontendRedirectUrl);
+            dest.searchParams.set('oauth', 'success');
+            res.redirect(dest.toString());
         } catch (err) {
             console.error('[GoogleOAuth Error]', err);
             clearCookie(res, OAUTH_COOKIE, OAUTH_COOKIE_PATH);
@@ -205,10 +208,11 @@ export class AuthController {
 
     @Throttle({ default: { limit: REQUEST_LIMIT, ttl: REQUEST_TTL } })
     @Get('me')
-    async me(@CurrentUser() user: AuthenticatedUser): Promise<User> {
-        return rpc<User>(this.authClient, AUTH_PATTERNS.GET_USER_BY_ID, {
-            user_id: String(user.id),
+    async me(@CurrentUser() authenticatedUser: AuthenticatedUser): Promise<{ user: User }> {
+        const user = await rpc<User>(this.authClient, AUTH_PATTERNS.GET_USER_BY_ID, {
+            user_id: authenticatedUser.id,
         });
+        return { user };
     }
 
     @Throttle({ default: { limit: REQUEST_LIMIT, ttl: REQUEST_TTL } })
@@ -228,9 +232,10 @@ export class AuthController {
         return { user: updatedUser };
     }
 
-    // /users/login-available?login=abc 
+    // /login-available?login=abc 
+    @Public()
     @Throttle({ default: { limit: REQUEST_LIMIT, ttl: REQUEST_TTL } })
-    @Get('users/login-available')
+    @Get('login-available')
     async isLoginAvailable(@Query('login') login: string): Promise<{ available: boolean }> {
         const available = await rpc<boolean>(this.authClient, AUTH_PATTERNS.IS_LOGIN_AVAILABLE, {
             login: login,

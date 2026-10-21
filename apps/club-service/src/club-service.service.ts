@@ -2,10 +2,14 @@ import {
   Club,
   ClubMemberStatus,
   ClubWithMembersCountAndCoachFullName,
+  JoinClubResponse,
+  JoinRequestStatus,
+  JoinRequestWithUser,
   LeaderboardEntry,
   MatchStatus,
   MemberRole,
   Paginated,
+  UserSummary,
 } from '@app/contracts/club/club.types.js';
 import { rpcError } from '@app/contracts/errors.js';
 import { Inject, Injectable } from '@nestjs/common';
@@ -85,16 +89,26 @@ export class ClubServiceService {
   }
 
   async getClubStatus(
-    clubSlug: string,
+    club_slug: string,
     user_id: number,
   ): Promise<ClubMemberStatus> {
-    const club = await this.clubAccessService.getClub(clubSlug);
-    const member = await this.clubAccessService.findMember(club.id, user_id);
+    const club = await this.clubAccessService.getClub(club_slug);
+    const key = { club_id_user_id: { club_id: club.id, user_id } };
+    const [member, request] = await Promise.all([
+      this.prisma.member.findUnique({ where: key }),
+      this.prisma.joinRequest.findUnique({
+        where: key,
+        select: { status: true },
+      }),
+    ]);
 
+    const isMember = !!member && member.left_at === null; // a user who left is not a member
     return {
-      is_member: !!member,
-      member_id: member ? member.id : null,
-      role: member ? member.role : null,
+      is_member: isMember,
+      member_id: isMember ? member.id : null,
+      role: isMember ? member.role : null,
+      has_pending_request:
+        !isMember && request?.status === JoinRequestStatus.PENDING,
     };
   }
 
@@ -183,7 +197,10 @@ export class ClubServiceService {
     ]);
 
     // points, wins and losses per member id
-    const stats = new Map<number,{ points: number; wins: number; losses: number }>();
+    const stats = new Map<
+      number,
+      { points: number; wins: number; losses: number }
+    >();
     const add = (memberId: number | null, points: number, won: boolean) => {
       if (memberId === null) return; // singles: no player 2
       const s = stats.get(memberId) ?? { points: 0, wins: 0, losses: 0 };
@@ -231,5 +248,162 @@ export class ClubServiceService {
       limit,
       total: ranked.length,
     };
+  }
+
+  async joinClub(
+    club_slug: string,
+    user_id: number,
+  ): Promise<JoinClubResponse> {
+    const club = await this.prisma.club.findUnique({
+      where: { slug: club_slug },
+    });
+    if (!club) throw rpcError(404, 'Club not found', 'Not Found');
+
+    const member = await this.prisma.member.findUnique({
+      where: { club_id_user_id: { club_id: club.id, user_id } },
+    });
+    if (member && member.left_at === null) {
+      throw rpcError(409, 'You are already a member of this club', 'Conflict');
+    }
+
+    // 1. first time: create the row (a double click cannot create a second one)
+    const created = await this.prisma.joinRequest.createMany({
+      data: [{ club_id: club.id, user_id }],
+      skipDuplicates: true,
+    });
+    let isNewRequest = created.count === 1;
+
+    // 2. the row exists: reopen it only if it is NOT pending (a pending one keeps its place in the queue)
+    if (!isNewRequest) {
+      const reopened = await this.prisma.joinRequest.updateMany({
+        where: {
+          club_id: club.id,
+          user_id,
+          status: { not: JoinRequestStatus.PENDING },
+        },
+        data: {
+          status: JoinRequestStatus.PENDING,
+          requested_at: new Date(),
+          decided_at: null,
+          decided_by: null,
+        },
+      });
+      isNewRequest = reopened.count === 1;
+    }
+
+    if (isNewRequest) {
+      // step 6: notify the leaders and coaches (only here, so a double click sends nothing twice)
+    }
+
+    return { status: 'pending' };
+  }
+
+  async cancelJoin(
+    club_slug: string,
+    user_id: number,
+  ): Promise<{ success: true }> {
+    const club = await this.clubAccessService.getClub(club_slug);
+    const cancelled = await this.prisma.joinRequest.updateMany({
+      where: { club_id: club.id, user_id, status: JoinRequestStatus.PENDING },
+      data: { status: JoinRequestStatus.CANCELLED },
+    });
+    if (cancelled.count === 0) {
+      throw rpcError(
+        404,
+        'You have no pending request for this club',
+        'Not Found',
+      );
+    }
+    return { success: true };
+  }
+
+  async getJoinRequests(
+    club_slug: string,
+    user_id: number,
+    page: number,
+    limit: number,
+  ): Promise<Paginated<JoinRequestWithUser>> {
+    const { club } = await this.clubAccessService.requireRole(
+      club_slug,
+      user_id,
+      MemberRole.LEADER,
+    );
+
+    const where = { club_id: club.id, status: JoinRequestStatus.PENDING };
+    const [requests, total] = await Promise.all([
+      this.prisma.joinRequest.findMany({
+        where,
+        orderBy: [{ requested_at: 'asc' }, { id: 'asc' }], // oldest first, like a queue
+        take: limit,
+        skip: (page - 1) * limit,
+      }),
+      this.prisma.joinRequest.count({ where }),
+    ]);
+
+    const users = requests.length
+      ? await rpc<User[]>(this.authClient, AUTH_PATTERNS.GET_USERS_BY_IDS, {
+          user_ids: requests.map((r) => r.user_id),
+        })
+      : [];
+    const userById = new Map(users.map((u) => [u.id, u]));
+
+    // only the summary fields: User also has email and phone, which a leader should not get here
+    const toSummary = (u: User): UserSummary => ({
+      id: u.id,
+      login: u.login,
+      first_name: u.first_name,
+      last_name: u.last_name,
+      avatar: u.avatar,
+      department: u.department,
+    });
+
+    return {
+      data: requests.map((r) => ({
+        ...r,
+        requested_at: r.requested_at.toISOString(),
+        decided_at: r.decided_at?.toISOString() ?? null,
+        user: toSummary(userById.get(r.user_id)!),
+      })),
+      page,
+      limit,
+      total,
+    };
+  }
+
+  async rejectJoinRequest(
+    club_slug: string,
+    user_id: number,
+    request_id: number,
+  ): Promise<{ success: true }> {
+    const { club, member } = await this.clubAccessService.requireRole(
+      club_slug,
+      user_id,
+      MemberRole.LEADER,
+    );
+
+    // one atomic update: only a pending request of THIS club can be rejected
+    const rejected = await this.prisma.joinRequest.updateMany({
+      where: {
+        id: request_id,
+        club_id: club.id,
+        status: JoinRequestStatus.PENDING,
+      },
+      data: {
+        status: JoinRequestStatus.REJECTED,
+        decided_at: new Date(),
+        decided_by: member.id,
+      },
+    });
+
+    if (rejected.count === 0) {
+      // tell "does not exist here" (404) from "already handled" (409)
+      const exists = await this.prisma.joinRequest.findFirst({
+        where: { id: request_id, club_id: club.id },
+        select: { id: true },
+      });
+      if (!exists) throw rpcError(404, 'Join request not found', 'Not Found');
+      throw rpcError(409, 'This request was already handled', 'Conflict');
+    }
+    return { success: true };
   }
 }

@@ -21,3 +21,4 @@ export * from './delete-announcement-param.dto.js';
 export * from './delete-document-param.dto.js';
 export * from './delete-achievement-param.dto.js';
 export * from './get-match-param.dto.js';
+export * from './join-request-param.dto.js';
