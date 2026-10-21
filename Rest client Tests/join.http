@@ -1,0 +1,105 @@
+@API = http://localhost:3000/api/v1
+
+### 1  Login as the tennis coach
+POST {{API}}/auth/login
+Content-Type: application/json
+
+{
+  "email": "coach.tennis@example.com",
+  "password": "abdellahnsila123#002"
+}
+
+### 2  The queue (expect total 1, user.login = coach_padel)
+GET {{API}}/clubs/tennis/join-requests
+
+### 3  Accept it with the normal "add member" route (expect a member, user_id 2, role 0)
+# @name accepted
+POST {{API}}/clubs/tennis/members
+Content-Type: application/json
+
+{
+  "user_id": 2
+}
+
+### 4  The queue is empty now (expect total 0)
+GET {{API}}/clubs/tennis/join-requests
+
+### 5  Add the same user again (expect 409 after the change above)
+POST {{API}}/clubs/tennis/members
+Content-Type: application/json
+
+{
+  "user_id": 2
+}
+
+### 6  Direct add of a user with NO request, the badminton coach (expect a member, user_id 3)
+# @name direct
+POST {{API}}/clubs/tennis/members
+Content-Type: application/json
+
+{
+  "user_id": 3
+}
+
+### 7  Clean up: remove him (expect success)
+DELETE {{API}}/clubs/tennis/members/{{direct.response.body.$.id}}
+
+### 8  Login as the padel coach, now a member of tennis
+POST {{API}}/auth/login
+Content-Type: application/json
+
+{
+  "email": "coach.padel@example.com",
+  "password": "abdellahnsila123#002"
+}
+
+### 9  Status (expect is_member true, has_pending_request false)
+GET {{API}}/clubs/tennis/status
+
+### 10  Ask to join while already a member (expect 409)
+POST {{API}}/clubs/tennis/join
+
+### 11  Login as the tennis coach and remove the padel coach from tennis
+POST {{API}}/auth/login
+Content-Type: application/json
+
+{
+  "email": "coach.tennis@example.com",
+  "password": "abdellahnsila123#002"
+}
+
+###
+DELETE {{API}}/clubs/tennis/members/{{accepted.response.body.$.id}}
+
+### 12  Login as the padel coach and ask again (expect pending, the SAME request row is reopened)
+POST {{API}}/auth/login
+Content-Type: application/json
+
+{
+  "email": "coach.padel@example.com",
+  "password": "abdellahnsila123#002"
+}
+
+###
+POST {{API}}/clubs/tennis/join
+
+### 13  Login as the tennis coach and accept again
+POST {{API}}/auth/login
+Content-Type: application/json
+
+{
+  "email": "coach.tennis@example.com",
+  "password": "abdellahnsila123#002"
+}
+
+###
+# @name accepted2
+POST {{API}}/clubs/tennis/members
+Content-Type: application/json
+
+{
+  "user_id": 2
+}
+
+### 14  Final cleanup: remove the padel coach again (the old tests expect he is NOT in tennis)
+DELETE {{API}}/clubs/tennis/members/{{accepted2.response.body.$.id}}
