@@ -24,6 +24,7 @@ model Club {
   matches           Match[]
   join_requests     JoinRequest[]
   documents         ClubDocument[]
+  leaderboard       Leaderboard[]
 
   @@map("clubs")
 }
@@ -213,4 +214,24 @@ model JoinRequest {
   @@unique([club_id, user_id])
   @@index([club_id, status, requested_at])
   @@map("join_requests")
+}
+
+model Leaderboard {
+  id              Int      @id @default(autoincrement())
+  club_id         Int
+  user_id         Int
+  points          Int      @default(0)
+  wins            Int      @default(0)
+  losses          Int      @default(0)
+  total_matches   Int      @default(0)
+  win_streak      Int      @default(0)
+  best_win_streak Int      @default(0)
+  updated_at      DateTime @updatedAt
+
+  club            Club     @relation(fields: [club_id], references: [id], onDelete: Cascade)
+
+  @@unique([club_id, user_id])
+  @@index([club_id, points(sort: Desc), wins(sort: Desc), total_matches(sort: Desc)])
+  @@index([user_id])
+  @@map("leaderboard")
 }

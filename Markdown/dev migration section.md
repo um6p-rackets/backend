@@ -87,6 +87,13 @@ END $$ LANGUAGE plpgsql;
 CREATE TRIGGER session_attends_capacity_trg
   BEFORE INSERT ON session_attends
   FOR EACH ROW EXECUTE FUNCTION check_session_capacity();
+
+ALTER TABLE "leaderboard" ADD CONSTRAINT "check_points_positive" CHECK (points >= 0);
+ALTER TABLE "leaderboard" ADD CONSTRAINT "check_wins_positive" CHECK (wins >= 0);
+ALTER TABLE "leaderboard" ADD CONSTRAINT "check_losses_positive" CHECK (losses >= 0);
+ALTER TABLE "leaderboard" ADD CONSTRAINT "check_total_matches_positive" CHECK (total_matches >= 0);
+ALTER TABLE "leaderboard" ADD CONSTRAINT "check_win_streak_positive" CHECK (win_streak >= 0);
+ALTER TABLE "leaderboard" ADD CONSTRAINT "check_best_win_streak_positive" CHECK (best_win_streak >= 0);
 ```
 
 ### 5. Changing a model later
