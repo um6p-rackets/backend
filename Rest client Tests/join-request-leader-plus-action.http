@@ -1,0 +1,75 @@
+@API = http://localhost:3000/api/v1
+@REQ = 1
+
+### 1  Login as the tennis coach (a leader)
+POST {{API}}/auth/login
+Content-Type: application/json
+
+{
+  "email": "coach.tennis@example.com",
+  "password": "abdellahnsila123#002"
+}
+
+### 2  List (expect total 1, user.login = coach_padel, copy its "id" into @REQ above)
+###    the "user" object must NOT have email or phone_number
+GET {{API}}/clubs/tennis/join-requests
+
+### 3  Page after the last one (expect data [], total still 1)
+GET {{API}}/clubs/tennis/join-requests?page=2
+
+### 4  Bad page and bad limit (expect 400 for both)
+GET {{API}}/clubs/tennis/join-requests?page=0
+
+###
+GET {{API}}/clubs/tennis/join-requests?limit=51
+
+### 5  Reject (expect { "success": true })
+POST {{API}}/clubs/tennis/join-requests/{{REQ}}/reject
+
+### 6  List (expect total 0)
+GET {{API}}/clubs/tennis/join-requests
+
+### 7  Reject again (expect 409)
+POST {{API}}/clubs/tennis/join-requests/{{REQ}}/reject
+
+### 8  Request that does not exist (expect 404)
+POST {{API}}/clubs/tennis/join-requests/99999/reject
+
+### 9  Id is text (expect 400)
+POST {{API}}/clubs/tennis/join-requests/abc/reject
+
+### 10  Login as nsila (a plain member)
+POST {{API}}/auth/login
+Content-Type: application/json
+
+{
+  "email": "user7@gmail.com",
+  "password": "abdellahnsila123#002"
+}
+
+### 11  A plain member lists (expect 403)
+GET {{API}}/clubs/tennis/join-requests
+
+### 12  A plain member rejects (expect 403)
+POST {{API}}/clubs/tennis/join-requests/{{REQ}}/reject
+
+### 13  Login as the padel coach, back in the queue
+POST {{API}}/auth/login
+Content-Type: application/json
+
+{
+  "email": "coach.padel@example.com",
+  "password": "abdellahnsila123#002"
+}
+
+### 14  Status after the rejection (expect has_pending_request false)
+GET {{API}}/clubs/tennis/status
+
+### 15  Not a member of tennis, lists (expect 403)
+GET {{API}}/clubs/tennis/join-requests
+
+### 16  Ask again (expect pending, the SAME row is reopened) and leave it pending for step 5
+POST {{API}}/clubs/tennis/join
+
+### 17  Status (expect has_pending_request true)
+GET {{API}}/clubs/tennis/status
