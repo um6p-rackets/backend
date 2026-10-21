@@ -1,25 +1,24 @@
 // ================== AUTH SERVICE ==================
 
 export const AUTH_PATTERNS = {
-    HEALTH: 'auth.health',
-    // ================== AUTH SERVICE ==================
-    REGISTER: 'auth.register',
-    LOGIN: 'auth.login',
-    REFRESH: 'auth.refresh',
-    OAUTH_LOGIN: 'auth.oauth.login',
-    OAUTH_CALLBACK: 'auth.oauth.callback',
-    LOGOUT: 'auth.logout',
-    COMPLETE_PROFILE: 'auth.complete-profile',
-    FORGET_PASSWORD: 'auth.forget-password',
-    RESET_PASSWORD: 'auth.reset-password',
-    // ================== USER SERVICE ==================
-    IS_LOGIN_AVAILABLE: 'auth.user.is_login_available',
-    GET_USER_BY_ID: 'auth.user.get_by_id',
-    GET_USER_BY_LOGIN: 'auth.user.get_by_login',
-    GET_USERS_BY_IDS: 'auth.users.get_many_by_ids',
-    UPDATE_USER: 'auth.user.update',
-}
-
+  HEALTH: 'auth.health',
+  // ================== AUTH SERVICE ==================
+  REGISTER: 'auth.register',
+  LOGIN: 'auth.login',
+  REFRESH: 'auth.refresh',
+  OAUTH_LOGIN: 'auth.oauth.login',
+  OAUTH_CALLBACK: 'auth.oauth.callback',
+  LOGOUT: 'auth.logout',
+  COMPLETE_PROFILE: 'auth.complete-profile',
+  FORGET_PASSWORD: 'auth.forget-password',
+  RESET_PASSWORD: 'auth.reset-password',
+  // ================== USER SERVICE ==================
+  IS_LOGIN_AVAILABLE: 'auth.user.is_login_available',
+  GET_USER_BY_ID: 'auth.user.get_by_id',
+  GET_USER_BY_LOGIN: 'auth.user.get_by_login',
+  GET_USERS_BY_IDS: 'auth.users.get_many_by_ids',
+  UPDATE_USER: 'auth.user.update',
+};
 
 // ================== CLUB SERVICE ==================
 
@@ -28,6 +27,9 @@ export const CLUB_PATTERNS = {
   GET_CLUB: 'club.get-club',
   GET_CLUB_STATUS: 'club.get-club-status',
   PATCH_CLUB_UPDATE: 'club.patch-club-update',
+  POST_CLUB_JOIN: 'club.post-club-join',
+  DELETE_CLUB_JOIN: 'club.delete-club-join',
+  GET_CLUB_LEADERBOARD: 'club.get-club-leaderboard',
   // ================== SESSIONS SERVICE ==================
   GET_CLUB_WEEK_SESSIONS: 'club.get-club-week-sessions',
   POST_CLUB_SESSION_ATTEND: 'club.post-club-session-attend',
@@ -60,16 +62,12 @@ export const CLUB_PATTERNS = {
   POST_CLUB_MATCH_REJECT: 'club.post-club-match-reject',
   POST_CLUB_MATCH_CANCEL: 'club.post-club-match-cancel',
   POST_CLUB_MATCH_RESULT: 'club.post-club-match-result',
-  // ================== LEADERBOARD SERVICE ==================
-  GET_CLUB_LEADERBOARD: 'club.get-club-leaderboard',
-  
 } as const;
-
 
 // ================= NOTIFICATION SERVICE ==================
 
 export const NOTIFICATION_PATTERNS = {
-  HELLO : 'notification.hello',
+  HELLO: 'notification.hello',
   GET_INBOX: 'notification.get-inbox',
   CREATE_NOTIFICATION: 'notification.create',
   MARK_AS_READ: 'notification.mark-as-read',

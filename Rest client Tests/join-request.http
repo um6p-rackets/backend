@@ -1,0 +1,37 @@
+@API = http://localhost:3000/api/v1
+
+### 1  Login as the padel coach (user 2, not in tennis)
+POST {{API}}/auth/login
+Content-Type: application/json
+
+{
+  "email": "coach.padel@example.com",
+  "password": "abdellahnsila123#002"
+}
+
+### 2  Status (expect is_member false, has_pending_request false)
+GET {{API}}/clubs/tennis/status
+
+### 3  Ask to join (expect { "status": "pending" })
+POST {{API}}/clubs/tennis/join
+
+### 4  Ask again (expect the same answer, still ONE row in the database)
+POST {{API}}/clubs/tennis/join
+
+### 5  Status (expect has_pending_request true)
+GET {{API}}/clubs/tennis/status
+
+### 6  Cancel (expect { "success": true })
+DELETE {{API}}/clubs/tennis/join
+
+### 7  Cancel again (expect 404)
+DELETE {{API}}/clubs/tennis/join
+
+### 8  Ask again after cancelling (expect pending, the SAME row is reopened)
+POST {{API}}/clubs/tennis/join
+
+### 9  Join your own club (expect 409)
+POST {{API}}/clubs/padel/join
+
+### 10  Club that does not exist (expect 404)
+POST {{API}}/clubs/not-a-club/join

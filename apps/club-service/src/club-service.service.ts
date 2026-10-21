@@ -2,6 +2,8 @@ import {
   Club,
   ClubMemberStatus,
   ClubWithMembersCountAndCoachFullName,
+  JoinClubResponse,
+  JoinRequestStatus,
   LeaderboardEntry,
   MatchStatus,
   MemberRole,
@@ -85,16 +87,26 @@ export class ClubServiceService {
   }
 
   async getClubStatus(
-    clubSlug: string,
+    club_slug: string,
     user_id: number,
   ): Promise<ClubMemberStatus> {
-    const club = await this.clubAccessService.getClub(clubSlug);
-    const member = await this.clubAccessService.findMember(club.id, user_id);
+    const club = await this.clubAccessService.getClub(club_slug);
+    const key = { club_id_user_id: { club_id: club.id, user_id } };
+    const [member, request] = await Promise.all([
+      this.prisma.member.findUnique({ where: key }),
+      this.prisma.joinRequest.findUnique({
+        where: key,
+        select: { status: true },
+      }),
+    ]);
 
+    const isMember = !!member && member.left_at === null; // a user who left is not a member
     return {
-      is_member: !!member,
-      member_id: member ? member.id : null,
-      role: member ? member.role : null,
+      is_member: isMember,
+      member_id: isMember ? member.id : null,
+      role: isMember ? member.role : null,
+      has_pending_request:
+        !isMember && request?.status === JoinRequestStatus.PENDING,
     };
   }
 
@@ -183,7 +195,10 @@ export class ClubServiceService {
     ]);
 
     // points, wins and losses per member id
-    const stats = new Map<number,{ points: number; wins: number; losses: number }>();
+    const stats = new Map<
+      number,
+      { points: number; wins: number; losses: number }
+    >();
     const add = (memberId: number | null, points: number, won: boolean) => {
       if (memberId === null) return; // singles: no player 2
       const s = stats.get(memberId) ?? { points: 0, wins: 0, losses: 0 };
@@ -231,5 +246,72 @@ export class ClubServiceService {
       limit,
       total: ranked.length,
     };
+  }
+
+  async joinClub(
+    club_slug: string,
+    user_id: number,
+  ): Promise<JoinClubResponse> {
+    const club = await this.prisma.club.findUnique({
+      where: { slug: club_slug },
+    });
+    if (!club) throw rpcError(404, 'Club not found', 'Not Found');
+
+    const member = await this.prisma.member.findUnique({
+      where: { club_id_user_id: { club_id: club.id, user_id } },
+    });
+    if (member && member.left_at === null) {
+      throw rpcError(409, 'You are already a member of this club', 'Conflict');
+    }
+
+    // 1. first time: create the row (a double click cannot create a second one)
+    const created = await this.prisma.joinRequest.createMany({
+      data: [{ club_id: club.id, user_id }],
+      skipDuplicates: true,
+    });
+    let isNewRequest = created.count === 1;
+
+    // 2. the row exists: reopen it only if it is NOT pending (a pending one keeps its place in the queue)
+    if (!isNewRequest) {
+      const reopened = await this.prisma.joinRequest.updateMany({
+        where: {
+          club_id: club.id,
+          user_id,
+          status: { not: JoinRequestStatus.PENDING },
+        },
+        data: {
+          status: JoinRequestStatus.PENDING,
+          requested_at: new Date(),
+          decided_at: null,
+          decided_by: null,
+        },
+      });
+      isNewRequest = reopened.count === 1;
+    }
+
+    if (isNewRequest) {
+      // step 6: notify the leaders and coaches (only here, so a double click sends nothing twice)
+    }
+
+    return { status: 'pending' };
+  }
+
+  async cancelJoin(
+    club_slug: string,
+    user_id: number,
+  ): Promise<{ success: true }> {
+    const club = await this.clubAccessService.getClub(club_slug);
+    const cancelled = await this.prisma.joinRequest.updateMany({
+      where: { club_id: club.id, user_id, status: JoinRequestStatus.PENDING },
+      data: { status: JoinRequestStatus.CANCELLED },
+    });
+    if (cancelled.count === 0) {
+      throw rpcError(
+        404,
+        'You have no pending request for this club',
+        'Not Found',
+      );
+    }
+    return { success: true };
   }
 }
