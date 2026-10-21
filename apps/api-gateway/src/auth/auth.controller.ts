@@ -233,6 +233,7 @@ export class AuthController {
     }
 
     // /login-available?login=abc 
+    @Public()
     @Throttle({ default: { limit: REQUEST_LIMIT, ttl: REQUEST_TTL } })
     @Get('login-available')
     async isLoginAvailable(@Query('login') login: string): Promise<{ available: boolean }> {
