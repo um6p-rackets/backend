@@ -4,10 +4,12 @@ import {
   ClubWithMembersCountAndCoachFullName,
   JoinClubResponse,
   JoinRequestStatus,
+  JoinRequestWithUser,
   LeaderboardEntry,
   MatchStatus,
   MemberRole,
   Paginated,
+  UserSummary,
 } from '@app/contracts/club/club.types.js';
 import { rpcError } from '@app/contracts/errors.js';
 import { Inject, Injectable } from '@nestjs/common';
@@ -311,6 +313,96 @@ export class ClubServiceService {
         'You have no pending request for this club',
         'Not Found',
       );
+    }
+    return { success: true };
+  }
+
+  async getJoinRequests(
+    club_slug: string,
+    user_id: number,
+    page: number,
+    limit: number,
+  ): Promise<Paginated<JoinRequestWithUser>> {
+    const { club } = await this.clubAccessService.requireRole(
+      club_slug,
+      user_id,
+      MemberRole.LEADER,
+    );
+
+    const where = { club_id: club.id, status: JoinRequestStatus.PENDING };
+    const [requests, total] = await Promise.all([
+      this.prisma.joinRequest.findMany({
+        where,
+        orderBy: [{ requested_at: 'asc' }, { id: 'asc' }], // oldest first, like a queue
+        take: limit,
+        skip: (page - 1) * limit,
+      }),
+      this.prisma.joinRequest.count({ where }),
+    ]);
+
+    const users = requests.length
+      ? await rpc<User[]>(this.authClient, AUTH_PATTERNS.GET_USERS_BY_IDS, {
+          user_ids: requests.map((r) => r.user_id),
+        })
+      : [];
+    const userById = new Map(users.map((u) => [u.id, u]));
+
+    // only the summary fields: User also has email and phone, which a leader should not get here
+    const toSummary = (u: User): UserSummary => ({
+      id: u.id,
+      login: u.login,
+      first_name: u.first_name,
+      last_name: u.last_name,
+      avatar: u.avatar,
+      department: u.department,
+    });
+
+    return {
+      data: requests.map((r) => ({
+        ...r,
+        requested_at: r.requested_at.toISOString(),
+        decided_at: r.decided_at?.toISOString() ?? null,
+        user: toSummary(userById.get(r.user_id)!),
+      })),
+      page,
+      limit,
+      total,
+    };
+  }
+
+  async rejectJoinRequest(
+    club_slug: string,
+    user_id: number,
+    request_id: number,
+  ): Promise<{ success: true }> {
+    const { club, member } = await this.clubAccessService.requireRole(
+      club_slug,
+      user_id,
+      MemberRole.LEADER,
+    );
+
+    // one atomic update: only a pending request of THIS club can be rejected
+    const rejected = await this.prisma.joinRequest.updateMany({
+      where: {
+        id: request_id,
+        club_id: club.id,
+        status: JoinRequestStatus.PENDING,
+      },
+      data: {
+        status: JoinRequestStatus.REJECTED,
+        decided_at: new Date(),
+        decided_by: member.id,
+      },
+    });
+
+    if (rejected.count === 0) {
+      // tell "does not exist here" (404) from "already handled" (409)
+      const exists = await this.prisma.joinRequest.findFirst({
+        where: { id: request_id, club_id: club.id },
+        select: { id: true },
+      });
+      if (!exists) throw rpcError(404, 'Join request not found', 'Not Found');
+      throw rpcError(409, 'This request was already handled', 'Conflict');
     }
     return { success: true };
   }
