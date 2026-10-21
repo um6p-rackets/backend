@@ -78,7 +78,7 @@ Content-Type: application/json
 }
 
 ### 3d. The list should now include the user, with role 0
-GET {{API}}/clubs/tennis/members?role=0
+GET {{API}}/clubs/tennis/members?role=2
 
 ### 3e. Invalid user_id (expect 400)
 POST {{API}}/clubs/tennis/members
