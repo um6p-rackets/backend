@@ -2,7 +2,7 @@
 import { Global, Module } from '@nestjs/common';
 import { ClientsModule } from '@nestjs/microservices';
 import { ConfigService } from '@nestjs/config';
-import { AUTH_SERVICE, QUEUES } from '@app/contracts';
+import { AUTH_SERVICE, NOTIFICATION_SERVICE, QUEUES } from '@app/contracts';
 import { rmqOptions } from '@app/rmq';
 
 @Global()
@@ -15,6 +15,16 @@ import { rmqOptions } from '@app/rmq';
         useFactory: (configService: ConfigService) => {
           const rmqUrl = configService.getOrThrow<string>('rabbitmq.url');
           return rmqOptions(rmqUrl, QUEUES.AUTH, true);
+        },
+      },
+    ]),
+    ClientsModule.registerAsync([
+      {
+        name: NOTIFICATION_SERVICE,
+        inject: [ConfigService],
+        useFactory: (configService: ConfigService) => {
+          const rmqUrl = configService.getOrThrow<string>('rabbitmq.url');
+          return rmqOptions(rmqUrl, QUEUES.NOTIFICATION, true);
         },
       },
     ]),

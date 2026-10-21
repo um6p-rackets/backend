@@ -18,9 +18,19 @@ import { ClubAccessService } from './access/club-access.service.js';
 import { UpdateClubDto } from '@app/contracts/club/dto/index.js';
 import { User } from '@app/contracts/auth/index.js';
 import { rpc } from '@app/common/helpers/rpc.helper.js';
-import { AUTH_PATTERNS } from '@app/contracts/patterns.js';
+import {
+  AUTH_PATTERNS,
+  NOTIFICATION_PATTERNS,
+} from '@app/contracts/patterns.js';
 import { ClientProxy } from '@nestjs/microservices';
-import { AUTH_SERVICE } from '@app/contracts/queues.js';
+import { AUTH_SERVICE, NOTIFICATION_SERVICE } from '@app/contracts/queues.js';
+import { NOTIFICATION_EVENTS } from '@app/contracts/events.js';
+import { NotificationEventDto } from '@app/contracts/notification/dto/index.js';
+import {
+  NotificationCategory,
+  NotificationType,
+  SenderType,
+} from '@app/contracts/notification/index.js';
 
 @Injectable()
 export class ClubServiceService {
@@ -28,6 +38,8 @@ export class ClubServiceService {
     private readonly prisma: PrismaService,
     private readonly clubAccessService: ClubAccessService,
     @Inject(AUTH_SERVICE) private readonly authClient: ClientProxy,
+    @Inject(NOTIFICATION_SERVICE)
+    private readonly notificationClient: ClientProxy,
   ) {}
   async getAllClubs(): Promise<Club[]> {
     const result = await this.prisma.club.findMany({
@@ -292,7 +304,30 @@ export class ClubServiceService {
     }
 
     if (isNewRequest) {
-      // step 6: notify the leaders and coaches (only here, so a double click sends nothing twice)
+      const leader_plus = await this.prisma.member.findMany({
+        where: {
+          club_id: club.id,
+          role: { in: [MemberRole.LEADER, MemberRole.COACH] },
+          left_at: null,
+        },
+        select: { user_id: true },
+      });
+      const leader_user_ids = leader_plus.map((m) => m.user_id);
+      const notify_data = {
+        event_id: `join_request_${club.id}_${user_id}_${Date.now()}`,
+        sender_type: SenderType.USER, // system
+        sender_id: user_id,
+        category: NotificationCategory.USER, // club
+        type: NotificationType.JOIN_REQUESTED, // join request
+        club_id: club.id,
+        receiver_user_ids: leader_user_ids,
+      };
+      // step 6: notify
+      await rpc(
+        this.notificationClient,
+        NOTIFICATION_EVENTS.JOIN_REQUESTED,
+        notify_data,
+      );
     }
 
     return { status: 'pending' };
