@@ -1,10 +1,6 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from './prisma/prisma.service.js';
-import {
-  SenderType,
-  NotificationCategory,
-  NotificationType,
-} from './generated/prisma/enums.js';
+import { NotificationEventDto } from '@app/contracts';
 
 @Injectable()
 export class NotificationServiceService {
@@ -15,61 +11,83 @@ export class NotificationServiceService {
   }
 
   // notification can only be created by system or user event
-  async createNotification(data: {
-    event_id: string;
-    sender_type: SenderType;
-    sender_id?: bigint;
-    category: NotificationCategory;
-    type: NotificationType; // for filtering notifications by type
-    club_id?: bigint;
-    receiver_user_ids: bigint[];
-    dedupe_key?: string | null;
-  }) {
-    try {
-      return await this.prisma.notification.create({
-        data: {
-          event_id: data.event_id,
-          sender_type: data.sender_type, // system = 1 , user = 2
-          sender_id: data.sender_id,
-          category: data.category, // for filtering notifications by category
-          type: data.type,
-          club_id: data.club_id,
-          dedupe_key: data.dedupe_key,
-          receivers: {
-            create: data.receiver_user_ids.map((userId) => ({
-              receiver_user_id: userId,
-            })),
-          },
+  async createNotification(data: NotificationEventDto) {
+  return this.prisma.notification.upsert({
+    where: { event_id: data.event_id },
+    update: {},
+    create: {
+      event_id: data.event_id,
+      sender_type: data.sender_type,
+      sender_id:
+        data.sender_id != null ? BigInt(data.sender_id) : null,
+      category: data.category,
+      type: data.type,
+      club_id: data.club_id != null ? BigInt(data.club_id) : null,
+      receivers: {
+        create: data.receiver_user_ids.map((userId) => ({
+          receiver_user_id: BigInt(userId),
+        })),
+      },
+    },
+    include: { receivers: true },
+  });
+  }
+
+  // get inbox for a user with pagination
+  async getInbox(user_id: bigint, page: number, limit: number) {
+    const where = {
+      receiver_user_id: user_id,
+    };
+
+    const [items, total] = await Promise.all([
+      this.prisma.notificationReceiver.findMany({
+        where,
+        orderBy: { notification: { sent_at: 'desc' } },
+        skip: (page - 1) * limit,
+        take: limit,
+        include: { notification: true },
+      }),
+      this.prisma.notificationReceiver.count({ where }),
+    ]);
+
+    return {
+      items: items.map((item) => ({
+        ...item,
+        id: item.id.toString(),
+        notification_id: item.notification_id.toString(),
+        receiver_user_id: item.receiver_user_id.toString(),
+        notification: {
+          ...item.notification,
+          id: item.notification.id.toString(),
+          sender_id: item.notification.sender_id?.toString() ?? null,
+          club_id: item.notification.club_id?.toString() ?? null,
         },
-        include: { receivers: true },
-      });
-    } catch (error) {
-      throw error;
-    }
+      })),
+      total,
+      page,
+      limit,
+      totalPages: Math.ceil(total / limit),
+    };
   }
 
-  // Retrieve a user's notifications
-  async getInbox(userId: bigint, page = 1, limit = 20) {
-    return this.prisma.notificationReceiver.findMany({
-      where: { receiver_user_id: userId },
-      orderBy: { id: 'desc' },
-      skip: (page - 1) * limit,
-      take: limit,
-      include: { notification: true },
-    });
-  }
-
+  
   // Mark one notification as read
-  async markAsRead(notification_id: bigint, userId: bigint) {
-    const receiver = await this.prisma.notificationReceiver.findFirst({
+  async markAsRead(user_id: bigint, notification_id: bigint) {
+    const receiver = await this.prisma.notificationReceiver.findUnique({
       where: {
-        notification_id: notification_id,
-        receiver_user_id: userId,
+        notification_id_receiver_user_id: {
+          notification_id: notification_id,
+          receiver_user_id: user_id,
+        },
       },
     });
 
     if (!receiver) {
-      throw new NotFoundException('Notification not found for this user');
+      throw new NotFoundException('Notification not found');
+    }
+
+    if (receiver.is_read) {
+      return receiver;
     }
 
     return this.prisma.notificationReceiver.update({
@@ -79,9 +97,9 @@ export class NotificationServiceService {
         read_at: new Date(),
       },
     });
-  }
+    }
 
-  async markAllAsRead(userId: bigint) {
+  async markAllAsRead(userId: bigint) { 
     return this.prisma.notificationReceiver.updateMany({
       where: {
         receiver_user_id: userId,
@@ -93,4 +111,5 @@ export class NotificationServiceService {
       },
     });
   }
+
 }

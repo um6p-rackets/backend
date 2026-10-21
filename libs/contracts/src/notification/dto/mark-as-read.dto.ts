@@ -1,7 +1,11 @@
-import { IsNotEmpty, IsNumber } from 'class-validator';
+import { IsString, Matches } from 'class-validator';
 
 export class MarkAsReadDto {
-  @IsNumber()
-  @IsNotEmpty()
-  notification_id: number;
+  @IsString()
+  // @Matches(/^[0-9]+$/)
+  notification_id!: string;
+
+  @IsString()
+  // @Matches(/^[0-9]+$/)
+  user_id!: string;
 }

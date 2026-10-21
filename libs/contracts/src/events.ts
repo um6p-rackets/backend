@@ -8,3 +8,12 @@ export const EVENTS = {
 export interface UserDeletedEvent {
   user_id: string;
 }
+
+// 
+
+export const NOTIFICATION_EVENTS = {
+  JOIN_REQUESTED: 'notification.join-requested',
+  JOIN_ACCEPTED: 'notification.join-accepted',
+  JOIN_REJECTED: 'notification.join-rejected',
+  CLUB_ANNOUNCEMENT: 'notification.club-announcement',
+} as const;
