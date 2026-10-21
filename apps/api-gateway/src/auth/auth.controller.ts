@@ -232,9 +232,9 @@ export class AuthController {
         return { user: updatedUser };
     }
 
-    // /users/login-available?login=abc 
+    // /login-available?login=abc 
     @Throttle({ default: { limit: REQUEST_LIMIT, ttl: REQUEST_TTL } })
-    @Get('users/login-available')
+    @Get('login-available')
     async isLoginAvailable(@Query('login') login: string): Promise<{ available: boolean }> {
         const available = await rpc<boolean>(this.authClient, AUTH_PATTERNS.IS_LOGIN_AVAILABLE, {
             login: login,
