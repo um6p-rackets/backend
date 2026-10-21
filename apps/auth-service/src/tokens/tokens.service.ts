@@ -100,7 +100,7 @@
         where: { reset_token_hash: tokenHash },
         select: { id: true, reset_token_expiry: true },
       });
-      if ((!user) || new Date() > user.reset_token_expiry) {
+      if ((!user) || (!user.reset_token_expiry) || new Date() > user.reset_token_expiry) {
         return null;
       }
       return user.id;
