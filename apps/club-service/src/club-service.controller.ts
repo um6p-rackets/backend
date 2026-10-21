@@ -83,4 +83,38 @@ export class ClubServiceController {
   ) {
     return this.clubServiceService.cancelJoin(club_slug, user_id);
   }
+
+  @MessagePattern(CLUB_PATTERNS.GET_CLUB_JOIN_REQUESTS)
+  getJoinRequests(
+    @Payload()
+    {
+      club_slug,
+      user_id,
+      page,
+      limit,
+    }: {
+      club_slug: string;
+      user_id: number;
+      page: number;
+      limit: number;
+    },
+  ) {
+    return this.clubServiceService.getJoinRequests(club_slug, user_id, page, limit);
+  }
+
+  @MessagePattern(CLUB_PATTERNS.POST_CLUB_JOIN_REQUEST_REJECT)
+  rejectJoinRequest(
+    @Payload()
+    {
+      club_slug,
+      user_id,
+      request_id,
+    }: {
+      club_slug: string;
+      user_id: number;
+      request_id: number;
+    },
+  ) {
+    return this.clubServiceService.rejectJoinRequest(club_slug, user_id, request_id);
+  }
 }

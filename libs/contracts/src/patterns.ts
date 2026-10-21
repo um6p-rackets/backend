@@ -30,6 +30,8 @@ export const CLUB_PATTERNS = {
   POST_CLUB_JOIN: 'club.post-club-join',
   DELETE_CLUB_JOIN: 'club.delete-club-join',
   GET_CLUB_LEADERBOARD: 'club.get-club-leaderboard',
+  GET_CLUB_JOIN_REQUESTS: 'club.get-club-join-requests',
+  POST_CLUB_JOIN_REQUEST_REJECT: 'club.post-club-join-request-reject',
   // ================== SESSIONS SERVICE ==================
   GET_CLUB_WEEK_SESSIONS: 'club.get-club-week-sessions',
   POST_CLUB_SESSION_ATTEND: 'club.post-club-session-attend',
