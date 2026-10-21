@@ -1,7 +1,11 @@
 import { Type } from 'class-transformer';
-import { IsInt, IsOptional, Max, Min } from 'class-validator';
+import { IsInt, IsOptional, IsString, Max, Min } from 'class-validator';
 
 export class GetInboxQueryDto {
+  // @IsOptional()
+  @IsString()
+  user_id!: string;
+
   @IsOptional()
   @Type(() => Number)
   @IsInt()
@@ -13,5 +17,5 @@ export class GetInboxQueryDto {
   @IsInt()
   @Min(1)
   @Max(50)
-  limit: number = 20;
+  limit: number = 10;
 }

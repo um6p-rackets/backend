@@ -30,3 +30,17 @@ GET {{API}}/auth/me
 
 ### 2a. Notifications - get hello
 GET {{API}}/notifications/hello
+
+### 2b. Notifications - get notifications for userId=1, page=1, limit=3
+GET {{API}}/notifications/inbox?user_id=1&page=1&limit=3
+
+### 2c. Notifications - get notifications for userId=2, page=1, limit=3
+GET {{API}}/notifications/inbox
+
+### 2d. Notifications - mark notification as read for notification_id=1
+POST {{API}}/notifications/1/read
+
+### 2e. Notifications - mark all notifications as read for user_id=1
+POST {{API}}/notifications/read-all
+
+### 

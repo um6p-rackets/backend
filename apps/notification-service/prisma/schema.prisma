@@ -7,6 +7,7 @@ datasource db {
   provider = "postgresql"
 }
 
+
 // WHO caused the notification?
 enum SenderType {
   SYSTEM // for email notifications, the system will be the sender
@@ -71,7 +72,7 @@ model Notification {
   // a consistent key.
   // Example: "join-request:club-9001:user-42"
   // Null when no business-level deduplication is required.
-  dedupe_key String? @unique @map("dedupe_key")
+  // dedupe_key String? @unique @map("dedupe_key")
 
   // When the notification event was recorded.
   // Example: 2026-10-18T12:00:00Z

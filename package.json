@@ -29,6 +29,7 @@
     "prisma:club-service": "prisma --config apps/club-service/prisma7.config.ts",
     "prisma:notification-service": "prisma --config apps/notification-service/prisma7.config.ts",
     "prisma:studio:club": "prisma studio --config apps/club-service/prisma7.config.ts",
+    "prisma:studio:notification": "prisma studio --config apps/notification-service/prisma7.config.ts",
     "db:migrate:dev:auth": "npm run prisma:auth-service -- migrate dev",
     "db:migrate:dev:club": "npm run prisma:club-service -- migrate dev",
     "db:migrate:dev:notification": "npm run prisma:notification-service -- migrate dev",
