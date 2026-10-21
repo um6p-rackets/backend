@@ -12,6 +12,7 @@ import { AnnouncementsModule } from './announcements/announcements.module.js';
 import { DocumentsModule } from './documents/documents.module.js';
 import { AchievementsModule } from './achievements/achievements.module.js';
 import { MatchesModule } from './matches/matches.module.js';
+import { LeaderboardModule } from './leaderboard/leaderboard.module.js';
 
 @Module({
   imports: [
@@ -28,7 +29,8 @@ import { MatchesModule } from './matches/matches.module.js';
     AnnouncementsModule,
     DocumentsModule,
     AchievementsModule,
-    MatchesModule
+    MatchesModule,
+    LeaderboardModule
   ],
   controllers: [ClubServiceController],
   providers: [

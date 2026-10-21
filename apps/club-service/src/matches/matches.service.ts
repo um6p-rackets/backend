@@ -2,7 +2,7 @@ import { Inject, Injectable } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service.js';
 import { ClientProxy } from '@nestjs/microservices';
 import { ClubAccessService } from '../access/club-access.service.js';
-import { AUTH_PATTERNS, AUTH_SERVICE, rpcError, User } from '@app/contracts';
+import { AUTH_PATTERNS, AUTH_SERVICE, MatchMode, rpcError, User } from '@app/contracts';
 import {
   MatchesQueryDto,
   MatchRequestDto,
@@ -17,6 +17,8 @@ import {
   UserSummary,
 } from '@app/contracts/club/index.js';
 import { rpc } from '@app/common';
+
+
 
 const memberSelect = { select: { id: true, user_id: true } } as const;
 const teamInclude = {
@@ -52,21 +54,21 @@ export class MatchesService {
       );
     }
     // check mode and number of players
-    if (body.mode === 1 && body.opponent_ids.length !== 1) {
+    if (body.mode === MatchMode.SINGLES && body.opponent_ids.length !== 1) {
       throw rpcError(
         400,
         'Singles match must have exactly 1 opponent',
         'Bad Request',
       );
-    } else if (body.mode === 2 && body.opponent_ids.length !== 2) {
+    } else if (body.mode === MatchMode.DOUBLES && body.opponent_ids.length !== 2) {
       throw rpcError(
         400,
         'Doubles match must have exactly 2 opponents',
         'Bad Request',
       );
-    } else if (body.mode === 2 && !body.partner_id) {
+    } else if (body.mode === MatchMode.DOUBLES && !body.partner_id) {
       throw rpcError(400, 'Doubles match must have a partner', 'Bad Request');
-    } else if (body.mode === 1 && body.partner_id) {
+    } else if (body.mode === MatchMode.SINGLES && body.partner_id) {
       throw rpcError(400, 'Singles match cannot have a partner', 'Bad Request');
     }
 
@@ -592,6 +594,7 @@ export class MatchesService {
       data: {
         team1_score: result.team1_score,
         team2_score: result.team2_score,
+        // Do we have a draw case ?
         team1_points: result.team1_score > result.team2_score ? 3 : result.team1_score === result.team2_score ? 1 : 0,
         team2_points: result.team2_score > result.team1_score ? 3 : result.team1_score === result.team2_score ? 1 : 0,
         winner_id: winner_id,
@@ -599,6 +602,9 @@ export class MatchesService {
       },
     });
 
+    // this.updateLeaderboard(club.id, match.team1.id, match.team2.id, result.team1_score, result.team2_score, winner_id);
+
     return { status: 200, message: 'Match result submitted successfully' };
   }
+
 }
