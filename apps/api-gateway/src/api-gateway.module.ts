@@ -1,5 +1,5 @@
 import { Module } from '@nestjs/common';
-import { ConfigModule, ConfigService, ConfigType } from '@nestjs/config';
+import { ConfigModule, ConfigType } from '@nestjs/config';
 import { ThrottlerGuard, ThrottlerModule } from '@nestjs/throttler';
 import { JwtModule } from '@nestjs/jwt';
 import { APP_GUARD } from '@nestjs/core';
@@ -20,7 +20,6 @@ import { NotificationsModule } from './notification/notifications.module.js';
       load: [configuration, jwtConfig, googleOauthConfig],
       envFilePath: envFiles('api-gateway'),
       validationSchema: Joi.object({
-        RABBITMQ_URL: Joi.string().uri().required(),
         JWT_ACCESS_EXPIRES_IN: Joi.string().required(),
         GOOGLE_REDIRECT_URI: Joi.string().uri().required(),
         FRONTEND_REDIRECT_URL: Joi.string().uri().required(),
