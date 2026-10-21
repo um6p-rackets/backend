@@ -36,6 +36,13 @@ export enum MatchStatus {
   CANCELLED = 3, // cancelled by one of the teams or the referee or system
 }
 
+export enum JoinRequestStatus {
+  PENDING = 0, // waiting for a leader
+  ACCEPTED = 1, // the user became a member
+  REJECTED = 2, // a leader said no
+  CANCELLED = 3, // the user took the request back
+}
+
 // ==========================================
 // 2. Database entities (club service)
 // ==========================================

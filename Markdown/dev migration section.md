@@ -70,6 +70,8 @@ ALTER TABLE "teams"   ADD CONSTRAINT teams_players_chk   CHECK (player1_id <> pl
 ALTER TABLE "matches" ADD CONSTRAINT matches_status_chk  CHECK (status IN (0, 1, 2));
 ALTER TABLE "matches" ADD CONSTRAINT matches_teams_chk   CHECK (team1_id <> team2_id);
 ALTER TABLE "matches" ADD CONSTRAINT matches_winner_chk  CHECK (winner_id IS NULL OR (status = 2 AND winner_id IN (team1_id, team2_id)));
+ALTER TABLE "join_requests"
+  ADD CONSTRAINT "join_requests_status_chk" CHECK ("status" BETWEEN 0 AND 3);
 
 CREATE OR REPLACE FUNCTION check_session_capacity() RETURNS trigger AS $$
 DECLARE cap int; n int;
