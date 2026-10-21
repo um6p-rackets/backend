@@ -9,6 +9,7 @@ import {
   MemberWithUser,
   Paginated,
   MemberRole,
+  JoinRequestStatus,
 } from '@app/contracts/club/club.types.js';
 import { AddMemberDto } from '@app/contracts/club/dto/index.js';
 
@@ -196,9 +197,9 @@ export class MembersService {
 
     if (existingMember) {
       throw rpcError(
-        400,
+        409,
         `User with id ${body.user_id} is already a member of club ${club_slug}`,
-        'Bad Request',
+        'Conflict',
       );
     }
 
@@ -215,45 +216,40 @@ export class MembersService {
         'Not Found',
       );
     }
-    // check if member already join and left the club before, if so update the left_at to null and update the role
-    const previousMember = await this.prisma.member.findFirst({
-      where: {
-        club_id: club.id,
-        user_id: body.user_id,
-        left_at: { not: null },
-      },
-    });
-    if (previousMember) {
-      const updatedMember = await this.prisma.member.update({
+    // add the member (or re-activate a former one) and close the user's pending request.
+    // Both writes run in ONE transaction: both happen, or none.
+    const [saved, accepted] = await this.prisma.$transaction([
+      this.prisma.member.upsert({
+        where: { club_id_user_id: { club_id: club.id, user_id: body.user_id } },
+        update: { left_at: null, role: body.role ?? 0 },
+        create: {
+          club_id: club.id,
+          user_id: body.user_id,
+          role: body.role ?? 0,
+        },
+      }),
+      this.prisma.joinRequest.updateMany({
         where: {
-          id: previousMember.id,
+          club_id: club.id,
+          user_id: body.user_id,
+          status: JoinRequestStatus.PENDING,
         },
         data: {
-          left_at: null,
-          role: body.role ?? 0, // Default role to MEMBER if not provided
+          status: JoinRequestStatus.ACCEPTED,
+          decided_at: new Date(),
+          decided_by: member.id, // the leader who accepted
         },
-      });
-      return {
-        ...updatedMember,
-        joined_at: toFullString(updatedMember.joined_at),
-        left_at: updatedMember.left_at ? toFullString(updatedMember.left_at) : null,
-      };
+      }),
+    ]);
+
+    if (accepted.count === 1) {
+      // step 6: notify the user "you were accepted" (count 1 = it came from a request)
     }
 
-    // Add the new member to the club
-    const newMember = await this.prisma.member.create({
-      data: {
-        club_id: club.id,
-        user_id: body.user_id,
-        role: body.role ?? 0, // Default role to MEMBER if not provided
-        joined_at: new Date(),
-      },
-    });
-
     return {
-      ...newMember,
-      joined_at: toFullString(newMember.joined_at),
-      left_at: newMember.left_at ? toFullString(newMember.left_at) : null,
+      ...saved,
+      joined_at: toFullString(saved.joined_at),
+      left_at: saved.left_at ? toFullString(saved.left_at) : null,
     };
   }
 
@@ -284,7 +280,7 @@ export class MembersService {
         left_at: null,
       },
     });
-    
+
     if (!existingMember) {
       throw rpcError(
         404,
@@ -292,7 +288,7 @@ export class MembersService {
         'Not Found',
       );
     }
-    
+
     // check if member role already has the same role as the new role
     if (existingMember.role === body.role) {
       throw rpcError(
@@ -311,8 +307,6 @@ export class MembersService {
       );
     }
 
-    
-
     // Update the member's role
     const updatedMember = await this.prisma.member.update({
       where: {
@@ -326,7 +320,9 @@ export class MembersService {
     return {
       ...updatedMember,
       joined_at: toFullString(updatedMember.joined_at),
-      left_at: updatedMember.left_at ? toFullString(updatedMember.left_at) : null,
+      left_at: updatedMember.left_at
+        ? toFullString(updatedMember.left_at)
+        : null,
     };
   }
 
