@@ -90,8 +90,7 @@ export class MembersService {
       } else {
         if (!limit) limit = 10;
         if (!page) page = 1;
-        if (!role) role = 0;
-        console.log('I am here man + 1');
+        // if (!role) role = 0;
         const members = await this.prisma.member.findMany({
           where: {
             club_id: club.id,
