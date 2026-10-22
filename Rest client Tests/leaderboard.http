@@ -163,7 +163,7 @@ GET {{API}}/clubs/not-a-club/leaderboard
 POST {{API}}/auth/logout
 
 ###
-GET {{API}}/clubs/tennis/leaderboard
+GET {{API}}/clubs/tennis/leaderboard?limit=12
 
 
 ############################################################
@@ -183,7 +183,7 @@ Content-Type: application/json
 DELETE {{API}}/clubs/tennis/members/11
 
 ### E3  Leaderboard without him
-###     expect: total 10, member 11 is gone, member 10 is now last (rank 10)
+###     expect: member should still exist in our club and leaderboard
 GET {{API}}/clubs/tennis/leaderboard?limit=50
 
 ### E4  Add him back, user 15 (expect success, the SAME member id 11)

@@ -4,6 +4,8 @@ import { AUTH_PATTERNS, AUTH_SERVICE, Leaderboard, MemberRole, Paginated, User }
 import { ClubAccessService } from '../access/club-access.service.js';
 import { rpc } from '@app/common/helpers/rpc.helper.js';
 import { ClientProxy } from '@nestjs/microservices';
+import { Prisma } from '../generated/prisma/client.js';
+
 
 @Injectable()
 export class LeaderboardService {
@@ -15,15 +17,14 @@ export class LeaderboardService {
     ) {}
 
     async updateLeaderboard(club_id: number, team1_id: number, team2_id: number, team1_score: number, team2_score: number, winner_id: number | null) {
-        // Start a transaction to update the leaderboard for both teams
-        const result = await this.prisma.$transaction(async (prisma) => {
+        await this.prisma.$transaction(async (tx) => {
 
-            // Get the teams
-            const team1 = await prisma.team.findUnique({
+            // 1. The 'include' block populates the player1 and player2 objects
+            const team1 = await tx.team.findUnique({
                 where: { id: team1_id },
-                include: { player1: true, player2: true },
+                include: { player1: true, player2: true }, 
             });
-            const team2 = await prisma.team.findUnique({
+            const team2 = await tx.team.findUnique({
                 where: { id: team2_id },
                 include: { player1: true, player2: true },
             });
@@ -32,25 +33,60 @@ export class LeaderboardService {
                 throw new Error('One or both teams not found');
             }
 
-            // Update leaderboard for team 1 players
-            await this.updateMemeberLeaderboard(club_id, team1.player1_id, team1.player1_id, team1_score, winner_id === team1.id);
-            if (team1.player2_id) {
-                await this.updateMemeberLeaderboard(club_id, team1.player2_id, team1.player2_id, team1_score, winner_id === team1.id);
+            // 2. Mapping: 
+            // team1.player1.user_id -> user_id
+            // team1.player1.id      -> member_id
+            
+            // --- TEAM 1 ---
+            await this.updateMemeberLeaderboard(
+                tx, 
+                club_id, 
+                team1.player1.user_id, 
+                team1.player1.id, 
+                team1_score, 
+                winner_id === team1.id
+            );
+
+            // Type guard for doubles matches
+            if (team1.player2) {
+                await this.updateMemeberLeaderboard(
+                    tx, 
+                    club_id, 
+                    team1.player2.user_id, 
+                    team1.player2.id, 
+                    team1_score, 
+                    winner_id === team1.id
+                );
             }
 
-            // Update leaderboard for team 2 players
-            await this.updateMemeberLeaderboard(club_id, team2.player1_id, team2.player1_id, team2_score, winner_id === team2.id);
-            if (team2.player2_id) {
-                await this.updateMemeberLeaderboard(club_id, team2.player2_id, team2.player2_id, team2_score, winner_id === team2.id);
+            // --- TEAM 2 ---
+            await this.updateMemeberLeaderboard(
+                tx, 
+                club_id, 
+                team2.player1.user_id, 
+                team2.player1.id, 
+                team2_score, 
+                winner_id === team2.id
+            );
+
+            if (team2.player2) {
+                await this.updateMemeberLeaderboard(
+                    tx, 
+                    club_id, 
+                    team2.player2.user_id, 
+                    team2.player2.id, 
+                    team2_score, 
+                    winner_id === team2.id
+                );
             }
-        })
+        });
     }
 
-    async updateMemeberLeaderboard(club_id: number, user_id: number, member_id: number, points: number, isWinner: boolean) {
+    async updateMemeberLeaderboard( tx: Prisma.TransactionClient, club_id: number, user_id: number, member_id: number, points: number, isWinner: boolean) {
         const isWin = isWinner ? 1 : 0;
         const isLose = isWinner ? 0 : 1;
 
-        const result = await this.prisma.leaderboard.upsert({
+        const result = await tx.leaderboard.upsert({
             where: { club_id_user_id_member_id: { club_id, user_id, member_id } },
             create: {
                 club_id,
@@ -77,7 +113,7 @@ export class LeaderboardService {
         // New Win Streak Youuuuupiii
         // We can check achievements here as well
         if (result.win_streak > result.best_win_streak) {
-            await this.prisma.leaderboard.update({
+            await tx.leaderboard.update({
                 where : { club_id_user_id_member_id: { club_id, user_id: member_id, member_id } },
                 data: {
                     best_win_streak: result.win_streak,

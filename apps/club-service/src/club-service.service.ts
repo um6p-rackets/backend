@@ -55,30 +55,23 @@ export class ClubServiceService {
     clubSlug: string,
   ): Promise<ClubWithMembersCountAndCoachFullName> {
     console.log(`[ClubService] Fetching club with slug: ${clubSlug}`);
-    const club = await this.prisma.club.findUnique({
-      where: { slug: clubSlug },
-    });
-    if (!club) {
-      console.log(`[ClubService] Club with slug "${clubSlug}" not found`);
-      throw rpcError(404, 'Club not found', 'Not Found');
-    }
-
+    const club = await this.clubAccessService.getClub(clubSlug);
     let coach: User | null = null;
 
     // get club coach full name
-    const coachMember = await this.prisma.member.findFirst({
+    const club_coach = await this.prisma.member.findFirst({
       where: { club_id: club.id, role: MemberRole.COACH },
     });
 
-    if (coachMember) {
+    if (club_coach) {
       coach = await rpc<User | null>(
         this.authClient,
         AUTH_PATTERNS.GET_USER_BY_ID,
-        { user_id: coachMember.user_id },
+        { user_id: club_coach.user_id },
       );
       if (!coach) {
         console.log(
-          `[ClubService] User with id ${coachMember.user_id} not found for club with slug "${clubSlug}"`,
+          `[ClubService] User with id ${club_coach.user_id} not found for club with slug "${clubSlug}"`,
         );
       }
     } else {
@@ -270,11 +263,7 @@ export class ClubServiceService {
     club_slug: string,
     user_id: number,
   ): Promise<JoinClubResponse> {
-    const club = await this.prisma.club.findUnique({
-      where: { slug: club_slug },
-    });
-    if (!club) throw rpcError(404, 'Club not found', 'Not Found');
-
+    const club = await this.clubAccessService.getClub(club_slug);
     const member = await this.prisma.member.findUnique({
       where: { club_id_user_id: { club_id: club.id, user_id } },
     });
