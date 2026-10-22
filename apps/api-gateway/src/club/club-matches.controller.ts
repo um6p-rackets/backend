@@ -104,6 +104,7 @@ export class ClubMatchesController {
   async submitMatchResult(
     @Param() { slug, match_id }: GetMatchParamDto,
     @CurrentUser() user: AuthenticatedUser,
+    // results can't be equal
     @Body() body: MatchResultDto,
   ) {
     return this.clubClient.send(CLUB_PATTERNS.POST_CLUB_MATCH_RESULT, {

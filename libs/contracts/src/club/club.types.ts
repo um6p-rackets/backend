@@ -294,15 +294,6 @@ export type UserClubRank = {
 };
 
 
-  // club_id         Int
-  // user_id         Int
-  // points          Int      @default(0)
-  // wins            Int      @default(0)
-  // losses          Int      @default(0)
-  // total_matches   Int      @default(0)
-  // win_streak      Int      @default(0)
-  // best_win_streak Int      @default(0)
-  // updated_at      DateTime @updatedAt
 // GET /:slug/leaderboard
 export type Leaderboard = {
   rank: number;
