@@ -17,7 +17,7 @@ import { PrismaService } from './prisma/prisma.service.js';
 import { ClubAccessService } from './access/club-access.service.js';
 import { UpdateClubDto } from '@app/contracts/club/dto/index.js';
 import { User } from '@app/contracts/auth/index.js';
-import { rpc } from '@app/common/helpers/rpc.helper.js';
+import { emitEvent, rpc } from '@app/common/helpers/rpc.helper.js';
 import {
   AUTH_PATTERNS,
   NOTIFICATION_PATTERNS,
@@ -314,16 +314,16 @@ export class ClubServiceService {
       });
       const leader_user_ids = leader_plus.map((m) => m.user_id);
       const notify_data = {
-        event_id: `join_request_${club.id}_${user_id}_${Date.now()}`,
-        sender_type: SenderType.USER, // system
-        sender_id: user_id,
-        category: NotificationCategory.USER, // club
-        type: NotificationType.JOIN_REQUESTED, // join request
-        club_id: club.id,
-        receiver_user_ids: leader_user_ids,
+        event_id: `${NOTIFICATION_EVENTS.JOIN_REQUESTED}:${club.id}:${user_id}}`,
+        sender_type: SenderType.USER,
+        sender_id: String(user_id),
+        category: NotificationCategory.CLUB, // a join request is a club notification
+        type: NotificationType.JOIN_REQUESTED,
+        club_id: String(club.id),
+        receiver_user_ids: leader_user_ids.map(String),
       };
       // step 6: notify
-      await rpc(
+      await emitEvent(
         this.notificationClient,
         NOTIFICATION_EVENTS.JOIN_REQUESTED,
         notify_data,
