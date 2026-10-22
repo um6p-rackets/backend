@@ -8,10 +8,14 @@ import {
 import { ClubServiceService } from './club-service.service.js';
 import { CLUB_PATTERNS } from '@app/contracts';
 import { UpdateClubDto } from '@app/contracts/club/dto/index.js';
+import { LeaderboardService } from './leaderboard/leaderboard.service.js';
 
 @Controller()
 export class ClubServiceController {
-  constructor(private readonly clubServiceService: ClubServiceService) {}
+  constructor(
+    private readonly clubServiceService: ClubServiceService,
+    private readonly leaderboardService: LeaderboardService
+  ) {}
 
   @MessagePattern(CLUB_PATTERNS.GET_CLUBS)
   getAllClubs(): Promise<Club[]> {
@@ -62,7 +66,7 @@ export class ClubServiceController {
     page: number;
     limit: number;
   }) {
-    return this.clubServiceService.getClubLeaderboard(
+    return this.leaderboardService.getClubLeaderboard(
       data.club_slug,
       data.user_id,
       data.page,
