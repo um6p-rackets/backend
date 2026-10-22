@@ -8,13 +8,7 @@ COPY package*.json ./
 # install dependencies, CI is used to install exact versions of dependencies from package-lock.json, which is important for reproducible builds
 # and this helps also to avoid any issues with peer dependencies, as npm ci will fail if there are any unmet peer dependencies
 
-
-RUN npm config set fetch-retries 5 && \
-    npm config set fetch-retry-mintimeout 20000 && \
-    npm config set fetch-retry-maxtimeout 120000 && \
-    npm config set strict-ssl false && \
-    npm ci
-# RUN npm ci
+RUN npm ci
 
 COPY . .
 

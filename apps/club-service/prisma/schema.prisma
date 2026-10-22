@@ -220,6 +220,7 @@ model Leaderboard {
   id              Int      @id @default(autoincrement())
   club_id         Int
   user_id         Int
+  member_id       Int      @unique
   points          Int      @default(0)
   wins            Int      @default(0)
   losses          Int      @default(0)
@@ -230,8 +231,8 @@ model Leaderboard {
 
   club            Club     @relation(fields: [club_id], references: [id], onDelete: Cascade)
 
-  @@unique([club_id, user_id])
-  @@index([club_id, points(sort: Desc), wins(sort: Desc), total_matches(sort: Desc)])
+  @@unique([club_id, user_id, member_id])
+  @@index([club_id, points(sort: Desc), wins(sort: Desc), losses(sort: Asc), total_matches(sort: Desc), member_id(sort: Asc)])
   @@index([user_id])
   @@map("leaderboard")
 }

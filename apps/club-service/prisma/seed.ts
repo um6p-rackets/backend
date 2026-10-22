@@ -325,6 +325,45 @@ async function seedAchievements(
   });
 }
 
+async function seedLeaderboard(club_id: number) {
+  // Fetch up to 60 members to populate the leaderboard
+  const members = await prisma.member.findMany({
+    where: { club_id },
+    take: 60,
+  });
+
+  for (const member of members) {
+    // Generate realistic random statistics
+    const wins = Math.floor(Math.random() * 30);       // 0 to 29 wins
+    const losses = Math.floor(Math.random() * 20);     // 0 to 19 losses
+    const total_matches = wins + losses;
+    
+    // Example formula: 10 points per win, -5 per loss, floor at 0
+    const calculatedPoints = (wins * 10) - (losses * 5);
+    const points = Math.max(0, calculatedPoints);
+
+    const win_streak = Math.floor(Math.random() * 6);
+    const best_win_streak = win_streak + Math.floor(Math.random() * 5);
+
+    await prisma.leaderboard.upsert({
+      where: { member_id: member.id }, 
+      update: {},
+      create: {
+        club_id: club_id,
+        user_id: member.user_id,
+        member_id: member.id,
+        points,
+        wins,
+        losses,
+        total_matches,
+        win_streak,
+        best_win_streak,
+      },
+    });
+  }
+  console.log(`Seeded ${members.length} leaderboard rows for club ${club_id}`);
+}
+
 // ==========================================
 // Run
 // ==========================================
@@ -344,6 +383,7 @@ async function main() {
     });
 
     await seedMembers(club.id);
+    await seedLeaderboard(club.id);
     await seedSessions(club.id);
     await seedAttendance(club.id); // needs the sessions
     await seedAnnouncements(club.id, coach.id);

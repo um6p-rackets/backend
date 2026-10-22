@@ -293,16 +293,21 @@ export type UserClubRank = {
   points: number;
 };
 
+
 // GET /:slug/leaderboard
-export type LeaderboardEntry = {
+export type Leaderboard = {
   rank: number;
   player: Player;
   points: number;
   wins: number;
   losses: number;
+  total_matches: number;
+  win_streak: number;
+  best_win_streak: number;
 };
 
-export type UserProfileStat = {
+// For all clubs leaderboard
+export type UserGlobalStat = {
   total_matches: number;
   wins: number;
   losses: number;
@@ -314,11 +319,11 @@ export type UserProfileStat = {
 
 export type UserProfileData = {
   user: User;
-  stats: UserProfileStat;
   joined_clubs: JoinedClub[];
   achievements: Achievement[];
   history: UserHistoryMatch[];
   club_ranks: UserClubRank[];
+  global_stats: UserGlobalStat;
 };
 
 // ==========================================

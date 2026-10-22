@@ -7,5 +7,5 @@ export class PaginationQueryDto {
   page: number = 1;
 
   @IsOptional() @Type(() => Number) @IsInt() @Min(1) @Max(50)
-  limit: number = 20;
+  limit: number = 10;
 }
