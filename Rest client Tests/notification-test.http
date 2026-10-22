@@ -1,0 +1,60 @@
+@API = http://localhost:3000/api/v1
+@REQ = 1
+
+### 1  Login as the tennis coach (a leader)
+POST {{API}}/auth/login
+Content-Type: application/json
+
+{
+  "email": "coach.tennis@example.com",
+  "password": "abdellahnsila123#002"
+}
+
+### logout 
+POST {{API}}/auth/logout
+
+### 
+GET {{API}}/notifications/inbox
+
+### 2 Login as the padel coach, back in the queue
+POST {{API}}/auth/login
+Content-Type: application/json
+
+{
+  "email": "coach.padel@example.com",
+  "password": "abdellahnsila123#002"
+}
+
+### 2 login as user
+POST {{API}}/auth/login
+Content-Type: application/json
+
+{
+  "email": "user7@gmail.com",
+  "password": "abdellahnsila123#002"
+}
+
+### 3  Ask to join the tennis club (expect pending)
+GET {{API}}/clubs/padel/status
+
+### 5  Status (expect has_pending_request true)
+POST {{API}}/clubs/padel/join
+
+### 6 cancel join 
+DELETE {{API}}/clubs/padel/join
+
+
+#### 7  Ask to join the tennis club (expect pending)
+GET {{API}}/clubs/tennis/status
+
+### 5  Status (expect has_pending_request true)
+POST {{API}}/clubs/tennis/join
+
+### 6 cancel join 
+DELETE {{API}}/clubs/tennis/join
+
+
+
+
+
+

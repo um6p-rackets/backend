@@ -1,36 +1,43 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from './prisma/prisma.service.js';
-import { NotificationEventDto } from '@app/contracts';
+import { MarkAllAsReadDto, MarkAsReadDto, NotificationEventDto } from '@app/contracts';
+import { Prisma } from './generated/prisma/client.js';
 
 @Injectable()
 export class NotificationServiceService {
   constructor(private readonly prisma: PrismaService) {}
 
-  async hello() {
-    return 'Hello from Notification Service!';
-  }
-
   // notification can only be created by system or user event
   async createNotification(data: NotificationEventDto) {
-  return this.prisma.notification.upsert({
-    where: { event_id: data.event_id },
-    update: {},
-    create: {
-      event_id: data.event_id,
-      sender_type: data.sender_type,
-      sender_id:
-        data.sender_id != null ? BigInt(data.sender_id) : null,
-      category: data.category,
-      type: data.type,
-      club_id: data.club_id != null ? BigInt(data.club_id) : null,
-      receivers: {
-        create: data.receiver_user_ids.map((userId) => ({
-          receiver_user_id: BigInt(userId),
-        })),
-      },
-    },
-    include: { receivers: true },
-  });
+    const sender = data.sender_id ?? null;
+    const receivers = [...new Set(data.receiver_user_ids)].filter((id) => id !== sender);
+    if (receivers.length === 0) return { created: false as const, reason: 'no-receivers' as const };
+
+    try {
+      const n = await this.prisma.notification.create({
+        data: {
+          event_id: data.event_id,
+          sender_type: data.sender_type,
+          sender_id: sender != null ? BigInt(sender) : null,
+          category: data.category,
+          type: data.type,
+          club_id: data.club_id != null ? BigInt(data.club_id) : null,
+          receivers: {
+            createMany: {
+              data: receivers.map((id) => ({ receiver_user_id: BigInt(id) })),
+              skipDuplicates: true,
+            },
+          },
+        },
+        select: { id: true },
+      });
+      return { created: true as const, notificationId: n.id, receivers };
+    } catch (e) {
+      if (e instanceof Prisma.PrismaClientKnownRequestError && e.code === 'P2002') {
+        return { created: false as const, reason: 'duplicate' as const };
+      }
+      throw e;
+    }
   }
 
   // get inbox for a user with pagination
@@ -72,12 +79,12 @@ export class NotificationServiceService {
 
   
   // Mark one notification as read
-  async markAsRead(user_id: bigint, notification_id: bigint) {
+  async markAsRead(data : MarkAsReadDto) {
     const receiver = await this.prisma.notificationReceiver.findUnique({
       where: {
         notification_id_receiver_user_id: {
-          notification_id: notification_id,
-          receiver_user_id: user_id,
+          notification_id: BigInt(data.notification_id),
+          receiver_user_id: BigInt(data.user_id),
         },
       },
     });
@@ -99,10 +106,10 @@ export class NotificationServiceService {
     });
     }
 
-  async markAllAsRead(userId: bigint) { 
+  async markAllAsRead(data: MarkAllAsReadDto) { 
     return this.prisma.notificationReceiver.updateMany({
       where: {
-        receiver_user_id: userId,
+        receiver_user_id: BigInt(data.user_id),
         is_read: false,
       },
       data: {

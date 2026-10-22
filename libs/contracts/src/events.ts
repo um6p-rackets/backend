@@ -17,3 +17,9 @@ export const NOTIFICATION_EVENTS = {
   JOIN_REJECTED: 'notification.join-rejected',
   CLUB_ANNOUNCEMENT: 'notification.club-announcement',
 } as const;
+
+export const NOTIFICATION_REALTIME_EVENTS = {
+  NEW_NOTIFICATION: 'new.notification',
+  NOTIFICATION_READ: 'notification.read',
+  NOTIFICATION_READ_ALL: 'notification.read-all',
+} as const;

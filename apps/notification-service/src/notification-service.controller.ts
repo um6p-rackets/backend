@@ -2,30 +2,25 @@ import { Controller , Logger } from '@nestjs/common';
 import { MessagePattern, Payload } from '@nestjs/microservices';
 import { NotificationServiceService } from './notification-service.service.js';
 import { EventPattern } from '@nestjs/microservices';
-import { MarkAllAsReadDto, NOTIFICATION_PATTERNS, MarkAsReadDto, GetInboxQueryDto} from '@app/contracts';
+import { MarkAllAsReadDto, NOTIFICATION_PATTERNS, MarkAsReadDto, GetInboxQueryDto, GATEWAY_SERVICE, NOTIFICATION_REALTIME_EVENTS} from '@app/contracts';
 import { NotificationEventDto } from '@app/contracts';
 import { NOTIFICATION_EVENTS } from '@app/contracts';
+import { ClientProxy } from '@nestjs/microservices';
+import { Inject } from '@nestjs/common';
 
 @Controller()
 export class NotificationServiceController {    private readonly logger = new Logger(NotificationServiceController.name);
   constructor(
     private readonly notificationService: NotificationServiceService,
+    @Inject(GATEWAY_SERVICE) private readonly gatewayClient: ClientProxy,
   ) {}
 
-    @MessagePattern(NOTIFICATION_PATTERNS.HELLO)
-    async hello() {
-        return this.notificationService.hello();
-    }
+    // @MessagePattern(NOTIFICATION_PATTERNS.HELLO)
+    // async hello() {
+    //     return this.notificationService.hello();
+    // }
 
   // test mock data for inbox
-    // @MessagePattern(NOTIFICATION_PATTERNS.GET_INBOX)
-    //     async getInbox(@Payload() data: GetInboxQueryDto) {
-    //     return this.notificationService.getInbox(
-    //         BigInt(data.user_id),
-    //         data.page,
-    //         data.limit,
-    //     );
-    // }
     @MessagePattern(NOTIFICATION_PATTERNS.GET_INBOX)
     async getInbox(@Payload() data: GetInboxQueryDto) {
     return this.notificationService.getInbox(
@@ -41,10 +36,7 @@ export class NotificationServiceController {    private readonly logger = new Lo
         @Payload()
         data: MarkAsReadDto
     ) {
-        return this.notificationService.markAsRead(
-        BigInt(data.notification_id),
-        BigInt(data.user_id)
-        );
+        return this.notificationService.markAsRead(data);
     }
 
     @MessagePattern(NOTIFICATION_PATTERNS.MARK_ALL_AS_READ)
@@ -52,7 +44,7 @@ export class NotificationServiceController {    private readonly logger = new Lo
         @Payload()
         data : MarkAllAsReadDto
     ) {
-        return this.notificationService.markAllAsRead(BigInt(data.user_id));
+        return this.notificationService.markAllAsRead(data);
     }
 
 
@@ -82,7 +74,19 @@ export class NotificationServiceController {    private readonly logger = new Lo
 
         this.logger.log(`Saved notification event: ${data.event_id}`);
 
+        this.gatewayClient.emit(
+            NOTIFICATION_REALTIME_EVENTS.NEW_NOTIFICATION,
+            data,
+        );
+
         return notification;
     }
+
+
+    // ====== WebSocket Event Handlers ======
+
+
+
+    
 
 }

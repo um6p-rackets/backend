@@ -6,6 +6,9 @@ import { QUEUES } from '@app/contracts/queues.js';
 import { NOTIFICATION_SERVICE } from '@app/contracts';
 import { rmqOptions } from '@app/rmq';
 import { NotificationsController } from './notifcations.controller.js';
+import { NotificationEventsConsumer } from './notifications.consumer.js';
+import { NotificationsGateway } from './notifications.gateway.js';
+import { WsAuthService } from './ws-auth.service.js';
 
 @Module({
   imports: [
@@ -20,6 +23,7 @@ import { NotificationsController } from './notifcations.controller.js';
       },
     ]),
   ],
-  controllers: [NotificationsController],
+  controllers: [NotificationsController, NotificationEventsConsumer],
+  providers: [NotificationsGateway, WsAuthService],
 })
 export class NotificationsModule {}
