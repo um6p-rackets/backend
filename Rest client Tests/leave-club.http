@@ -1,0 +1,41 @@
+@API = http://localhost:3000/api/v1
+
+### 1  Login as the tennis coach
+POST {{API}}/auth/login
+Content-Type: application/json
+
+{
+  "email": "coach.tennis@example.com",
+  "password": "abdellahnsila123#002"
+}
+
+
+#### 2  Leave the club (expect failure, because the coach can't leave the club if its the only coach in club)
+DELETE {{API}}/clubs/tennis/leave
+
+#### 3  Login as nsila (member 4, plain member)
+POST {{API}}/auth/login
+Content-Type: application/json
+
+{
+  "email": "user7@gmail.com",
+  "password": "abdellahnsila123#002"
+}
+
+#### 4  Leave the club (expect success, because nsila is a member and can leave the club)
+DELETE {{API}}/clubs/tennis/leave
+
+#### 5  Nsila tries to leave the club again (expect failure, because nsila is no longer a member of the club)
+DELETE {{API}}/clubs/tennis/leave
+
+#### 6  Login as the tennis coach again
+
+POST {{API}}/auth/login
+Content-Type: application/json
+
+{
+  "email": "coach.tennis@example.com",
+  "password": "abdellahnsila123#002"
+}
+
+
