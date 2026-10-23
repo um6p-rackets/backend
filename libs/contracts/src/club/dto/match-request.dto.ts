@@ -1,4 +1,3 @@
-// match-request.dto.ts
 import {
   ArrayMaxSize, ArrayMinSize, ArrayUnique, IsArray, IsDateString,
   IsEnum, IsInt, IsOptional, IsPositive,

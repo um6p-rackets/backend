@@ -1,4 +1,3 @@
-// matches-query.dto.ts
 import { IsBoolean, IsIn, IsOptional } from 'class-validator';
 import { PaginationQueryDto } from './pagination-query.dto.js';
 import { Transform } from 'class-transformer';
