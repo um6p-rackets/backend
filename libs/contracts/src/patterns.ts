@@ -32,6 +32,7 @@ export const CLUB_PATTERNS = {
   GET_CLUB_LEADERBOARD: 'club.get-club-leaderboard',
   GET_CLUB_JOIN_REQUESTS: 'club.get-club-join-requests',
   POST_CLUB_JOIN_REQUEST_REJECT: 'club.post-club-join-request-reject',
+  DELETE_CLUB_LEAVE: 'club.delete-club-leave',
   // ================== SESSIONS SERVICE ==================
   GET_CLUB_WEEK_SESSIONS: 'club.get-club-week-sessions',
   POST_CLUB_SESSION_ATTEND: 'club.post-club-session-attend',
