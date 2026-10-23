@@ -60,7 +60,7 @@ export class AnnouncementsService {
     });
     
     const announcerUserIds = announcerMembersInfo.map((m) => m.user_id);
-    const announcerUsers = await rpc<User[]>(this.authClient, AUTH_PATTERNS.GET_USERS_BY_IDS, announcerUserIds);
+    const announcerUsers = await rpc<User[]>(this.authClient, AUTH_PATTERNS.GET_USERS_BY_IDS, {user_ids: announcerUserIds});
 
 
 //  type AnnouncementWithAuthor = {
