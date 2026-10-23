@@ -26,7 +26,7 @@ export class WsAuthService {
     try {
       const payload = await this.jwt.verifyAsync<JwtPayload>(token, {
         algorithms: ['HS256'],
-      });
+      }); 
 
       const id = Number(payload.sub);
 

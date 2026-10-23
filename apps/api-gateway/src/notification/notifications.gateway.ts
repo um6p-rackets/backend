@@ -9,7 +9,7 @@ import { WsAuthService } from './ws-auth.service.js';
 @WebSocketGateway({
   namespace: '/notifications',
   cors: {
-    origin: process.env.FRONTEND_URL,
+    origin: 'http://localhost:3000',
     credentials: true,
   },
 })
