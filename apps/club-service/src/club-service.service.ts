@@ -3,12 +3,16 @@ import {
   ClubMemberStatus,
   ClubWithMembersCountAndCoachFullName,
   JoinClubResponse,
+  JoinedClub,
   JoinRequestStatus,
   JoinRequestWithUser,
   Leaderboard,
   MatchStatus,
   MemberRole,
   Paginated,
+  UserClubRank,
+  UserGlobalStat,
+  UserProfileData,
   UserSummary,
 } from '@app/contracts/club/club.types.js';
 import { rpcError } from '@app/contracts/errors.js';
@@ -31,23 +35,248 @@ import {
   NotificationType,
   SenderType,
 } from '@app/contracts/notification/index.js';
+import { toFullString } from '@app/common/dates.js';
+import { MatchesService } from './matches/matches.service.js';
+import { AchievementsService } from './achievements/achievements.service.js';
 
 @Injectable()
 export class ClubServiceService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly clubAccessService: ClubAccessService,
+    private readonly achievementsService: AchievementsService,
+		private readonly matchesService: MatchesService,
     @Inject(AUTH_SERVICE) private readonly authClient: ClientProxy,
     @Inject(NOTIFICATION_SERVICE)
     private readonly notificationClient: ClientProxy,
   ) {}
+
+  // =========================== User Profile Data ===========================
+  async getUserProfile(user_id: number): Promise<UserProfileData> {
+    const userJoinedClubs = await this.getJoinedClubs(user_id);
+    const userAchievements =
+      await this.achievementsService.getUserAchievements(user_id);
+    const userClubsId = userJoinedClubs.map((joinedClub) => joinedClub.club.id);
+    // Fetch the first 10 matches for the user across all joined clubs
+    const userMatches = await this.matchesService.getUserMatches(
+      user_id,
+      userClubsId,
+      1,
+      10,
+      true, // if [True]: get all matches, if [False]: only limit to 10 matches
+    );
+    const userClubRanks = await this.UserClubRank(user_id);
+    const userGlobalStats = await this.getUserGlobalStats(user_id);
+
+    return {
+      joined_clubs: userJoinedClubs,
+      achievements: userAchievements,
+      history: userMatches,
+      club_ranks: userClubRanks,
+      global_stats: userGlobalStats,
+    };
+  }
+
+  async getJoinedClubs(user_id: number): Promise<JoinedClub[]> {
+    const memberClubs = await this.prisma.member.findMany({
+      where: { user_id, left_at: null },
+      select: {
+        // Club Info
+        club: {
+          select: {
+            id: true,
+            name: true,
+            slug: true,
+            description: true,
+            avatar: true,
+            created_at: true,
+          },
+        },
+        // Member info in this Club
+        id: true,
+        role: true,
+        joined_at: true,
+      },
+    });
+    return memberClubs.map((mc: (typeof memberClubs)[0]) => ({
+      club: {
+        ...mc.club,
+        created_at: toFullString(mc.club.created_at),
+      },
+      member_id: mc.id,
+      role: mc.role,
+      joined_at: toFullString(mc.joined_at),
+    }));
+  }
+
+  async UserClubRank(user_id: number): Promise<UserClubRank[]> {
+    // Fetch all leaderboard rows for this user (including tie-breaker fields)
+    const userRows = await this.prisma.leaderboard.findMany({
+      where: { user_id },
+      select: {
+        club_id: true,
+        points: true,
+        wins: true,
+        losses: true,
+        total_matches: true,
+        member_id: true,
+        club: {
+          select: {
+            name: true,
+            slug: true,
+          },
+        },
+      },
+    });
+    // Calculate the exact rank for each club
+    const userClubRanks: UserClubRank[] = await Promise.all(
+      userRows.map(async (row) => {
+        const higherRankedCount = await this.prisma.leaderboard.count({
+          where: {
+            club_id: row.club_id,
+            OR: [
+              // Tie-breaker rules perfectly matching @@index in prisma schema
+              { points: { gt: row.points } },
+              { points: row.points, wins: { gt: row.wins } },
+              {
+                points: row.points,
+                wins: row.wins,
+                losses: { lt: row.losses },
+              },
+              {
+                points: row.points,
+                wins: row.wins,
+                losses: row.losses,
+                total_matches: { gt: row.total_matches },
+              },
+              {
+                points: row.points,
+                wins: row.wins,
+                losses: row.losses,
+                total_matches: row.total_matches,
+                member_id: { lt: row.member_id },
+              },
+            ],
+          },
+        });
+
+        return {
+          club_id: row.club_id,
+          club_name: row.club.name,
+          club_slug: row.club.slug,
+          points: row.points,
+          rank: higherRankedCount + 1, // if no one above you, rank is 1
+        };
+      }),
+    );
+
+    return userClubRanks;
+  }
+
+  async getUserGlobalStats(user_id: number): Promise<UserGlobalStat> {
+    const [stats, bestClubProfile] = await Promise.all([
+      // Query 1: Calculate sums and the highest current win streak in one pass
+      this.prisma.leaderboard.aggregate({
+        where: { user_id },
+        _sum: {
+          points: true,
+          wins: true,
+          losses: true,
+        },
+        _max: {
+          win_streak: true,
+        },
+      }),
+
+      // Query 2: Find the club where the user performs the best
+      this.prisma.leaderboard.findFirst({
+        where: { user_id },
+        orderBy: [
+          { points: 'desc' },
+          { wins: 'desc' },
+          { losses: 'asc' },
+          { total_matches: 'desc' },
+          { member_id: 'asc' },
+        ],
+        include: {
+          club: { select: { name: true, slug: true } },
+        },
+      }),
+    ]);
+
+    let best_rank = null;
+    if (bestClubProfile) {
+      const higherRankedCount = await this.prisma.leaderboard.count({
+        where: {
+          club_id: bestClubProfile.club_id,
+          OR: [
+            // 1. More points
+            { points: { gt: bestClubProfile.points } },
+            // 2. Tied points, but more wins
+            {
+              points: bestClubProfile.points,
+              wins: { gt: bestClubProfile.wins },
+            },
+            // 3. Tied points & wins, but fewer losses
+            {
+              points: bestClubProfile.points,
+              wins: bestClubProfile.wins,
+              losses: { lt: bestClubProfile.losses },
+            },
+            // 4. Tied points, wins, & losses, but more total matches
+            {
+              points: bestClubProfile.points,
+              wins: bestClubProfile.wins,
+              losses: bestClubProfile.losses,
+              total_matches: { gt: bestClubProfile.total_matches },
+            },
+            // 5. Absolute tie, but joined earlier (lower member_id)
+            {
+              points: bestClubProfile.points,
+              wins: bestClubProfile.wins,
+              losses: bestClubProfile.losses,
+              total_matches: bestClubProfile.total_matches,
+              member_id: { lt: bestClubProfile.member_id },
+            },
+          ],
+        },
+      });
+
+      best_rank = {
+        club_id: bestClubProfile.club_id,
+        club_name: bestClubProfile.club.name,
+        club_slug: bestClubProfile.club.slug,
+        rank: higherRankedCount + 1, // Rank is 1-based
+        points: bestClubProfile.points,
+      };
+    }
+
+    const wins = stats._sum.wins ?? 0;
+    const losses = stats._sum.losses ?? 0;
+    const points = stats._sum.points ?? 0;
+    const total_matches = wins + losses;
+    const highest_win_streak = stats._max.win_streak ?? 0;
+    const win_rate = total_matches > 0 ? wins / total_matches : 0;
+
+    return {
+      total_matches,
+      wins,
+      losses,
+      win_rate,
+      ladder_points: points,
+      current_win_streak: highest_win_streak,
+      best_rank: best_rank,
+    };
+  }
+  // ==========================================================================
+
   async getAllClubs(): Promise<Club[]> {
     const result = await this.prisma.club.findMany({
       orderBy: { name: 'asc' },
     });
     return result.map((club) => ({
       ...club,
-      created_at: club.created_at.toISOString(),
+      created_at: toFullString(club.created_at),
     }));
   }
 
@@ -85,7 +314,7 @@ export class ClubServiceService {
     });
     return {
       ...club,
-      created_at: club.created_at.toISOString(),
+      created_at: toFullString(club.created_at),
       members_count: membersCount,
       coach_full_name: coach
         ? `${coach.first_name} ${coach.last_name}`
@@ -165,7 +394,7 @@ export class ClubServiceService {
     // reeeeespect, poooooooower, baNaNa, hihihi it funny, don't ask me why this comment is here, I just wanted to have some fun while coding
     return {
       ...updatedClub,
-      created_at: updatedClub.created_at.toISOString(),
+      created_at: toFullString(updatedClub.created_at),
     };
   }
 
