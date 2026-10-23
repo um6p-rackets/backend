@@ -5,12 +5,12 @@ POST {{API}}/auth/login
 Content-Type: application/json
 
 {
-  "email": "coach.tennis@example.com",
+  "email": "coach.padel@example.com",
   "password": "abdellahnsila123#002"
 }
 
 ### 2. Default list (expect 200, page 1, limit 20, total 2, 2 items)
-GET {{API}}/clubs/tennis/announcements
+GET {{API}}/clubs/padel/announcements
 
 ### 3. Page 1 with limit 1 (expect 1 item, the NEWEST: "Sessions start this Monday at 17:00.")
 GET {{API}}/clubs/tennis/announcements?page=1&limit=1

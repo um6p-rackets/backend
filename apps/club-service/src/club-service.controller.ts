@@ -15,7 +15,7 @@ import { LeaderboardService } from './leaderboard/leaderboard.service.js';
 export class ClubServiceController {
   constructor(
     private readonly clubServiceService: ClubServiceService,
-    private readonly leaderboardService: LeaderboardService
+    private readonly leaderboardService: LeaderboardService,
   ) {}
 
   @MessagePattern(CLUB_PATTERNS.GET_USER_PROFILE)
@@ -112,7 +112,12 @@ export class ClubServiceController {
       limit: number;
     },
   ) {
-    return this.clubServiceService.getJoinRequests(club_slug, user_id, page, limit);
+    return this.clubServiceService.getJoinRequests(
+      club_slug,
+      user_id,
+      page,
+      limit,
+    );
   }
 
   @MessagePattern(CLUB_PATTERNS.POST_CLUB_JOIN_REQUEST_REJECT)
@@ -128,6 +133,15 @@ export class ClubServiceController {
       request_id: number;
     },
   ) {
-    return this.clubServiceService.rejectJoinRequest(club_slug, user_id, request_id);
+    return this.clubServiceService.rejectJoinRequest(
+      club_slug,
+      user_id,
+      request_id,
+    );
+  }
+
+  @MessagePattern(CLUB_PATTERNS.DELETE_CLUB_LEAVE)
+  async leaveClub(data: { club_slug: string; user_id: number }) {
+    return this.clubServiceService.leaveClub(data.club_slug, data.user_id);
   }
 }

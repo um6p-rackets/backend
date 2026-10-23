@@ -34,84 +34,69 @@ export class AnnouncementsService {
       user_id,
       MemberRole.MEMBER,
     );
-    const announcements = await this.prisma.announcement.findMany({
+
+    const where = { club_id: club.id };
+
+    const [announcements, total] = await Promise.all([
+      this.prisma.announcement.findMany({
+        where,
+        skip: (page - 1) * limit,
+        take: limit,
+      }),
+      this.prisma.announcement.count({ where }),
+    ]);
+
+    const members = await this.prisma.member.findMany({
       where: {
         club_id: club.id,
-      },
-      skip: (page - 1) * limit,
-      take: limit,
-    });
-
-    const totalCount = await this.prisma.announcement.count({
-      where: {
-        club_id: club.id,
+        id: { in: [...new Set(announcements.map((a) => a.announcer_id))] },
       },
     });
 
-    const announerMemberIds = announcements.map((a) => a.announcer_id);
-
-    const announcerMembersInfo = await this.prisma.member.findMany({
-      where: {
-        club_id: club.id,
-        user_id: {
-          in: announerMemberIds,
-        },
-      },
-    });
-    
-    const announcerUserIds = announcerMembersInfo.map((m) => m.user_id);
-    const announcerUsers = await rpc<User[]>(this.authClient, AUTH_PATTERNS.GET_USERS_BY_IDS, announcerUserIds);
-
-
-//  type AnnouncementWithAuthor = {
-//  id: number;
-//  club_id: number;
-//  announcer_id: number;
-//  description: string;
-//  created_at: string;
-//  announcer: {
-//  id: number;
-//  login: string;
-//  first_name: string;
-//  last_name: string;
-//  avatar: string | null;
-//  department: string | null;
-//  member_id: number;
-//  };
-// }
-
-    // map on announcements, and for each announcement, find the announcer member info and user info, and combine them into AnnouncementWithAuthor
-    const announcementsWithAuthor: AnnouncementWithAuthor[] = announcements.map(
-      (announcement) => {
-        const announcerMemberInfo = announcerMembersInfo.find(
-          (m) => m.id === announcement.announcer_id );
-        const announcerUserInfo = announcerUsers.find(
-          (u) => u.id === announcerMemberInfo?.user_id,
-        );
-        return {
-          ...announcement,
-          created_at: toFullString(announcement.created_at),
-          announcer: {
-            id: announcerUserInfo?.id ?? 0,
-            login: announcerUserInfo?.login ?? '',
-            first_name: announcerUserInfo?.first_name ?? '',
-            last_name: announcerUserInfo?.last_name ?? '',
-            avatar: announcerUserInfo?.avatar ?? null,
-            department: announcerUserInfo?.department ?? null,
-            member_id: announcerMemberInfo?.id ?? 0,
-          },
-        };
+    const users = await rpc<User[]>(
+      this.authClient,
+      AUTH_PATTERNS.GET_USERS_BY_IDS,
+      {
+        user_ids: members.map((m) => m.user_id),
       },
     );
 
-    return {
-      data: announcementsWithAuthor,
-      page,
-      limit,
-      total: totalCount,
-    };
-    
+    const memberById = new Map(members.map((m) => [m.id, m]));
+    const userById = new Map(users.map((u) => [u.id, u]));
 
+    const data = announcements.map((announcement) => {
+      const member = memberById.get(announcement.announcer_id);
+      const user = member && userById.get(member.user_id);
+
+      // if (!member)
+      //   throw rpcError(
+      //     500,
+      //     'Announcer member info not found',
+      //     'Internal Server Error',
+      //   );
+      // if (!user)
+      //   throw rpcError(
+      //     500,
+      //     'Announcer user info not found',
+      //     'Internal Server Error',
+      //   );
+
+      return {
+        ...announcement,
+        created_at: toFullString(announcement.created_at),
+        announcer: {
+          id: user?.id ?? 0,
+          login: user?.login ?? "",
+          first_name: user?.first_name ?? "",
+          last_name: user?.last_name ?? "",
+          avatar: user?.avatar ?? "",
+          department: user?.department ?? "",
+          member_id: member?.id ?? 0,
+        },
+      };
+    });
+
+    return { data, page, limit, total };
   }
 
   async createAnnouncement({
@@ -137,7 +122,11 @@ export class AnnouncementsService {
       },
     });
 
-    const announcerUser = await rpc<User>(this.authClient, AUTH_PATTERNS.GET_USER_BY_ID, { user_id: member.user_id });
+    const announcerUser = await rpc<User>(
+      this.authClient,
+      AUTH_PATTERNS.GET_USER_BY_ID,
+      { user_id: member.user_id },
+    );
 
     return {
       ...announcement,
@@ -176,7 +165,11 @@ export class AnnouncementsService {
     });
 
     if (!announcement || announcement.club_id !== club.id) {
-      throw rpcError(404,   'Announcement not found or does not belong to the club', "Not Found");
+      throw rpcError(
+        404,
+        'Announcement not found or does not belong to the club',
+        'Not Found',
+      );
     }
 
     await this.prisma.announcement.delete({
@@ -186,9 +179,8 @@ export class AnnouncementsService {
     });
 
     return {
-      status:  200,
+      status: 200,
       message: 'Announcement deleted successfully',
-    }
+    };
   }
-
 }

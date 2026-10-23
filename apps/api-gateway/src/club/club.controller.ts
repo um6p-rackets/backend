@@ -121,6 +121,18 @@ export class ClubController {
     });
   }
 
+  // DELETE /clubs/:slug/leave
+  @Delete(':slug/leave')
+  async leaveClub(
+    @Param() { slug }: ClubSlugParamDto,
+    @CurrentUser() user: AuthenticatedUser,
+  ) {
+    return rpc(this.clubClient, CLUB_PATTERNS.DELETE_CLUB_LEAVE, {
+      club_slug: slug,
+      user_id: user.id,
+    });
+  }
+
   // GET /clubs/:slug/join-requests
   @Get(':slug/join-requests')
   async getJoinRequests(
