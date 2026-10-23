@@ -40,6 +40,7 @@ export const CLUB_PATTERNS = {
   PATCH_CLUB_SESSION_UPDATE: 'club.patch-club-session-update',
   DELETE_CLUB_SESSION_DELETE: 'club.delete-club-session-delete',
   // ================== MEMBERS SERVICE ==================
+  GET_MEMBER_PROFILE: 'club.get-member-profile',
   GET_CLUB_MEMBERS: 'club.get-club-members',
   POST_CLUB_MEMBER_ADD: 'club.post-club-member-add',
   DELETE_CLUB_MEMBER_REMOVE: 'club.delete-club-member-remove',

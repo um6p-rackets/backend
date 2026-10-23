@@ -318,7 +318,7 @@ export type UserGlobalStat = {
 };
 
 export type UserProfileData = {
-  user: User;
+  // user: User;
   joined_clubs: JoinedClub[];
   achievements: Achievement[];
   history: UserHistoryMatch[];

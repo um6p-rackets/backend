@@ -17,6 +17,8 @@ export class ClubServiceController {
     private readonly leaderboardService: LeaderboardService
   ) {}
 
+  @MessagePattern(CLUB_PATTERNS.GET_MEMBER_PROFILE)
+
   @MessagePattern(CLUB_PATTERNS.GET_CLUBS)
   getAllClubs(): Promise<Club[]> {
     console.log(`[ClubService] Received request for all clubs`);
