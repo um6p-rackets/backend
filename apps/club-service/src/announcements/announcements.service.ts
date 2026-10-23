@@ -68,30 +68,30 @@ export class AnnouncementsService {
       const member = memberById.get(announcement.announcer_id);
       const user = member && userById.get(member.user_id);
 
-      if (!member)
-        throw rpcError(
-          500,
-          'Announcer member info not found',
-          'Internal Server Error',
-        );
-      if (!user)
-        throw rpcError(
-          500,
-          'Announcer user info not found',
-          'Internal Server Error',
-        );
+      // if (!member)
+      //   throw rpcError(
+      //     500,
+      //     'Announcer member info not found',
+      //     'Internal Server Error',
+      //   );
+      // if (!user)
+      //   throw rpcError(
+      //     500,
+      //     'Announcer user info not found',
+      //     'Internal Server Error',
+      //   );
 
       return {
         ...announcement,
         created_at: toFullString(announcement.created_at),
         announcer: {
-          id: user.id,
-          login: user.login,
-          first_name: user.first_name,
-          last_name: user.last_name,
-          avatar: user.avatar ?? null,
-          department: user.department ?? null,
-          member_id: member.id,
+          id: user?.id ?? 0,
+          login: user?.login ?? "",
+          first_name: user?.first_name ?? "",
+          last_name: user?.last_name ?? "",
+          avatar: user?.avatar ?? "",
+          department: user?.department ?? "",
+          member_id: member?.id ?? 0,
         },
       };
     });
