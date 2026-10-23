@@ -9,6 +9,7 @@ import {
   User,
   UserClubRank,
   UserHistoryMatch,
+  UserProfile,
   UserProfileData,
 } from '@app/contracts';
 import {
@@ -49,26 +50,45 @@ export class UserController {
   //   return this.authClient.send(AUTH_PATTERNS.GET_USER_BY_ID, { user_id });
   // }
 
+
+  @Throttle({ default: { limit: REQUEST_LIMIT, ttl: REQUEST_TTL } })
+  @HttpCode(200)
+  @Get('me/profile')
+  async getCurrentUserProfile(@CurrentUser() authenticatedUser: AuthenticatedUser) {
+    console.log('[UserController] Received request for current user profile: ', authenticatedUser.id);
+    // Get Raw User First
+    const user = await rpc<User>(this.authClient, AUTH_PATTERNS.GET_USER_BY_ID, { user_id: authenticatedUser.id });
+    if (!user) {
+      throw new NotFoundException(`User with ID ${authenticatedUser.id} not found`);
+    }
+    // Get User Profile Data from Club Service [if he's a member]
+    const memberProfile = await rpc<UserProfileData>(this.clubClient, CLUB_PATTERNS.GET_USER_PROFILE, { user_id: authenticatedUser.id });
+    return {
+      user,
+      memberProfile,
+    };
+  }
+
   @Throttle({ default: { limit: REQUEST_LIMIT, ttl: REQUEST_TTL } })
   @HttpCode(200)
   @Get(':user_id/profile')
   async getUserProfile(
     @Param() { user_id }: GetUserParamDto,
     // return type
-  ) : Promise<UserProfil> {
+  ) : Promise<UserProfile> {
     console.log('[UserController] Received request for user profile by id: ', user_id);
     // Get Raw User First
     const user = await rpc<User>(this.authClient, AUTH_PATTERNS.GET_USER_BY_ID, { user_id });
+    if (!user) {
+      throw new NotFoundException(`User with ID ${user_id} not found`);
+    }
     // Get User Profile Data from Club Service [if he's a member]
-    const memberProfile = await rpc<UserProfileData>(this.clubClient, CLUB_PATTERNS.GET_MEMBER_PROFILE, { user_id });
+    const memberProfile = await rpc<UserProfileData>(this.clubClient, CLUB_PATTERNS.GET_USER_PROFILE, { user_id });
+    return {
+      user,
+      memberProfile,
+    };  
   }
 
-  @Throttle({ default: { limit: REQUEST_LIMIT, ttl: REQUEST_TTL } })
-  @HttpCode(200)
-  @Get(':me/profile')
-  async getCurrentUserProfile(@CurrentUser() authenticatedUser: AuthenticatedUser) {
-    console.log('[UserController] Received request for current user profile: ', authenticatedUser.id);
-    return rpc<UserProfileData>(this.clubClient, CLUB_PATTERNS.GET_MEMBER_PROFILE, { user_id: authenticatedUser.id });
-  }
 
 }
