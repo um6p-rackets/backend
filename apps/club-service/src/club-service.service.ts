@@ -128,7 +128,8 @@ export class ClubServiceService {
       MemberRole.COACH,
     ); // Ensure the user has at least COACH role to update the club
 
-    let slug = club.slug;
+    // slug never updated, but if name is updated
+    // let slug = club.slug;
     body.name = body.name?.trim();
     body.description = body.description?.trim();
     if (!body.name && !body.description) {
@@ -139,29 +140,29 @@ export class ClubServiceService {
       );
     }
 
-    if (body.name) {
-      slug = body.name.toLowerCase().replace(/\s+/g, '-'); // Generate slug from name if provided
-    }
+    // if (body.name) {
+    //   slug = body.name.toLowerCase().replace(/\s+/g, '-'); // Generate slug from name if provided
+    // }
 
     // Check if the new slug already exists for another club
-    if (slug !== club.slug) {
-      const existingClub = await this.prisma.club.findUnique({
-        where: { slug },
-      });
-      if (existingClub) {
-        throw rpcError(400, 'Club name already exists', 'Bad Request');
-      }
-    }
+    // if (slug !== club.slug) {
+    //   const existingClub = await this.prisma.club.findUnique({
+    //     where: { slug },
+    //   });
+    //   if (existingClub) {
+    //     throw rpcError(400, 'Club name already exists', 'Bad Request');
+    //   }
+    // }
 
     const updatedClub = await this.prisma.club.update({
       where: { id: club.id },
       data: {
         name: body.name ?? club.name,
         description: body.description ?? club.description,
-        slug,
+        // slug,
       },
     });
-
+    // reeeeespect, poooooooower, baNaNa, hihihi it funny, don't ask me why this comment is here, I just wanted to have some fun while coding
     return {
       ...updatedClub,
       created_at: updatedClub.created_at.toISOString(),

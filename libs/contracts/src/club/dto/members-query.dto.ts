@@ -1,4 +1,3 @@
-// members-query.dto.ts
 import { Type } from 'class-transformer';
 import { IsEnum, IsOptional, IsString, MaxLength } from 'class-validator';
 import { MemberRole } from '../club.types.js';
