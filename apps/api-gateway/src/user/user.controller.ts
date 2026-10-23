@@ -43,4 +43,6 @@ export class UserController {
     return this.authClient.send(AUTH_PATTERNS.GET_USER_BY_ID, { user_id });
   }
 
+  // @Get(':user_id/profile')
+
 }
