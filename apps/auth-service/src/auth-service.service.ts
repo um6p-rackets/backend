@@ -16,6 +16,7 @@ import { TokensService } from './tokens/tokens.service.js';
 import { EmailService } from './email/email.service.js';
 import * as argon2 from 'argon2';
 import { randomBytes, randomInt } from 'crypto';
+import { toFullString } from '@app/common/dates.js';
 
 @Injectable()
 export class AuthServiceService {
@@ -32,7 +33,7 @@ export class AuthServiceService {
       service: 'AuthService',
       status: 'healthy',
       environment: process.env.NODE_ENV || 'development',
-      timestamp: new Date().toISOString(),
+      timestamp:  toFullString(new Date()),
     };
   }
 
