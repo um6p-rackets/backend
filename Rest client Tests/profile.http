@@ -1,0 +1,37 @@
+@API = http://localhost:3000/api/v1
+# Change this based on the user returned from login
+@USER_ID = 7
+@NEW_USER_ID = 999 
+@NON_EXISTENT_ID = 999999
+
+################################################ Auth #######################################
+
+### 1. Login (Sets HTTP-Only Cookies)
+POST {{API}}/auth/login
+Content-Type: application/json
+
+{
+  "email": "user7@gmail.com",
+  "password": "abdellahnsila123#002"
+}
+
+############################################## Profile ######################################
+
+### 2. Standard Happy Path (User with clubs, matches, and ranks)
+GET {{API}}/users/{{USER_ID}}/profile
+
+### 3. Edge Case: Brand New User (Zero clubs, zero matches)
+# Expectation: Should return 200 OK. memberProfile arrays should be [], stats should be 0.
+GET {{API}}/users/{{NEW_USER_ID}}/profile
+
+### 4. Edge Case: Non-Existent User
+# Expectation: Auth service throws RPC exception -> Gateway translates to 404 Not Found.
+GET {{API}}/users/{{NON_EXISTENT_ID}}/profile
+
+### 5. Edge Case: Invalid Parameter Type (String/UUID instead of Int)
+# Expectation: ValidationPipe should catch this -> 400 Bad Request.
+GET {{API}}/users/not-a-number/profile
+
+### 6. Edge Case: Rate Limiting Test (Spam this request)
+# Expectation: After REQUEST_LIMIT hits, returns 429 Too Many Requests.
+GET {{API}}/users/{{USER_ID}}/profile
