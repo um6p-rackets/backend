@@ -19,6 +19,7 @@ import {
   durationMinutes,
   timeOfDay,
   dayOf,
+  toFullString,
 } from '@app/common/dates.js';
 import { sessionState } from './sessions-status.server.js';
 
@@ -97,11 +98,11 @@ export class SessionsService {
 
       return {
         ...session,
-        start_at: session.start_at.toISOString(),
-        end_at: session.end_at.toISOString(),
-        cancelled_at: session.cancelled_at?.toISOString() ?? null,
-        created_at: session.created_at.toISOString(),
-        updated_at: session.updated_at.toISOString(),
+        start_at: toFullString(session.start_at),
+        end_at: toFullString(session.end_at),
+        cancelled_at: session.cancelled_at ? toFullString(session.cancelled_at) : null,
+        created_at: toFullString(session.created_at),
+        updated_at: toFullString(session.updated_at),
         attends_count: attendsCount,
         spots_left: Math.max(0, session.capacity - attendsCount),
         is_joined: joinedSessionIds.has(session.id), // Placeholder for current user check
@@ -471,7 +472,7 @@ export class SessionsService {
 
     return this.getClubWeekSessions(
       clubSlug,
-      mondayOf(updated.start_at.toISOString().split('T')[0]),
+      mondayOf(toFullString(updated.start_at).split('T')[0]),
       user_id,
     );
   }
@@ -535,7 +536,7 @@ export class SessionsService {
 
     return this.getClubWeekSessions(
       clubSlug,
-      mondayOf(session.start_at.toISOString().split('T')[0]),
+      mondayOf(toFullString(session.start_at).split('T')[0]),
       user_id,
     );
   }
