@@ -1,5 +1,6 @@
 import { User } from '@app/contracts';
 import type { User as PrismaUser } from '../generated/prisma/client.js';
+import { toFullString } from '@app/common';
 
 export function toUser(row: PrismaUser): User {
   return {
@@ -13,6 +14,6 @@ export function toUser(row: PrismaUser): User {
     email: row.email,
     avatar: row.avatar,
     // Safely convert the JavaScript Date to an ISO string
-    joined_at: row.joined_at.toISOString(),
+    joined_at: toFullString(row.joined_at),
   };
 }
