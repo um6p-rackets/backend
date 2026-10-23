@@ -424,7 +424,6 @@ export class ClubServiceService {
     });
 
     if (rejected.count === 0) {
-      // tell "does not exist here" (404) from "already handled" (409)
       const exists = await this.prisma.joinRequest.findFirst({
         where: { id: request_id, club_id: club.id },
         select: { id: true },
@@ -433,5 +432,51 @@ export class ClubServiceService {
       throw rpcError(409, 'This request was already handled', 'Conflict');
     }
     return { success: true };
+  }
+
+  async leaveClub(
+    club_slug: string,
+    user_id: number,
+  ): Promise<{ success: boolean; message: string }> {
+    const { club, member } = await this.clubAccessService.requireRole(
+      club_slug,
+      user_id,
+      MemberRole.MEMBER,
+    );
+
+    // Prevent the last  coach from leaving the club
+    if (member.role === MemberRole.COACH) {
+      const leadersAndCoachesCount = await this.prisma.member.count({
+        where: {
+          club_id: club.id,
+          role: MemberRole.COACH,
+          left_at: null,
+        },
+      });
+
+      if (leadersAndCoachesCount <= 1) {
+        return {
+          success: false,
+          message: 'You cannot leave the club as you are the last coach.',
+        };
+      }
+    }
+
+    // one atomic update: only a member of THIS club can leave
+    const left = await this.prisma.member.updateMany({
+      where: {
+        id: member.id,
+        club_id: club.id,
+        left_at: null, // only active members can leave
+      },
+      data: {
+        left_at: new Date(),
+      },
+    });
+
+    if (left.count === 0) {
+      throw rpcError(404, 'You are not a member of this club', 'Not Found');
+    }
+    return { success: true, message: 'You have successfully left the club.' };
   }
 }
