@@ -1,7 +1,7 @@
 import { Injectable, UnauthorizedException } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import { ACCESS_COOKIE } from '@app/common';
-import { parse } from 'cookie';
+import { parseCookie } from 'cookie';
 import type { Socket } from 'socket.io';
 import type { JwtPayload } from '@app/contracts';
 
@@ -16,7 +16,7 @@ export class WsAuthService {
       throw new UnauthorizedException('Authentication cookie missing');
     }
 
-    const cookies = parse(cookieHeader);
+    const cookies = parseCookie(cookieHeader);
     const token = cookies[ACCESS_COOKIE];
 
     if (!token) {
