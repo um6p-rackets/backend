@@ -458,7 +458,7 @@ export class ClubServiceService {
       if (leadersAndCoachesCount <= 1) {
         throw rpcError(
           400,
-          ':\'< You are the only coach we have, sorry i can\'t let you leave.',
+          ":'< You are the only coach we have, sorry i can't let you leave.",
           'Bad Request',
         );
       }

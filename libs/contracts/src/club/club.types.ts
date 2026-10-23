@@ -318,11 +318,15 @@ export type UserGlobalStat = {
 };
 
 export type UserProfileData = {
-  user: User;
+  // Done
   joined_clubs: JoinedClub[];
+  // Done
   achievements: Achievement[];
-  history: UserHistoryMatch[];
+  // Done pagnation
+  history: Paginated<UserHistoryMatch>;
+  // Done
   club_ranks: UserClubRank[];
+  // Done
   global_stats: UserGlobalStat;
 };
 

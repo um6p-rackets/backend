@@ -52,6 +52,18 @@ export class AchievementsService {
     };
   }
 
+  async getUserAchievements(user_id: number): Promise<Achievement[]> {
+    const achievements = await this.prisma.achievement.findMany({
+      where: { user_id },
+      orderBy: { taken_at: 'desc' },
+    });
+    return achievements.map((achievement) => ({
+      ...achievement,
+      code: achievement.code as Achievement['code'],
+      taken_at: toFullString(achievement.taken_at),
+    }));
+  }
+
   async createAchievement(
     slug: string,
     user_id: number,

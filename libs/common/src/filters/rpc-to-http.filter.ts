@@ -1,6 +1,7 @@
 import { ArgumentsHost, Catch, ExceptionFilter, HttpException, HttpStatus, Logger } from '@nestjs/common';
 import { RpcException } from '@nestjs/microservices';
 import { Request, Response } from 'express';
+import { toFullString } from '../dates.js';
 
 @Catch()
 export class RpcToHttpFilter implements ExceptionFilter {
@@ -18,7 +19,7 @@ export class RpcToHttpFilter implements ExceptionFilter {
     response.status(errorData.statusCode).json({
       ...errorData,
       path: request.url,
-      timestamp: new Date().toISOString(),
+      timestamp:  toFullString(new Date()),
     });
   }
 

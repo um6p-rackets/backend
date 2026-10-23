@@ -4,6 +4,7 @@ import {
   Club,
   ClubMemberStatus,
   ClubWithMembersCountAndCoachFullName,
+  UserProfileData,
 } from '@app/contracts/club/club.types.js';
 import { ClubServiceService } from './club-service.service.js';
 import { CLUB_PATTERNS } from '@app/contracts';
@@ -16,6 +17,14 @@ export class ClubServiceController {
     private readonly clubServiceService: ClubServiceService,
     private readonly leaderboardService: LeaderboardService,
   ) {}
+
+  @MessagePattern(CLUB_PATTERNS.GET_USER_PROFILE)
+  getMemberProfile(data: { user_id: number }) : Promise<UserProfileData> {
+    console.log(
+      `[ClubService] Received request for member profile for user_id: ${data.user_id}`,
+    );
+    return this.clubServiceService.getUserProfile(data.user_id);
+  }
 
   @MessagePattern(CLUB_PATTERNS.GET_CLUBS)
   getAllClubs(): Promise<Club[]> {

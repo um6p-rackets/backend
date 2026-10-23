@@ -10,7 +10,6 @@ import {
   UserClubRank,
   UserHistoryMatch,
   UserProfileData,
-  UserProfileStat,
 } from '@app/contracts';
 import { Inject, Injectable } from '@nestjs/common';
 import { ClientProxy } from '@nestjs/microservices';
