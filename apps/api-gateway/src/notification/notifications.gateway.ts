@@ -13,6 +13,7 @@ import { WsAuthService } from './ws-auth.service.js';
     credentials: true,
   },
 })
+
 export class NotificationsGateway implements OnGatewayConnection {
   @WebSocketServer()
   server: Server;

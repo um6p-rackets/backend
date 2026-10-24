@@ -23,11 +23,11 @@ export class NotificationServiceController {    private readonly logger = new Lo
   // test mock data for inbox
     @MessagePattern(NOTIFICATION_PATTERNS.GET_INBOX)
     async getInbox(@Payload() data: GetInboxQueryDto) {
-    return this.notificationService.getInbox(
-        BigInt(data.user_id),
-        data.page,
-        data.limit,
-    );
+        return this.notificationService.getInbox(
+            BigInt(data.user_id),
+            data.page,
+            data.limit,
+        );
     }
 
 
@@ -67,31 +67,35 @@ export class NotificationServiceController {    private readonly logger = new Lo
 
     
     private async handleNotificationEvent(data: NotificationEventDto) {
-        const result = await this.notificationService.createNotification(data);
+    const result = await this.notificationService.createNotification(data);
 
-        if (!result.created) {
-            this.logger.warn(
-            `Notification not created: ${result.reason} (${data.event_id})`,
-            );
-            return result;
-        }
+    if (!result.created) {
+        this.logger.warn(
+        `Notification not created: ${result.reason} (${data.event_id})`,
+        );
+        return result;
+    }
 
-        this.gatewayClient.emit(
-            NOTIFICATION_REALTIME_EVENTS.NEW_NOTIFICATION,
-            {
+    this.gatewayClient.emit(
+        NOTIFICATION_REALTIME_EVENTS.NEW_NOTIFICATION,
+        {
             notification_id: result.notificationId.toString(),
             event_id: data.event_id,
             sender_type: data.sender_type,
             sender_id: data.sender_id ?? null,
+            sender_name: data.sender_name ?? null,
+            sender_avatar_url: data.sender_avatar_url ?? null,
             category: data.category,
             type: data.type,
             club_id: data.club_id ?? null,
+            club_name: data.club_name ?? null,
+            sent_at: result.sentAt.toISOString(),
             receiver_user_ids: result.receivers,
-            },
-        );
+        },
+    );
 
-        return result;
-        }
+    return result;
+    }
 
 
     // ====== WebSocket Event Handlers ======
