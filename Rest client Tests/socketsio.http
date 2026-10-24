@@ -1,0 +1,33 @@
+@SOCKET = http://localhost:3010/socket.io/
+@API = http://localhost:3000/api/v1
+
+
+POST {{API}}/auth/login
+Content-Type: application/json
+
+{
+  "email": "user7@gmail.com",
+  "password": "abdellahnsila123#002"
+}
+
+
+POST {{API}}/auth/login
+Content-Type: application/json
+
+{
+  "email": "coach.tennis@example.com",
+  "password": "abdellahnsila123#002"
+}
+
+### login as padel 
+POST {{API}}/auth/login
+Content-Type: application/json
+
+{
+  "email": "coach.padel@example.com",
+  "password": "abdellahnsila123#002"
+}
+
+
+### coach padle get inbox 
+GET {{API}}/notifications/inbox?page=1&limit=10

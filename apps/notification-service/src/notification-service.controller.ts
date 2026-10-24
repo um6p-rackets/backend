@@ -67,20 +67,31 @@ export class NotificationServiceController {    private readonly logger = new Lo
 
     
     private async handleNotificationEvent(data: NotificationEventDto) {
-        this.logger.log(`Received notification event: ${data.event_id}`);
-        this.logger.log(`Notification data: ${JSON.stringify(data)}`);
-        const notification =
-            await this.notificationService.createNotification(data);
+        const result = await this.notificationService.createNotification(data);
 
-        this.logger.log(`Saved notification event: ${data.event_id}`);
+        if (!result.created) {
+            this.logger.warn(
+            `Notification not created: ${result.reason} (${data.event_id})`,
+            );
+            return result;
+        }
 
         this.gatewayClient.emit(
             NOTIFICATION_REALTIME_EVENTS.NEW_NOTIFICATION,
-            data,
+            {
+            notification_id: result.notificationId.toString(),
+            event_id: data.event_id,
+            sender_type: data.sender_type,
+            sender_id: data.sender_id ?? null,
+            category: data.category,
+            type: data.type,
+            club_id: data.club_id ?? null,
+            receiver_user_ids: result.receivers,
+            },
         );
 
-        return notification;
-    }
+        return result;
+        }
 
 
     // ====== WebSocket Event Handlers ======
