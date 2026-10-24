@@ -17,7 +17,7 @@ export class NotificationEventDto {
   @IsOptional()
   @IsString()
   @IsNotEmpty()
-  sender_name?: string;
+  sender_name?: string | null;
 
   @IsOptional()
   @ValidateIf((_, value) => value !== null)

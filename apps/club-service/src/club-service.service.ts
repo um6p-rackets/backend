@@ -527,25 +527,35 @@ export class ClubServiceService {
     }
 
     if (isNewRequest) {
-      const leader_plus = await this.prisma.member.findMany({
-        where: {
-          club_id: club.id,
-          role: { in: [MemberRole.LEADER, MemberRole.COACH] },
-          left_at: null,
-        },
-        select: { user_id: true },
-      });
-      const leader_user_ids = leader_plus.map((m) => m.user_id);
-      const notify_data = {
-        event_id: `${NOTIFICATION_EVENTS.JOIN_REQUESTED}:${club.id}:${user_id}}`,
+      const [leaders, user] = await Promise.all([
+        this.prisma.member.findMany({
+          where: {
+            club_id: club.id,
+            role: { in: [MemberRole.LEADER, MemberRole.COACH] },
+            left_at: null,
+          },
+          select: { user_id: true },
+        }),
+        rpc<User | null>(
+          this.authClient,
+          AUTH_PATTERNS.GET_USER_BY_ID,
+          { user_id },
+        ),
+      ]);
+
+      const notify_data: NotificationEventDto = {
+        event_id: `${NOTIFICATION_EVENTS.JOIN_REQUESTED}:${club.id}:${user_id}`,
         sender_type: SenderType.USER,
         sender_id: String(user_id),
-        category: NotificationCategory.CLUB, // a join request is a club notification
+        sender_name: user ? `${user.first_name} ${user.last_name}`: null,
+        sender_avatar_url: user?.avatar ?? null,
+        category: NotificationCategory.CLUB,
         type: NotificationType.JOIN_REQUESTED,
         club_id: String(club.id),
-        receiver_user_ids: leader_user_ids.map(String),
+        club_name: club.name,
+        receiver_user_ids: leaders.map((m) => String(m.user_id)),
       };
-      // step 6: notify
+
       await emitEvent(
         this.notificationClient,
         NOTIFICATION_EVENTS.JOIN_REQUESTED,

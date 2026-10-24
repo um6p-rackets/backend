@@ -28,8 +28,15 @@ export class NotificationsGateway implements OnGatewayConnection {
       socket.disconnect(true);
     }
   }
-
+  
   sendToUser(userId: string, notification: unknown): void {
     this.server.to(`user:${userId}`).emit('notification:new', notification);
   }
+  // this for SYSTEM notificatin | we boradcast to all users
+  sendToAll(notification: unknown): void {
+    this.server.emit('notification:new', notification);
+  }
+  // do we need to add the user guard for each notificatio  socket event?
+  // for announcement notification | do we create a group for each club and send to that group? or we just send to all users and let the client filter it out?
+
 }
