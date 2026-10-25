@@ -5,6 +5,7 @@ import { AUTH_PATTERNS, AUTH_SERVICE, rpcError, User } from '@app/contracts';
 import { ClubAccessService } from '../access/club-access.service.js';
 import {
   Achievement,
+  AchievementWithUser,
   MemberRole,
   Paginated,
 } from '@app/contracts/club/club.types.js';
@@ -24,7 +25,7 @@ export class AchievementsService {
     user_id: number,
     page: number,
     limit: number,
-  ): Promise<Paginated<Achievement>> {
+  ): Promise<Paginated<AchievementWithUser>> {
     const { club } = await this.clubAccessService.requireRole(
       slug,
       user_id,
@@ -40,12 +41,33 @@ export class AchievementsService {
       where: { club_id: club.id },
     });
 
-    return {
-      data: achievements.map((achievement) => ({
+    const userIds = achievements.map((achievement) => achievement.user_id);
+    const users = await rpc<User[]>(this.authClient, AUTH_PATTERNS.GET_USERS_BY_IDS, {
+      user_ids: userIds,
+    });
+
+    const userMap = new Map(users.map((user) => [user.id, user]));
+
+    const achievementsWithUser: AchievementWithUser[] = achievements.map(
+      (achievement) => ({
         ...achievement,
         code: achievement.code as Achievement['code'],
         taken_at: toFullString(achievement.taken_at),
-      })),
+        user: userMap.get(achievement.user_id) || {
+          id: achievement.user_id,
+          first_name: 'Unknown',
+          last_name: 'User',
+          login: 'unknown',
+          department: null,
+          avatar: null,
+        },
+      }),
+    );
+
+    // this will send server error in case of 
+
+    return {
+      data: achievementsWithUser,
       page,
       limit,
       total,
@@ -81,10 +103,8 @@ export class AchievementsService {
       body.user_id,
     );
     if (!member) {
-      throw rpcError(400, 'User is not a member of the club', "Not Found");
+      throw rpcError(400, 'User is not a member of the club', 'Not Found');
     }
-
-
 
     const achievement = await this.prisma.achievement.create({
       data: {
@@ -106,7 +126,7 @@ export class AchievementsService {
     slug: string,
     user_id: number,
     achievement_id: number,
-  ): Promise<{status: number; message: string}> {
+  ): Promise<{ status: number; message: string }> {
     const { club } = await this.clubAccessService.requireRole(
       slug,
       user_id,
@@ -117,13 +137,13 @@ export class AchievementsService {
       where: { id: achievement_id, club_id: club.id },
     });
     if (!achievement) {
-      throw rpcError(404, 'Achievement not found', "Not Found");
+      throw rpcError(404, 'Achievement not found', 'Not Found');
     }
 
     await this.prisma.achievement.delete({
       where: { id: achievement_id },
     });
 
-    return {status: 200, message: 'Achievement deleted successfully'};
+    return { status: 200, message: 'Achievement deleted successfully' };
   }
 }
