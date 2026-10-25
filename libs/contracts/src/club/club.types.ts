@@ -101,6 +101,9 @@ export type Achievement = {
   taken_at: string;
 };
 
+// GET /:slug/achievements returns the owner with each row.
+export type AchievementWithUser = Achievement & { user: UserSummary };
+
 export type ClubDocument = {
   id: number;
   club_id: number;
