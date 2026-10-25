@@ -1,3 +1,5 @@
-export const rankingFunction = (score1: number, score2: number ): number => {
-    return score1 > score2 ? 3 : score1 === score2 ? 1 : 0;
-}  
+export const rankingFunction = (my_score: number, opponent_score: number): number => {
+  if (my_score > opponent_score) return 3; // Winner
+  if (my_score === opponent_score) return 1; // Draw , useless but keep it
+  return -1; // Loser
+};
