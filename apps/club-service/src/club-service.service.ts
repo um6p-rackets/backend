@@ -553,6 +553,7 @@ export class ClubServiceService {
         type: NotificationType.JOIN_REQUESTED,
         club_id: String(club.id),
         club_name: club.name,
+        sent_at: new Date(),
         receiver_user_ids: leaders.map((m) => String(m.user_id)),
       };
 

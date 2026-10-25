@@ -2,6 +2,7 @@ import { Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from './prisma/prisma.service.js';
 import { MarkAllAsReadDto, MarkAsReadDto, NotificationEventDto } from '@app/contracts';
 import { Prisma } from './generated/prisma/client.js';
+import { now } from '@app/common/dates.js';
 
 @Injectable()
 export class NotificationServiceService {
@@ -34,7 +35,7 @@ export class NotificationServiceService {
           club_id:
             data.club_id != null ? BigInt(data.club_id) : null,
           club_name: data.club_name ?? null,
-          sent_at: data.sent_at ?? new Date(),
+          sent_at: data.sent_at ?? now(),
           receivers: {
             createMany: {
               data: receivers.map((id) => ({
