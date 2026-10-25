@@ -45,6 +45,9 @@ Content-Type: application/json
 ### 0.2  Check the ids: members 5, 6, 7 must be plain members of tennis
 GET {{API}}/clubs/tennis/members?role=0
 
+### get all matches
+
+GET {{API}}/clubs/tennis/matches?mine=2
 
 ############################################################
 #  A.  VALID REQUESTS  (all expect success)
