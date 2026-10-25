@@ -15,6 +15,21 @@ export enum NotificationType {
   CLUB_ANNOUNCEMENT = 'CLUB_ANNOUNCEMENT',
 }
 
+
+export interface NotificationEvent {
+  event_id: string;
+  sender_type: SenderType;
+  sender_id: string | null;
+  sender_name?: string;
+  sender_avatar_url?: string | null;
+  category: NotificationCategory;
+  type: NotificationType;
+  club_id: string | null;
+  club_name?: string;
+  sent_at?: Date;
+  receiver_user_ids: string[];
+}
+
 // export interface Notification {
 //   id: bigint | number;
 //   event_id: string;

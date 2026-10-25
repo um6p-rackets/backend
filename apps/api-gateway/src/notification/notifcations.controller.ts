@@ -45,14 +45,14 @@ export class NotificationsController {
     );
   }
 
-  @Get('hello')
-  async hello() {
-    return firstValueFrom(
-      this.withTimeout(
-        this.notificationClient.send(NOTIFICATION_PATTERNS.HELLO, {}),
-      ),
-    );
-  }
+  // @Get('hello')
+  // async hello() {
+  //   return firstValueFrom(
+  //     this.withTimeout(
+  //       this.notificationClient.send(NOTIFICATION_PATTERNS.HELLO, {}),
+  //     ),
+  //   );
+  // }
 
   @Get('inbox')
   async getInbox(

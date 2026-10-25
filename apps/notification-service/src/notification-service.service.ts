@@ -10,37 +10,71 @@ export class NotificationServiceService {
   // notification can only be created by system or user event
   async createNotification(data: NotificationEventDto) {
     const sender = data.sender_id ?? null;
-    const receivers = [...new Set(data.receiver_user_ids)].filter((id) => id !== sender);
-    if (receivers.length === 0) return { created: false as const, reason: 'no-receivers' as const };
+    const receivers = [...new Set(data.receiver_user_ids)].filter(
+      (id) => id !== sender,
+    );
+
+    if (receivers.length === 0) {
+      return {
+        created: false as const,
+        reason: 'no-receivers' as const,
+      };
+    }
 
     try {
       const n = await this.prisma.notification.create({
         data: {
           event_id: data.event_id,
           sender_type: data.sender_type,
-          sender_id: sender != null ? BigInt(sender) : null,
+          sender_id: sender !== null ? BigInt(sender) : null,
+          sender_name: data.sender_name ?? null,
+          sender_avatar_url: data.sender_avatar_url ?? null,
           category: data.category,
           type: data.type,
-          club_id: data.club_id != null ? BigInt(data.club_id) : null,
+          club_id:
+            data.club_id != null ? BigInt(data.club_id) : null,
+          club_name: data.club_name ?? null,
+          sent_at: data.sent_at ?? new Date(),
           receivers: {
             createMany: {
-              data: receivers.map((id) => ({ receiver_user_id: BigInt(id) })),
+              data: receivers.map((id) => ({
+                receiver_user_id: BigInt(id),
+                is_read: false,
+                read_at: null,
+              })),
               skipDuplicates: true,
             },
           },
         },
-        select: { id: true },
+        select: {
+          id: true,
+          sent_at: true,
+        },
       });
-      return { created: true as const, notificationId: n.id, receivers };
+
+      return {
+        created: true as const,
+        notificationId: n.id,
+        sentAt: n.sent_at,
+        receivers,
+      };
     } catch (e) {
-      if (e instanceof Prisma.PrismaClientKnownRequestError && e.code === 'P2002') {
-        return { created: false as const, reason: 'duplicate' as const };
+      if (
+        e instanceof Prisma.PrismaClientKnownRequestError &&
+        e.code === 'P2002'
+      ) {
+        return {
+          created: false as const,
+          reason: 'duplicate' as const,
+        };
       }
+
       throw e;
     }
   }
 
   // get inbox for a user with pagination
+  // Get inbox for a user with pagination.
   async getInbox(user_id: bigint, page: number, limit: number) {
     const where = {
       receiver_user_id: user_id,
@@ -59,15 +93,23 @@ export class NotificationServiceService {
 
     return {
       items: items.map((item) => ({
-        ...item,
         id: item.id.toString(),
         notification_id: item.notification_id.toString(),
         receiver_user_id: item.receiver_user_id.toString(),
+        is_read: item.is_read,
+        read_at: item.read_at?.toISOString() ?? null,
         notification: {
-          ...item.notification,
           id: item.notification.id.toString(),
+          event_id: item.notification.event_id,
+          sender_type: item.notification.sender_type,
           sender_id: item.notification.sender_id?.toString() ?? null,
+          sender_name: item.notification.sender_name,
+          sender_avatar_url: item.notification.sender_avatar_url,
+          category: item.notification.category,
+          type: item.notification.type,
           club_id: item.notification.club_id?.toString() ?? null,
+          club_name: item.notification.club_name,
+          sent_at: item.notification.sent_at.toISOString(),
         },
       })),
       total,

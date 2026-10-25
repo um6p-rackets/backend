@@ -1,8 +1,6 @@
-import {ArrayMinSize,IsArray,IsEnum,IsNotEmpty,IsOptional,IsString,Matches,ValidateIf,
-} from 'class-validator';
+import { ArrayMinSize, IsArray, IsDate, IsEnum, IsNotEmpty, IsOptional, IsString, ValidateIf,} from 'class-validator';
 
-import {NotificationCategory,NotificationType,SenderType,
-} from '../notification.types.js';
+import { NotificationCategory, NotificationType, SenderType,} from '../notification.types.js';
 
 export class NotificationEventDto {
   @IsString()
@@ -14,8 +12,17 @@ export class NotificationEventDto {
 
   @ValidateIf((_, value) => value !== undefined && value !== null)
   @IsString()
-  // @Matches(/^[0-9]+$/)
-  sender_id?: string | null; // for system notification 
+  sender_id?: string | null;
+
+  @IsOptional()
+  @IsString()
+  @IsNotEmpty()
+  sender_name?: string | null;
+
+  @IsOptional()
+  @ValidateIf((_, value) => value !== null)
+  @IsString()
+  sender_avatar_url?: string | null;
 
   @IsEnum(NotificationCategory)
   category!: NotificationCategory;
@@ -26,12 +33,19 @@ export class NotificationEventDto {
   @IsOptional()
   @ValidateIf((_, value) => value !== null)
   @IsString()
-  // @Matches(/^[0-9]+$/)
   club_id?: string | null;
+
+  @IsOptional()
+  @IsString()
+  @IsNotEmpty()
+  club_name?: string;
+
+  @IsOptional()
+  @IsDate()
+  sent_at?: Date;
 
   @IsArray()
   @ArrayMinSize(1)
   @IsString({ each: true })
-  // @Matches(/^[0-9]+$/, { each: true })
   receiver_user_ids!: string[];
 }
