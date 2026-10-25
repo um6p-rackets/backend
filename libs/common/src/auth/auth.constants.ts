@@ -1,6 +1,7 @@
 export const COOKIE_PATH = '/api/v1/auth';
 export const ACCESS_COOKIE = 'access_token';
 export const REFRESH_COOKIE = 'refresh_token';
+export const LOGGED_IN_COOKIE = 'logged_in';
 export const ACCESS_TTL_SECONDS = 240 * 60;          // Time To Live => 15 minutes
 export const REFRESH_TTL_SECONDS = 7 * 24 * 3600;   // Time To Live => 7 days
 
