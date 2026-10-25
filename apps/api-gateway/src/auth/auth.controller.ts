@@ -198,12 +198,12 @@ export class AuthController {
     async resetPassword(
         @Body() dto: ResetPasswordDto,
         @Res({ passthrough: true }) res: Response,
-    ): Promise<void> {
-        await rpc<SuccessResult>(this.authClient, AUTH_PATTERNS.RESET_PASSWORD, {
+    ): Promise<SuccessResult> {
+        return await rpc<SuccessResult>(this.authClient, AUTH_PATTERNS.RESET_PASSWORD, {
             token: dto.token,
             password: dto.password,
         });
-        res.redirect(new URL('?success=password_reset', this.cfg.frontendRedirectUrl).toString());
+        // res.redirect(new URL('?success=password_reset', this.cfg.frontendRedirectUrl).toString());
     }
 
     @Throttle({ default: { limit: REQUEST_LIMIT, ttl: REQUEST_TTL } })
