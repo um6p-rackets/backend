@@ -372,6 +372,9 @@ export class MembersService {
       },
     });
 
+    // FEAT_TO_ADD: (its not problem right now) remove member attendance from future sessions
+    
+
     return {
       status: 204,
       message: `Member with id ${member_id} has been removed from club ${club_slug}`,

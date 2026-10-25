@@ -43,6 +43,12 @@ export enum JoinRequestStatus {
   CANCELLED = 3, // the user took the request back
 }
 
+export enum MatchMineFilter {
+  PLAYER = 1, // matches I play in
+  REFEREE = 2, // matches I referee
+  ANY = 3, // either
+}
+
 // ==========================================
 // 2. Database entities (club service)
 // ==========================================
@@ -197,8 +203,10 @@ export type Player = UserSummary & { member_id: number };
 // 4. Club views
 // ==========================================
 
-export type ClubWithMembersCountAndCoachFullName = Club & { members_count: number, coach_full_name: string };
-
+export type ClubWithMembersCountAndCoachFullName = Club & {
+  members_count: number;
+  coach_full_name: string;
+};
 
 // GET /:slug/status: who the current user is in this club.
 export type ClubMemberStatus = {
@@ -292,7 +300,6 @@ export type UserClubRank = {
   rank: number;
   points: number;
 };
-
 
 // GET /:slug/leaderboard
 export type Leaderboard = {
