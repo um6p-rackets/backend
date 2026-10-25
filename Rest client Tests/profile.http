@@ -1,6 +1,6 @@
 @API = http://localhost:3000/api/v1
 # Change this based on the user returned from login
-@USER_ID = 8
+@USER_ID = 7
 @NEW_USER_ID = 999 
 @NON_EXISTENT_ID = 999999
 

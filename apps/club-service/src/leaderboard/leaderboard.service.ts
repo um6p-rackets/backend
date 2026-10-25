@@ -22,74 +22,68 @@ export class LeaderboardService {
   ) {}
 
   async updateLeaderboard(
+    tx: Prisma.TransactionClient,
     club_id: number,
     team1_id: number,
     team2_id: number,
-    team1_score: number,
-    team2_score: number,
+    team1_points: number,
+    team2_points: number,
     winner_id: number | null,
   ) {
-    await this.prisma.$transaction(async (tx) => {
-      // 1. The 'include' block populates the player1 and player2 objects
-      const team1 = await tx.team.findUnique({
-        where: { id: team1_id },
-        include: { player1: true, player2: true },
-      });
-      const team2 = await tx.team.findUnique({
-        where: { id: team2_id },
-        include: { player1: true, player2: true },
-      });
+    const team1 = await tx.team.findUnique({
+      where: { id: team1_id },
+      include: { player1: true, player2: true },
+    });
 
-      if (!team1 || !team2) {
-        throw new Error('One or both teams not found');
-      }
+    const team2 = await tx.team.findUnique({
+      where: { id: team2_id },
+      include: { player1: true, player2: true },
+    });
 
-      // team1.player1.user_id -> user_id
-      // team1.player1.id      -> member_id
+    if (!team1 || !team2)
+      throw new Error('One or both teams not found');
 
-      // --- TEAM 1 ---
+    // --- TEAM 1 ---
+    await this.updateMemeberLeaderboard(
+      tx,
+      club_id,
+      team1.player1.user_id,
+      team1.player1.id,
+      team1_points,
+      winner_id === team1.id,
+    );
+
+    if (team1.player2) {
       await this.updateMemeberLeaderboard(
         tx,
         club_id,
-        team1.player1.user_id,
-        team1.player1.id,
-        team1_score,
+        team1.player2.user_id,
+        team1.player2.id,
+        team1_points,
         winner_id === team1.id,
       );
+    }
 
-      // Type guard for doubles matches
-      if (team1.player2) {
-        await this.updateMemeberLeaderboard(
-          tx,
-          club_id,
-          team1.player2.user_id,
-          team1.player2.id,
-          team1_score,
-          winner_id === team1.id,
-        );
-      }
+    // --- TEAM 2 ---
+    await this.updateMemeberLeaderboard(
+      tx,
+      club_id,
+      team2.player1.user_id,
+      team2.player1.id,
+      team2_points,
+      winner_id === team2.id,
+    );
 
-      // --- TEAM 2 ---
+    if (team2.player2) {
       await this.updateMemeberLeaderboard(
         tx,
         club_id,
-        team2.player1.user_id,
-        team2.player1.id,
-        team2_score,
+        team2.player2.user_id,
+        team2.player2.id,
+        team2_points,
         winner_id === team2.id,
       );
-
-      if (team2.player2) {
-        await this.updateMemeberLeaderboard(
-          tx,
-          club_id,
-          team2.player2.user_id,
-          team2.player2.id,
-          team2_score,
-          winner_id === team2.id,
-        );
-      }
-    });
+    }
   }
 
   async updateMemeberLeaderboard(
@@ -97,48 +91,54 @@ export class LeaderboardService {
     club_id: number,
     user_id: number,
     member_id: number,
-    points: number,
+    pointsChange: number,
     isWinner: boolean,
   ) {
     const isWin = isWinner ? 1 : 0;
     const isLose = isWinner ? 0 : 1;
 
-    const result = await tx.leaderboard.upsert({
+    // 1. Fetch current record to calculate floor limits safely
+    const existing = await tx.leaderboard.findUnique({
+      where: { club_id_user_id_member_id: { club_id, user_id, member_id } },
+    });
+
+    // 2. Clamp total points so they never drop below zero
+    const finalPoints = existing
+      ? Math.max(0, existing.points + pointsChange)
+      : Math.max(0, pointsChange);
+
+    // 3. Pre-calculate the win streak to avoid a second update query
+    const currentStreak = existing ? existing.win_streak : 0;
+    const newStreak = isWinner ? currentStreak + 1 : 0;
+
+    const currentBest = existing ? existing.best_win_streak : 0;
+    const newBest = Math.max(currentBest, newStreak);
+
+    // 4. Upsert using exact values
+    await tx.leaderboard.upsert({
       where: { club_id_user_id_member_id: { club_id, user_id, member_id } },
       create: {
         club_id,
-        user_id: user_id,
-        member_id: member_id,
-        points: points,
+        user_id,
+        member_id,
+        points: finalPoints,
         wins: isWin,
         losses: isLose,
         total_matches: 1,
-        win_streak: isWin,
-        best_win_streak: isWin,
+        win_streak: newStreak,
+        best_win_streak: newBest,
         updated_at: new Date(),
       },
       update: {
-        points: { increment: points },
+        points: finalPoints,
         wins: { increment: isWin },
         losses: { increment: isLose },
         total_matches: { increment: 1 },
-        win_streak: isWinner ? { increment: 1 } : 0,
+        win_streak: newStreak,
+        best_win_streak: newBest,
         updated_at: new Date(),
       },
     });
-
-    // New Win Streak Youuuuupiii
-    // We can check achievements here as well
-    if (result.win_streak > result.best_win_streak) {
-      await tx.leaderboard.update({
-        where: {
-          club_id_user_id_member_id: { club_id, user_id: member_id, member_id },
-        },
-        data: {
-          best_win_streak: result.win_streak,
-        },
-      });
-    }
   }
 
   async getClubLeaderboard(
