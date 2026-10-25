@@ -58,15 +58,17 @@ export class ClubServiceService {
       await this.achievementsService.getUserAchievements(user_id);
     const userClubsId = userJoinedClubs.map((joinedClub) => joinedClub.club.id);
     // Fetch the first 10 matches for the user across all joined clubs
+    const userMemberIds = userJoinedClubs.map((joinedClub) => joinedClub.member_id);
     const userMatches = await this.matchesService.getUserMatches(
       user_id,
+      userMemberIds,
       userClubsId,
       1,
       10,
-      true, // if [True]: get all matches, if [False]: only limit to 10 matches
+      false, // if [True]: get all matches, if [False]: only limit to 10 matches
     );
     const userClubRanks = await this.UserClubRank(user_id);
-    const userGlobalStats = await this.getUserGlobalStats(user_id);
+    const userGlobalStats = await this.getUserGlobalStats(user_id, userClubRanks);
 
     return {
       joined_clubs: userJoinedClubs,
@@ -173,90 +175,49 @@ export class ClubServiceService {
     return userClubRanks;
   }
 
-  async getUserGlobalStats(user_id: number): Promise<UserGlobalStat> {
-    const [stats, bestClubProfile] = await Promise.all([
-      // Query 1: Calculate sums and the highest current win streak in one pass
-      this.prisma.leaderboard.aggregate({
-        where: { user_id },
-        _sum: {
-          points: true,
-          wins: true,
-          losses: true,
-        },
-        _max: {
-          win_streak: true,
-        },
-      }),
+  async getUserGlobalStats(user_id: number, userClubRanks: UserClubRank[]): Promise<UserGlobalStat> {
+    // Only one query needed now: aggregate the global totals
+    const stats = await this.prisma.leaderboard.aggregate({
+      where: { user_id },
+      _sum: {
+        points: true,
+        wins: true,
+        losses: true,
+        total_matches: true,
+      },
+      _max: {
+        win_streak: true,
+      },
+    });
 
-      // Query 2: Find the club where the user performs the best
-      this.prisma.leaderboard.findFirst({
-        where: { user_id },
-        orderBy: [
-          { points: 'desc' },
-          { wins: 'desc' },
-          { losses: 'asc' },
-          { total_matches: 'desc' },
-          { member_id: 'asc' },
-        ],
-        include: {
-          club: { select: { name: true, slug: true } },
-        },
-      }),
-    ]);
-
+    // Determine best rank in-memory from the already-calculated ranks
     let best_rank = null;
-    if (bestClubProfile) {
-      const higherRankedCount = await this.prisma.leaderboard.count({
-        where: {
-          club_id: bestClubProfile.club_id,
-          OR: [
-            // 1. More points
-            { points: { gt: bestClubProfile.points } },
-            // 2. Tied points, but more wins
-            {
-              points: bestClubProfile.points,
-              wins: { gt: bestClubProfile.wins },
-            },
-            // 3. Tied points & wins, but fewer losses
-            {
-              points: bestClubProfile.points,
-              wins: bestClubProfile.wins,
-              losses: { lt: bestClubProfile.losses },
-            },
-            // 4. Tied points, wins, & losses, but more total matches
-            {
-              points: bestClubProfile.points,
-              wins: bestClubProfile.wins,
-              losses: bestClubProfile.losses,
-              total_matches: { gt: bestClubProfile.total_matches },
-            },
-            // 5. Absolute tie, but joined earlier (lower member_id)
-            {
-              points: bestClubProfile.points,
-              wins: bestClubProfile.wins,
-              losses: bestClubProfile.losses,
-              total_matches: bestClubProfile.total_matches,
-              member_id: { lt: bestClubProfile.member_id },
-            },
-          ],
-        },
+    if (userClubRanks.length > 0) {
+      const bestClubRank = userClubRanks.reduce((best, current) => {
+        // A lower numerical rank is better (Rank 1 > Rank 2)
+        if (current.rank < best.rank) return current;
+        // Tie-breaker: If rank is identical, pick the one with more points
+        if (current.rank === best.rank && current.points > best.points) return current;
+        return best;
       });
 
       best_rank = {
-        club_id: bestClubProfile.club_id,
-        club_name: bestClubProfile.club.name,
-        club_slug: bestClubProfile.club.slug,
-        rank: higherRankedCount + 1, // Rank is 1-based
-        points: bestClubProfile.points,
+        club_id: bestClubRank.club_id,
+        club_name: bestClubRank.club_name,
+        club_slug: bestClubRank.club_slug,
+        rank: bestClubRank.rank,
+        points: bestClubRank.points,
       };
     }
 
     const wins = stats._sum.wins ?? 0;
     const losses = stats._sum.losses ?? 0;
     const points = stats._sum.points ?? 0;
-    const total_matches = wins + losses;
+    const total_matches = stats._sum.total_matches ?? 0;
     const highest_win_streak = stats._max.win_streak ?? 0;
-    const win_rate = total_matches > 0 ? wins / total_matches : 0;
+    
+    // 0.00% -> 100.00%
+    const win_rate = total_matches > 0 ? Number(((wins / total_matches) * 100).toFixed(2)) : 0;
 
     return {
       total_matches,
