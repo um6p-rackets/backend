@@ -24,6 +24,7 @@ import {
   UserHistoryMatch,
 } from '@app/contracts/club/index.js';
 import { rankingFunction, rpc, toFullString } from '@app/common';
+import { LeaderboardService } from '../leaderboard/leaderboard.service.js';
 
 const memberSelect = { select: { id: true, user_id: true } } as const;
 const teamInclude = {
@@ -36,6 +37,7 @@ export class MatchesService {
     private readonly prisma: PrismaService,
     @Inject(AUTH_SERVICE) private readonly authClient: ClientProxy,
     private readonly clubAccessService: ClubAccessService,
+    private readonly leaderboardService: LeaderboardService,
   ) {}
 
   async requestMatch(
@@ -352,6 +354,7 @@ export class MatchesService {
 
   async getUserMatches(
     user_id: number,
+    member_ids: number[],
     club_ids: number[],
     page: number,
     limit: number,
@@ -367,10 +370,10 @@ export class MatchesService {
       status: MatchStatus.FINISHED,
     };
     whereClause.OR = [
-      { team1: { player1_id: user_id } },
-      { team1: { player2_id: user_id } },
-      { team2: { player1_id: user_id } },
-      { team2: { player2_id: user_id } },
+      { team1: { player1_id: { in: member_ids } } },
+      { team1: { player2_id: { in: member_ids } } },
+      { team2: { player1_id: { in: member_ids } } },
+      { team2: { player2_id: { in: member_ids } } },
     ];
 
     // 1. Transaction to fetch matches and total count securely
@@ -394,7 +397,7 @@ export class MatchesService {
             },
           },
         },
-        orderBy: { scheduled_at: 'desc' }, // or created_at depending on your schema
+        orderBy: { scheduled_at: 'desc' },
         skip: rowsToSkip,
         take: rowsToTake,
       }),
@@ -408,19 +411,19 @@ export class MatchesService {
       return { data: [], page, limit, total };
     }
 
-    // Extract user_ids from the matches
-    const uniqueUserIds = new Array<number>();
+    // Extract unique user_ids from the matches
+    const uniqueUserIds = new Set<number>();
     matches.forEach((match) => {
-      if (match.team1.player1) uniqueUserIds.push(match.team1.player1.user_id);
-      if (match.team1.player2) uniqueUserIds.push(match.team1.player2.user_id);
-      if (match.team2.player1) uniqueUserIds.push(match.team2.player1.user_id);
-      if (match.team2.player2) uniqueUserIds.push(match.team2.player2.user_id);
+      if (match.team1.player1) uniqueUserIds.add(match.team1.player1.user_id);
+      if (match.team1.player2) uniqueUserIds.add(match.team1.player2.user_id);
+      if (match.team2.player1) uniqueUserIds.add(match.team2.player1.user_id);
+      if (match.team2.player2) uniqueUserIds.add(match.team2.player2.user_id);
     });
     // Fetch user info from auth service
     const users = await rpc<User[]>(
       this.authClient,
       AUTH_PATTERNS.GET_USERS_BY_IDS,
-      { user_ids: uniqueUserIds },
+      { user_ids: Array.from(uniqueUserIds) },
     );
 
     const mapUserById = new Map(users.map((user) => [user.id, user]));
@@ -727,7 +730,6 @@ export class MatchesService {
     });
 
     if (!match) throw rpcError(404, 'Match not found', 'Not Found');
-
     if (match.status !== MatchStatus.CONFIRMED) {
       throw rpcError(
         400,
@@ -735,8 +737,6 @@ export class MatchesService {
         'Bad Request',
       );
     }
-
-    // only the referee can submit the result
     if (match.ref_id !== member.id) {
       throw rpcError(
         403,
@@ -745,29 +745,45 @@ export class MatchesService {
       );
     }
 
-    // determine the winner
     let winner_id: number | null = null;
-    if (result.team1_score > result.team2_score) {
-      winner_id = match.team1.id;
-    } else if (result.team2_score > result.team1_score) {
+    if (result.team1_score > result.team2_score) winner_id = match.team1.id;
+    else if (result.team2_score > result.team1_score)
       winner_id = match.team2.id;
-    }
 
-    // update the match with the result
-    await this.prisma.match.update({
-      where: { club_id: club.id, id: match_id },
-      data: {
-        team1_score: result.team1_score,
-        team2_score: result.team2_score,
-        // Do we have a draw case ?
-        team1_points: rankingFunction(result.team1_score, result.team2_score),
-        team2_points: rankingFunction(result.team2_score, result.team1_score),
-        winner_id: winner_id,
-        status: MatchStatus.FINISHED,
-      },
+    const team1_points = rankingFunction(
+      result.team1_score,
+      result.team2_score,
+    );
+    const team2_points = rankingFunction(
+      result.team2_score,
+      result.team1_score,
+    );
+
+    // We need transaction for this proccess
+    await this.prisma.$transaction(async (tx) => {
+      // 1. Update the match
+      await tx.match.update({
+        where: { club_id: club.id, id: match_id },
+        data: {
+          team1_score: result.team1_score,
+          team2_score: result.team2_score,
+          team1_points,
+          team2_points,
+          winner_id: winner_id,
+          status: MatchStatus.FINISHED,
+        },
+      });
+      // Update the leaderboard for both teams
+      await this.leaderboardService.updateLeaderboard(
+        tx,
+        club.id,
+        match.team1.id,
+        match.team2.id,
+        team1_points,
+        team2_points,
+        winner_id,
+      );
     });
-
-    // this.updateLeaderboard(club.id, match.team1.id, match.team2.id, result.team1_score, result.team2_score, winner_id);
 
     return { status: 200, message: 'Match result submitted successfully' };
   }

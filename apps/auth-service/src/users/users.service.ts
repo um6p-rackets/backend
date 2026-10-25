@@ -127,7 +127,7 @@ export class UsersService {
           first_name: dto.first_name,
           last_name: dto.last_name,
           gender: null,
-          department: null,
+          department: "Unknown",
           phone_number: null,
           email: dto.email,
           avatar: dto.picture ?? null,

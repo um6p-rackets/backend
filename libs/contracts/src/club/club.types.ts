@@ -321,7 +321,7 @@ export type UserGlobalStat = {
   total_matches: number;
   wins: number;
   losses: number;
-  win_rate: number; // 0..1
+  win_rate: number | string; // 0..1
   ladder_points: number;
   current_win_streak: number;
   best_rank: UserClubRank | null;

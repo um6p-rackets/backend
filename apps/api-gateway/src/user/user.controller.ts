@@ -54,7 +54,7 @@ export class UserController {
   @Throttle({ default: { limit: REQUEST_LIMIT, ttl: REQUEST_TTL } })
   @HttpCode(200)
   @Get('me/profile')
-  async getCurrentUserProfile(@CurrentUser() authenticatedUser: AuthenticatedUser) {
+  async getCurrentUserProfile(@CurrentUser() authenticatedUser: AuthenticatedUser) : Promise<UserProfile> {
     console.log('[UserController] Received request for current user profile: ', authenticatedUser.id);
     // Get Raw User First
     const user = await rpc<User>(this.authClient, AUTH_PATTERNS.GET_USER_BY_ID, { user_id: authenticatedUser.id });
