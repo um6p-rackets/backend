@@ -11,9 +11,11 @@ import {
 import { ClubServiceService } from './club-service.service.js';
 import { CLUB_PATTERNS, ClubLeaderboard, Paginated, UserHistoryMatch } from '@app/contracts';
 import { UpdateClubDto } from '@app/contracts/club/dto/index.js';
+import { CreateClubDto } from '@app/contracts/admin/dto/index.js';
 import { LeaderboardService } from './leaderboard/leaderboard.service.js';
 import { AchievementsService } from './achievements/achievements.service.js';
 import { MembersService } from './members/members.service.js';
+import { ClubStats } from '@app/contracts/admin/admin.types.js';
 
 @Controller()
 export class ClubServiceController {
@@ -182,5 +184,20 @@ export class ClubServiceController {
   @MessagePattern(CLUB_PATTERNS.DELETE_CLUB_LEAVE)
   async leaveClub(data: { club_slug: string; user_id: number }) {
     return this.clubServiceService.leaveClub(data.club_slug, data.user_id);
+  }
+
+  @MessagePattern(CLUB_PATTERNS.POST_CLUB_ADMIN_CREATE)
+  createClub(data: { body: CreateClubDto }) {
+    return this.clubServiceService.createClub(data.body);
+  }
+
+  @MessagePattern(CLUB_PATTERNS.DELETE_CLUB_ADMIN_DELETE)
+  deleteClub(data: { club_slug: string }) {
+    return this.clubServiceService.deleteClub(data.club_slug);
+  }
+
+  @MessagePattern(CLUB_PATTERNS.GET_CLUB_ADMIN_STATS)
+  async getClubStats(data: { weeks: number }): Promise<ClubStats> {
+    return this.clubServiceService.getClubStats(data.weeks);
   }
 }

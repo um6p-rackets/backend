@@ -18,7 +18,12 @@ export const AUTH_PATTERNS = {
   GET_USER_BY_LOGIN: 'auth.user.get_by_login',
   GET_USERS_BY_IDS: 'auth.users.get_many_by_ids',
   UPDATE_USER: 'auth.user.update',
-};
+  // ================== ADMIN SERVICE ==================
+  ADMIN_LIST_USERS: 'auth.admin.list_users',
+  ADMIN_UPDATE_USER: 'auth.admin.update_user',
+  ADMIN_DELETE_USER: 'auth.admin.delete_user',
+  ADMIN_STATS: 'auth.admin.stats',
+} as const;
 
 // ================== CLUB SERVICE ==================
 
@@ -71,6 +76,11 @@ export const CLUB_PATTERNS = {
   POST_CLUB_MATCH_RESULT: 'club.post-club-match-result',
   // ================== LEADERBOARD SERVICE ==================
   GET_USER_CLUB_LEADERBOARD: 'club.get-user-club-leaderboard',
+  // ================== ADMIN SERVICE ==================
+  GET_CLUB_ADMIN_STATS: 'club.admin.stats',
+  POST_CLUB_ADMIN_CREATE: 'club.admin.create',
+  DELETE_CLUB_ADMIN_DELETE: 'club.admin.delete',
+  WHEN_USER_DELETED: 'club.when-user-deleted',
 } as const;
 
 // ================= NOTIFICATION SERVICE ==================

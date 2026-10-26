@@ -41,7 +41,7 @@ export class JwtAuthGuard implements CanActivate {
             if (!Number.isInteger(id) || id <= 0 || !payload.login) {
                 throw new Error('not an access token');
             }
-            req.user = { id, login: payload.login } satisfies AuthenticatedUser
+            req.user = { id, login: payload.login, role: payload.role } satisfies AuthenticatedUser
             return true;
         } catch (err) {
             throw new UnauthorizedException('Invalid or expired authentication token');

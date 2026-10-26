@@ -7,6 +7,11 @@ datasource db {
   provider = "postgresql"
 }
 
+enum UserRole {
+  USER
+  ADMIN
+}
+
 model User {
   id            Int      @id @default(autoincrement())
   login         String   @unique @db.VarChar(255)
@@ -18,7 +23,9 @@ model User {
   email         String   @unique @db.VarChar(255)
   avatar        String?
   password_hash String?
+  role          UserRole @default(USER)
   joined_at     DateTime @default(now()) @db.Timestamptz(6)
+  deleted_at    DateTime? @db.Timestamptz(6)
   // For refresh token functionality
   refresh_tokens RefreshToken[]
   // For OAuth2 identities (Google)

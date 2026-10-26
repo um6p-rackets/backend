@@ -599,4 +599,98 @@ export class MembersService {
       best_rank: best_rank,
     };
   }
+
+  async whenUserDeleted(
+    user_id: number,
+  ): Promise<{ status: number; message: string }> {
+    // 1. get all memberships of the user, with role and club_id, where left_at is null
+    const memberships = await this.prisma.member.findMany({
+      where: {
+        user_id: user_id,
+        left_at: null,
+      },
+      select: {
+        id: true,
+        club_id: true,
+        role: true,
+      },
+    });
+
+    // 2. if the user is coach set oldest leader to coach, if no leader, set oldest member to coach, if no member, do nothing
+    for (const membership of memberships) {
+      if (membership.role === MemberRole.COACH) {
+        const oldestLeader = await this.prisma.member.findFirst({
+          where: {
+            club_id: membership.club_id,
+            role: MemberRole.LEADER,
+            left_at: null,
+          },
+          orderBy: {
+            joined_at: 'asc',
+          },
+        });
+
+        if (oldestLeader) {
+          await this.prisma.member.update({
+            where: {
+              id: oldestLeader.id,
+            },
+            data: {
+              role: MemberRole.COACH,
+            },
+          });
+        } else {
+          const oldestMember = await this.prisma.member.findFirst({
+            where: {
+              club_id: membership.club_id,
+              role: MemberRole.MEMBER,
+              left_at: null,
+            },
+            orderBy: {
+              joined_at: 'asc',
+            },
+          });
+
+          if (oldestMember) {
+            await this.prisma.member.update({
+              where: {
+                id: oldestMember.id,
+              },
+              data: {
+                role: MemberRole.COACH,
+              },
+            });
+          }
+        }
+      }
+    }
+
+    // 3. set left_at for all memberships of the user to now()
+    await this.prisma.member.updateMany({
+      where: {
+        user_id: user_id,
+        left_at: null,
+      },
+      data: {
+        left_at: now(),
+      },
+    });
+
+    // 4. set status of all pending join requests of the user to cancelled
+    await this.prisma.joinRequest.updateMany({
+      where: {
+        user_id: user_id,
+        status: JoinRequestStatus.PENDING,
+      },
+      data: {
+        status: JoinRequestStatus.CANCELLED,
+        decided_at: now(),
+      },
+    });
+
+    return {
+      status: 204,
+      message: `User with id ${user_id} has been removed from all clubs and their pending join requests have been cancelled.`,
+    };
+  }
 }
