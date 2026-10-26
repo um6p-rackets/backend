@@ -7,6 +7,7 @@ import { NotificationEventDto } from '@app/contracts';
 import { NOTIFICATION_EVENTS } from '@app/contracts';
 import { ClientProxy } from '@nestjs/microservices';
 import { Inject } from '@nestjs/common';
+import { now } from '@app/common';
 
 @Controller()
 export class NotificationServiceController {    private readonly logger = new Logger(NotificationServiceController.name);
@@ -89,7 +90,7 @@ export class NotificationServiceController {    private readonly logger = new Lo
             type: data.type,
             club_id: data.club_id ?? null,
             club_name: data.club_name ?? null,
-            sent_at: result.sentAt.toISOString(),
+            sent_at: result.sentAt ?? now(),
             receiver_user_ids: result.receivers,
         },
     );

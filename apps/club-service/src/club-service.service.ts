@@ -35,7 +35,7 @@ import {
   NotificationType,
   SenderType,
 } from '@app/contracts/notification/index.js';
-import { toFullString } from '@app/common/dates.js';
+import { now, toFullString } from '@app/common/dates.js';
 import { MatchesService } from './matches/matches.service.js';
 import { AchievementsService } from './achievements/achievements.service.js';
 
@@ -514,7 +514,7 @@ export class ClubServiceService {
         type: NotificationType.JOIN_REQUESTED,
         club_id: String(club.id),
         club_name: club.name,
-        sent_at: new Date(),
+        sent_at: now(),
         receiver_user_ids: leaders.map((m) => String(m.user_id)),
       };
 
