@@ -157,10 +157,10 @@ export class ClubServiceController {
     return this.clubServiceService.deleteClub(data.club_slug);
   }
 
-
   @MessagePattern(CLUB_PATTERNS.GET_CLUB_ADMIN_STATS)
   async getClubStats(data: { weeks: number }): Promise<ClubStats> {
     return this.clubServiceService.getClubStats(data.weeks);
+  }
   @MessagePattern(CLUB_PATTERNS.GET_USER_MATCHES)
   async getUserMatches(
     @Payload() payload: { user_id: number; page: number; limit: number },
