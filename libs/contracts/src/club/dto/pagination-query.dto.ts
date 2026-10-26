@@ -1,5 +1,6 @@
+import { IsIdParam } from '@app/common';
 import { Type } from 'class-transformer';
-import { IsInt, IsOptional, Max, Min } from 'class-validator';
+import { IsInt, IsOptional, IsString, Max, Min } from 'class-validator';
 
 export class PaginationQueryDto {
   @IsOptional() @Type(() => Number) @IsInt() @Min(1)
@@ -7,4 +8,10 @@ export class PaginationQueryDto {
 
   @IsOptional() @Type(() => Number) @IsInt() @Min(1) @Max(50)
   limit: number = 10;
+}
+
+export class GetUsersQueryDto extends PaginationQueryDto {
+  @IsOptional()
+  @IsIdParam('target_user_id')
+  target_user_id?: number;
 }
