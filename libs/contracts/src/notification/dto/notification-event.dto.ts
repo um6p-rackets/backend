@@ -1,6 +1,20 @@
-import { ArrayMinSize, IsArray, IsDate, IsEnum, IsNotEmpty, IsOptional, IsString, ValidateIf,} from 'class-validator';
+import {
+  ArrayMinSize,
+  IsArray,
+  IsDate,
+  IsEnum,
+  IsNotEmpty,
+  IsOptional,
+  IsString,
+  ValidateIf,
+} from 'class-validator';
 
-import { NotificationCategory, NotificationType, SenderType,} from '../notification.types.js';
+import {
+  NotificationCategory,
+  NotificationType,
+  SenderType,
+} from '../notification.types.js';
+import { Type } from 'class-transformer';
 
 export class NotificationEventDto {
   @IsString()
@@ -41,7 +55,9 @@ export class NotificationEventDto {
   club_name?: string;
 
   @IsOptional()
-  @IsDate()
+  @IsNotEmpty()
+  @Type(() => Date)
+  @IsDate({ message: 'The date must be a valid ISO 8601 date string.' })
   sent_at?: Date;
 
   @IsArray()
