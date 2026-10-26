@@ -30,7 +30,6 @@ export class NotificationServiceController {    private readonly logger = new Lo
         );
     }
 
-
     @MessagePattern(NOTIFICATION_PATTERNS.MARK_AS_READ)
     async markAsRead(
         @Payload()
@@ -51,20 +50,24 @@ export class NotificationServiceController {    private readonly logger = new Lo
   // ======= Event Handlers =======
 
     @EventPattern(NOTIFICATION_EVENTS.JOIN_REQUESTED)
-    async handleJoinRequested(data: NotificationEventDto) {
+    async handleJoinRequested(@Payload() data: NotificationEventDto) {
     return this.handleNotificationEvent(data);
     }
 
     @EventPattern(NOTIFICATION_EVENTS.JOIN_ACCEPTED)
-    async handleJoinAccepted(data: NotificationEventDto) {
+    async handleJoinAccepted(@Payload() data: NotificationEventDto) {
     return this.handleNotificationEvent(data);
     }
 
     @EventPattern(NOTIFICATION_EVENTS.JOIN_REJECTED)
-    async handleJoinRejected(data: NotificationEventDto) {
+    async handleJoinRejected(@Payload() data: NotificationEventDto) {
     return this.handleNotificationEvent(data);
     }
 
+    @EventPattern(NOTIFICATION_EVENTS.CLUB_ANNOUNCEMENT)
+    async handleAnnouncementCreated(@Payload() data: NotificationEventDto) {
+    return this.handleNotificationEvent(data);
+    }
     
     private async handleNotificationEvent(data: NotificationEventDto) {
     const result = await this.notificationService.createNotification(data);
@@ -75,6 +78,7 @@ export class NotificationServiceController {    private readonly logger = new Lo
         );
         return result;
     }
+
 
     this.gatewayClient.emit(
         NOTIFICATION_REALTIME_EVENTS.NEW_NOTIFICATION,

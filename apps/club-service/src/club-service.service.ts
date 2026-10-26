@@ -541,7 +541,7 @@ export class ClubServiceService {
           AUTH_PATTERNS.GET_USER_BY_ID,
           { user_id },
         ),
-      ]);
+      ]); 
 
       const notify_data: NotificationEventDto = {
         event_id: `${NOTIFICATION_EVENTS.JOIN_REQUESTED}:${club.id}:${user_id}`,
@@ -640,40 +640,121 @@ export class ClubServiceService {
   }
 
   async rejectJoinRequest(
-    club_slug: string,
-    user_id: number,
-    request_id: number,
-  ): Promise<{ success: true }> {
-    const { club, member } = await this.clubAccessService.requireRole(
-      club_slug,
-      user_id,
-      MemberRole.LEADER,
-    );
+      club_slug: string,
+      user_id: number,
+      request_id: number,
+    ): Promise<{ success: true }> {
+      const { club, member } = await this.clubAccessService.requireRole(
+        club_slug,
+        user_id,
+        MemberRole.LEADER,
+      );
 
-    // one atomic update: only a pending request of THIS club can be rejected
-    const rejected = await this.prisma.joinRequest.updateMany({
-      where: {
-        id: request_id,
-        club_id: club.id,
-        status: JoinRequestStatus.PENDING,
-      },
-      data: {
-        status: JoinRequestStatus.REJECTED,
-        decided_at: new Date(),
-        decided_by: member.id,
-      },
-    });
-
-    if (rejected.count === 0) {
-      const exists = await this.prisma.joinRequest.findFirst({
-        where: { id: request_id, club_id: club.id },
-        select: { id: true },
+      const request = await this.prisma.joinRequest.findFirst({
+        where: {
+          id: request_id,
+          club_id: club.id,
+          status: JoinRequestStatus.PENDING,
+        },
+        select: {
+          id: true,
+          user_id: true,
+        },
       });
-      if (!exists) throw rpcError(404, 'Join request not found', 'Not Found');
-      throw rpcError(409, 'This request was already handled', 'Conflict');
+
+      if (!request) {
+        const exists = await this.prisma.joinRequest.findFirst({
+          where: { id: request_id, club_id: club.id },
+          select: { id: true },
+        });
+
+        if (!exists) {
+          throw rpcError(404, 'Join request not found', 'Not Found');
+        }
+
+        throw rpcError(409, 'This request was already handled', 'Conflict');
+      }
+
+      const rejected = await this.prisma.joinRequest.updateMany({
+        where: {
+          id: request.id,
+          club_id: club.id,
+          status: JoinRequestStatus.PENDING,
+        },
+        data: {
+          status: JoinRequestStatus.REJECTED,
+          decided_at: new Date(),
+          decided_by: member.id,
+        },
+      });
+
+      if (rejected.count === 0) {
+        throw rpcError(409, 'This request was already handled', 'Conflict');
+      }
+
+      const leader = await rpc<User>(
+        this.authClient,
+        AUTH_PATTERNS.GET_USER_BY_ID,
+        { user_id: member.user_id },
+      );
+
+      const notify_data: NotificationEventDto = {
+        event_id: `${NOTIFICATION_EVENTS.JOIN_REJECTED}:${club.id}:${request.id}`,
+        sender_type: SenderType.USER,
+        sender_id: String(member.user_id),
+        sender_name: `${leader.first_name} ${leader.last_name}`,
+        sender_avatar_url: leader.avatar ?? null,
+        category: NotificationCategory.CLUB,
+        type: NotificationType.JOIN_REJECTED,
+        club_id: String(club.id),
+        club_name: club.name,
+        sent_at: new Date(),
+        receiver_user_ids: [String(request.user_id)],
+      };
+
+      await emitEvent(
+        this.notificationClient,
+        NOTIFICATION_EVENTS.JOIN_REJECTED,
+        notify_data,
+      );
+
+      return { success: true };
     }
-    return { success: true };
-  }
+  // async rejectJoinRequest(
+  //   club_slug: string,
+  //   user_id: number,
+  //   request_id: number,
+  // ): Promise<{ success: true }> {
+  //   const { club, member } = await this.clubAccessService.requireRole(
+  //     club_slug,
+  //     user_id,
+  //     MemberRole.LEADER,
+  //   );
+
+  //   // one atomic update: only a pending request of THIS club can be rejected
+  //   const rejected = await this.prisma.joinRequest.updateMany({
+  //     where: {
+  //       id: request_id,
+  //       club_id: club.id,
+  //       status: JoinRequestStatus.PENDING,
+  //     },
+  //     data: {
+  //       status: JoinRequestStatus.REJECTED,
+  //       decided_at: new Date(),
+  //       decided_by: member.id,
+  //     },
+  //   });
+
+  //   if (rejected.count === 0) {
+  //     const exists = await this.prisma.joinRequest.findFirst({
+  //       where: { id: request_id, club_id: club.id },
+  //       select: { id: true },
+  //     });
+  //     if (!exists) throw rpcError(404, 'Join request not found', 'Not Found');
+  //     throw rpcError(409, 'This request was already handled', 'Conflict');
+  //   }
+  //   return { success: true };
+  // }
 
   async leaveClub(
     club_slug: string,
