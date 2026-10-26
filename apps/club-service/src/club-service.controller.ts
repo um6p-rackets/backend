@@ -7,7 +7,7 @@ import {
   UserProfileData,
 } from '@app/contracts/club/club.types.js';
 import { ClubServiceService } from './club-service.service.js';
-import { CLUB_PATTERNS } from '@app/contracts';
+import { CLUB_PATTERNS, Paginated, UserHistoryMatch } from '@app/contracts';
 import { UpdateClubDto } from '@app/contracts/club/dto/index.js';
 import { CreateClubDto } from '@app/contracts/admin/dto/index.js';
 import { LeaderboardService } from './leaderboard/leaderboard.service.js';
@@ -161,5 +161,15 @@ export class ClubServiceController {
   @MessagePattern(CLUB_PATTERNS.GET_CLUB_ADMIN_STATS)
   async getClubStats(data: { weeks: number }): Promise<ClubStats> {
     return this.clubServiceService.getClubStats(data.weeks);
+  @MessagePattern(CLUB_PATTERNS.GET_USER_MATCHES)
+  async getUserMatches(
+    @Payload() payload: { user_id: number; page: number; limit: number },
+  ): Promise<Paginated<UserHistoryMatch>> {
+    return this.clubServiceService.getUserClubsHistory(
+      payload.user_id,
+      payload.page,
+      payload.limit,
+      false, // fetchAll set to FALSE for paginated results
+    );
   }
 }
