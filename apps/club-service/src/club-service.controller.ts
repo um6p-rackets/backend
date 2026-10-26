@@ -11,6 +11,7 @@ import { CLUB_PATTERNS } from '@app/contracts';
 import { UpdateClubDto } from '@app/contracts/club/dto/index.js';
 import { CreateClubDto } from '@app/contracts/admin/dto/index.js';
 import { LeaderboardService } from './leaderboard/leaderboard.service.js';
+import { ClubStats } from '@app/contracts/admin/admin.types.js';
 
 @Controller()
 export class ClubServiceController {
@@ -154,5 +155,11 @@ export class ClubServiceController {
   @MessagePattern(CLUB_PATTERNS.DELETE_CLUB_ADMIN_DELETE)
   deleteClub(data: { club_slug: string }) {
     return this.clubServiceService.deleteClub(data.club_slug);
+  }
+
+
+  @MessagePattern(CLUB_PATTERNS.GET_CLUB_ADMIN_STATS)
+  async getClubStats(data: { weeks: number }): Promise<ClubStats> {
+    return this.clubServiceService.getClubStats(data.weeks);
   }
 }

@@ -34,6 +34,10 @@ import { now, toFullString } from '@app/common/dates.js';
 import { MatchesService } from './matches/matches.service.js';
 import { AchievementsService } from './achievements/achievements.service.js';
 import { CreateClubDto } from '@app/contracts/admin/dto/index.js';
+import { ClubStats } from '@app/contracts/admin/admin.types.js';
+
+import { addDays, dayOf, mondayOf, today, toDate } from '@app/common/dates.js';
+import { MatchStatus } from '@app/contracts/club/club.types.js'; // adjust path
 
 @Injectable()
 export class ClubServiceService {
@@ -724,13 +728,14 @@ export class ClubServiceService {
     return { ...club, created_at: toFullString(club.created_at) };
   }
 
-  async deleteClub(club_slug: string): Promise<{ success: true, message: string }> {
-
+  async deleteClub(
+    club_slug: string,
+  ): Promise<{ success: true; message: string }> {
     const club = await this.clubAccessService.getClub(club_slug);
     // soft delete + anonymize
     await this.prisma.club.update({
       where: { id: club.id, deleted_at: null },
-      data: { 
+      data: {
         deleted_at: now(),
         name: 'Deleted Club',
         description: null,
@@ -747,5 +752,72 @@ export class ClubServiceService {
 
     // TODO notify: the club's members
     return { success: true, message: 'Club deleted successfully.' };
+  }
+
+  async getClubStats(weeks: number): Promise<ClubStats> {
+    const thisWeek = mondayOf(today());
+    const firstWeek = addDays(thisWeek, -7 * (weeks - 1));
+    const from = toDate(firstWeek);
+    const to = toDate(addDays(thisWeek, 7)); // exclusive, no future weeks
+
+    const [clubs, members, perClub, matches, bookings] = await Promise.all([
+      this.prisma.club.count({ where: { deleted_at: null } }),
+      this.prisma.member.count({
+        where: { left_at: null, club: { deleted_at: null } },
+      }),
+      this.prisma.club.findMany({
+        where: { deleted_at: null },
+        select: {
+          id: true,
+          name: true,
+          slug: true,
+          _count: { select: { members: { where: { left_at: null } } } },
+        },
+      }),
+      this.prisma.match.findMany({
+        where: {
+          scheduled_at: { gte: from, lt: to },
+          status: { not: MatchStatus.CANCELLED },
+          club: { deleted_at: null },
+        },
+        select: { scheduled_at: true },
+      }),
+      this.prisma.sessionAttend.findMany({
+        where: {
+          created_at: { gte: from, lt: to },
+          session: { cancelled_at: null, club: { deleted_at: null } },
+        },
+        select: { created_at: true },
+      }),
+    ]);
+
+    // every week starts at 0, so empty weeks still appear
+    const weekly = new Map<string, { matches: number; bookings: number }>();
+    for (let i = 0; i < weeks; i++) {
+      weekly.set(addDays(firstWeek, 7 * i), { matches: 0, bookings: 0 });
+    }
+
+    for (const { scheduled_at } of matches) {
+      const w = weekly.get(mondayOf(dayOf(scheduled_at)));
+      if (w) w.matches++;
+    }
+    for (const { created_at } of bookings) {
+      const w = weekly.get(mondayOf(dayOf(created_at)));
+      if (w) w.bookings++;
+    }
+
+    return {
+      clubs,
+      members,
+      members_per_club: perClub
+        .map((c) => ({
+          club_id: c.id,
+          name: c.name,
+          slug: c.slug,
+          members_count: c._count.members,
+        }))
+        .sort((a, b) => b.members_count - a.members_count),
+      weekly: [...weekly].map(([week_start, v]) => ({ week_start, ...v })),
+    };
   }
 }

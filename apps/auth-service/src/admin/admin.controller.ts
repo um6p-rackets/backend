@@ -26,4 +26,10 @@ export class AdminController {
     return await this.adminService.deleteUser(payload.admin_id, payload.user_id);
   }
 
+  @MessagePattern(AUTH_PATTERNS.ADMIN_STATS)
+  async getStats(@Payload() payload: { weeks: number }){
+    console.log(`[AuthService] Received admin stats request`);
+    return await this.adminService.getStats(payload.weeks);
+  }
+
 }

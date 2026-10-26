@@ -1,8 +1,11 @@
-import { BadRequestException, ForbiddenException, Injectable } from '@nestjs/common';
+import { Injectable } from '@nestjs/common';
 
 import { AdminListUsersQueryDto, AdminUpdateUserDto } from '@app/contracts/admin/dto/index.js';
 import { PrismaService } from '../prisma/prisma.service.js';
 import { rpcError } from '@app/contracts';
+import { AuthStats } from '@app/contracts/admin/admin.types.js';
+  import { addDays, dayOf, mondayOf, today, toDate } from '@app/common/dates.js';
+
 
 // The ONLY user fields an admin can read. password_hash, tokens, reset fields,
 // phone_number and deleted_at are never selected.
@@ -107,4 +110,32 @@ export class AdminService {
 
     return deletedUser;
   }
+
+
+
+async getStats(weeks: number): Promise<AuthStats> {
+  const firstWeek = addDays(mondayOf(today()), -7 * (weeks - 1));
+
+  const [total_users, rows] = await Promise.all([
+    this.prisma.user.count({ where: { deleted_at: null } }),
+    this.prisma.user.findMany({
+      where: { deleted_at: null, joined_at: { gte: toDate(firstWeek) } },
+      select: { joined_at: true },
+    }),
+  ]);
+
+  // every week starts at 0, so empty weeks still appear
+  const buckets = new Map<string, number>();
+  for (let i = 0; i < weeks; i++) buckets.set(addDays(firstWeek, 7 * i), 0);
+
+  for (const { joined_at } of rows) {
+    const key = mondayOf(dayOf(joined_at));
+    buckets.set(key, (buckets.get(key) ?? 0) + 1);
+  }
+
+  return {
+    users: total_users,
+    weekly: [...buckets].map(([week_start, signups]) => ({ week_start, signups })),
+  };
+}
 }

@@ -22,25 +22,7 @@ import {
   CreateClubDto,
 } from '@app/contracts/admin/dto/index.js';
 import { firbiddenSlugs } from '../helpers/forbidden-slugs.js';
-
-// What each service returns for the stats. Replace with the contract types
-// once you have put AdminStats in your contracts.
-type AuthStats = {
-  users: number;
-  weekly: { week_start: string; signups: number }[];
-};
-
-type ClubStats = {
-  clubs: number;
-  members: number;
-  members_per_club: {
-    club_id: number;
-    name: string;
-    slug: string;
-    members_count: number;
-  }[];
-  weekly: { week_start: string; matches: number; bookings: number }[];
-};
+import { AdminStats, AuthStats, ClubStats } from '@app/contracts/admin/admin.types.js';
 
 @Injectable()
 export class AdminService {
@@ -115,7 +97,7 @@ export class AdminService {
 
   // ---------- Stats ----------
 
-  async getStats(weeks: number) {
+  async getStats(weeks: number): Promise<AdminStats> {
     const [auth, club] = (await Promise.all([
       rpc(this.authClient, AUTH_PATTERNS.ADMIN_STATS, { weeks }),
       rpc(this.clubClient, CLUB_PATTERNS.GET_CLUB_ADMIN_STATS, { weeks }),
