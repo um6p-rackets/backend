@@ -756,9 +756,9 @@ async getUserClubsHistory(
       where: { id: club.id, deleted_at: null },
       data: {
         deleted_at: now(),
-        name: 'Deleted Club',
+        name: `deleted-club-${club.name}-${club.id}`,// name is unique, so we cannot reuse it, but we can anonymize it
         description: null,
-        slug: `deleted-club-${club.id}`,
+        slug: `deleted-club-${club.slug}-${club.id}`,
         avatar: null,
       },
     });
