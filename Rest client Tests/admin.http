@@ -34,10 +34,11 @@ GET {{baseUrl}}/admin/ping
 
 ###########################################################
 ### E2: list users (defaults: sort joined_at desc, page 1, limit 20)
-GET {{baseUrl}}/admin/users
+GET {{baseUrl}}/admin/users?search=user&sort=last_name&order=asc&limit=2&page=2
+
 
 ### E2: partial search, case-insensitive, matches first name, last name or login
-GET {{baseUrl}}/admin/users?search=ALI
+GET {{baseUrl}}/admin/users?search=ILO
 
 ### E2: role filter + sort + paging
 GET {{baseUrl}}/admin/users?role=USER&sort=first_name&order=asc&page=1&limit=5
