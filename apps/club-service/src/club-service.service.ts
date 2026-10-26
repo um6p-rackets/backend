@@ -12,6 +12,7 @@ import {
   Paginated,
   UserClubRank,
   UserGlobalStat,
+  UserHistoryMatch,
   UserProfileData,
   UserSummary,
 } from '@app/contracts/club/club.types.js';
@@ -53,30 +54,49 @@ export class ClubServiceService {
 
   // =========================== User Profile Data ===========================
   async getUserProfile(user_id: number): Promise<UserProfileData> {
-    const userJoinedClubs = await this.getJoinedClubs(user_id);
-    const userAchievements =
-      await this.achievementsService.getUserAchievements(user_id);
-    const userClubsId = userJoinedClubs.map((joinedClub) => joinedClub.club.id);
-    // Fetch the first 10 matches for the user across all joined clubs
-    const userMemberIds = userJoinedClubs.map((joinedClub) => joinedClub.member_id);
-    const userMatches = await this.matchesService.getUserMatches(
-      user_id,
-      userMemberIds,
-      userClubsId,
-      1,
-      10,
-      false, // if [True]: get all matches, if [False]: only limit to 10 matches
-    );
+    const joinedClubs = await this.getJoinedClubs(user_id);
+    const userAchievements = await this.achievementsService.getUserAchievements(user_id);
     const userClubRanks = await this.UserClubRank(user_id);
     const userGlobalStats = await this.getUserGlobalStats(user_id, userClubRanks);
 
     return {
-      joined_clubs: userJoinedClubs,
+      joined_clubs: joinedClubs,
       achievements: userAchievements,
-      history: userMatches,
       club_ranks: userClubRanks,
       global_stats: userGlobalStats,
     };
+  }
+
+async getUserClubsHistory(
+    user_id: number,
+    page: number,
+    limit: number,
+    getAllMatches: boolean,
+  ): Promise<Paginated<UserHistoryMatch>> {
+
+    const activeMemberships = await this.prisma.member.findMany({
+      where: { user_id, left_at: null },
+      select: { 
+        id: true, 
+        club_id: true 
+      },
+    });
+
+    if (activeMemberships.length === 0) {
+      return { data: [], page, limit, total: 0 };
+    }
+
+    const memberIds = activeMemberships.map((m) => m.id);
+    const clubIds = activeMemberships.map((m) => m.club_id);
+
+    return this.matchesService.getUserMatches(
+      user_id,
+      memberIds,
+      clubIds,
+      page,
+      limit,
+      getAllMatches,
+    );
   }
 
   async getJoinedClubs(user_id: number): Promise<JoinedClub[]> {

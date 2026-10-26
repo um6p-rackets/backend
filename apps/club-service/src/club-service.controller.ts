@@ -7,7 +7,7 @@ import {
   UserProfileData,
 } from '@app/contracts/club/club.types.js';
 import { ClubServiceService } from './club-service.service.js';
-import { CLUB_PATTERNS } from '@app/contracts';
+import { CLUB_PATTERNS, Paginated, UserHistoryMatch } from '@app/contracts';
 import { UpdateClubDto } from '@app/contracts/club/dto/index.js';
 import { LeaderboardService } from './leaderboard/leaderboard.service.js';
 
@@ -19,7 +19,7 @@ export class ClubServiceController {
   ) {}
 
   @MessagePattern(CLUB_PATTERNS.GET_USER_PROFILE)
-  getMemberProfile(data: { user_id: number }) : Promise<UserProfileData> {
+  getMemberProfile(data: { user_id: number }): Promise<UserProfileData> {
     console.log(
       `[ClubService] Received request for member profile for user_id: ${data.user_id}`,
     );
@@ -143,5 +143,17 @@ export class ClubServiceController {
   @MessagePattern(CLUB_PATTERNS.DELETE_CLUB_LEAVE)
   async leaveClub(data: { club_slug: string; user_id: number }) {
     return this.clubServiceService.leaveClub(data.club_slug, data.user_id);
+  }
+
+  @MessagePattern(CLUB_PATTERNS.GET_USER_MATCHES)
+  async getUserMatches(
+    @Payload() payload: { user_id: number; page: number; limit: number },
+  ): Promise<Paginated<UserHistoryMatch>> {
+    return this.clubServiceService.getUserClubsHistory(
+      payload.user_id,
+      payload.page,
+      payload.limit,
+      false, // fetchAll set to FALSE for paginated results
+    );
   }
 }
