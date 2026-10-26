@@ -8,7 +8,6 @@ import {
   mondayOf,
   today,
   toDate,
-  toTime,
 } from '../../../libs/common/src/dates';
 import { AchievementCode } from '../../../libs/contracts/src/club/index.js';
 
@@ -57,50 +56,68 @@ async function seedMembers(club_id: number) {
 async function seedSessions(club_id: number) {
   if (await prisma.sessionTemplate.count({ where: { club_id: club_id } })) return;
   const weekStart = mondayOf(today()); 
+
   for (const t of TEMPLATES) {
     const template = await prisma.sessionTemplate.create({
       data: {
-        club_id: club_id, weekday: t.weekday, start_time: t.start,
-        duration_minutes: t.duration_minutes, capacity: t.capacity,
-        title: t.title, location: t.location,
+        club_id: club_id, 
+        weekday: t.weekday, 
+        start_time: t.start,
+        duration_minutes: t.duration_minutes, 
+        capacity: t.capacity,
+        title: t.title, 
+        location: t.location,
       },
     });
-    const data = [-3, -2, -1, 0, 1].map((week) => {
+
+    const weekOffsets = Array.from({ length: 14 }, (_, i) => i - 12); // -12 to 1
+    const data = weekOffsets.map((week) => {
       const day = addDays(weekStart, week * 7 + ((t.weekday + 6) % 7)); 
       const start_at = toDate(day, t.start);
       return {
-        club_id: club_id, template_id: template.id, start_at,
+        club_id: club_id, 
+        template_id: template.id, 
+        start_at,
         end_at: addMinutes(start_at, t.duration_minutes),
-        title: t.title, location: t.location, capacity: t.capacity,
+        title: t.title, 
+        location: t.location, 
+        capacity: t.capacity,
       };
     });
-    await prisma.session.createMany({ data });
+
+    await prisma.session.createMany({ data, skipDuplicates: true });
   }
 }
 
 async function seedAttendance(club_id: number) {
   if (await prisma.sessionAttend.count({ where: { session: { club_id: club_id } } })) return;
+  
   const sessions = await prisma.session.findMany({
     where: { club_id: club_id, start_at: { lt: new Date() } },
     orderBy: { start_at: 'asc' },
   });
+  
   const members = await prisma.member.findMany({
     where: { club_id: club_id },
     orderBy: { id: 'asc' },
   });
+  
   const data = sessions.flatMap((s, i) =>
     members.slice(0, 6 + (i % 3)).map((m) => ({ session_id: s.id, member_id: m.id })),
   );
+  
   await prisma.sessionAttend.createMany({ data, skipDuplicates: true });
 }
 
 async function seedAnnouncements(club_id: number, coachMemberId: number) {
   if (await prisma.announcement.count({ where: { club_id: club_id } })) return;
+  
   await prisma.announcement.createMany({
     data: [
       { club_id: club_id, announcer_id: coachMemberId, description: 'Welcome to the new season!' },
       { club_id: club_id, announcer_id: coachMemberId, description: 'Sessions start this Monday at 17:00.' },
     ],
+    skipDuplicates: true,
   });
 }
 
@@ -115,9 +132,9 @@ async function seedTeamsAndMatches(club_id: number) {
     players.map((p) => prisma.team.create({ data: { club_id, player1_id: p.id } }))
   );
 
-  // 2. Setup Random 2v2 Teams
+  // 2. Setup Random 2v2 Teams (15 doubles teams)
   const doublesTeamsData = [];
-  for (let i = 0; i < 20; i++) {
+  for (let i = 0; i < 15; i++) {
     const p1 = players[Math.floor(Math.random() * players.length)];
     let p2 = players[Math.floor(Math.random() * players.length)];
     while (p1.id === p2.id) p2 = players[Math.floor(Math.random() * players.length)];
@@ -126,19 +143,22 @@ async function seedTeamsAndMatches(club_id: number) {
   await prisma.team.createMany({ data: doublesTeamsData, skipDuplicates: true });
   const doublesTeams = await prisma.team.findMany({ where: { club_id, player2_id: { not: null } } });
 
-  // 3. Generate 200 Massive Matches (Mix of Singles and Doubles)
+
+  // 3. Generate exactly 20 Matches with realistic past created_at and scheduled_at timestamps
   const matchesToCreate = [];
+  const daysAgo = (days: number) => new Date(Date.now() - days * 86_400_000);
   const daysFromNow = (days: number) => new Date(Date.now() + days * 86_400_000);
 
-  for (let i = 0; i < 200; i++) {
+  for (let i = 0; i < 20; i++) {
     const isDoubles = Math.random() > 0.4; // 60% doubles, 40% singles
     const pool = isDoubles ? doublesTeams : singlesTeams;
 
     let t1 = pool[Math.floor(Math.random() * pool.length)];
     let t2 = pool[Math.floor(Math.random() * pool.length)];
 
-    // Ensure no player overlaps on opposing teams
+    // Ensure no player overlaps on opposing teams and teams are distinct
     while (
+      t1.id === t2.id ||
       t1.player1_id === t2.player1_id || 
       t1.player1_id === t2.player2_id || 
       (t1.player2_id && t1.player2_id === t2.player1_id) || 
@@ -150,6 +170,13 @@ async function seedTeamsAndMatches(club_id: number) {
     const t1Wins = Math.random() > 0.5;
     const winnerScore = 21;
     const loserScore = Math.floor(Math.random() * 19);
+
+    // Random day in the past (e.g. 1 to 90 days ago)
+    const matchAgeDays = Math.floor(Math.random() * 90) + 1;
+    const scheduledDate = daysAgo(matchAgeDays);
+    
+    // created_at should be slightly *before* or *on* the scheduled match date (e.g., 1-3 days prior)
+    const creationDate = daysAgo(matchAgeDays + Math.floor(Math.random() * 3) + 1);
 
     matchesToCreate.push({
       club_id,
@@ -163,14 +190,15 @@ async function seedTeamsAndMatches(club_id: number) {
       team2_points: t1Wins ? -1 : 3,
       mode: isDoubles ? 2 : 1,
       status: 2, // 2 = FINISHED
-      scheduled_at: daysFromNow(-Math.floor(Math.random() * 90)), // Random date in the last 90 days
+      scheduled_at: scheduledDate,
+      created_at: creationDate, // Properly positioned in the past relative to scheduled_at
     });
   }
 
-  // Inject 2 active pending/upcoming matches for UI testing
+  // Inject 2 active pending/upcoming matches for UI testing (created recently, scheduled in future)
   matchesToCreate.push(
-    { club_id, ref_id: referee.id, team1_id: singlesTeams[0].id, team2_id: singlesTeams[1].id, mode: 1, status: 1, scheduled_at: daysFromNow(2) },
-    { club_id, ref_id: referee.id, team1_id: singlesTeams[2].id, team2_id: singlesTeams[3].id, mode: 1, status: 0, scheduled_at: daysFromNow(5) }
+    { club_id, ref_id: referee.id, team1_id: singlesTeams[0].id, team2_id: singlesTeams[1].id, mode: 1, status: 1, scheduled_at: daysFromNow(2), created_at: daysAgo(1) },
+    { club_id, ref_id: referee.id, team1_id: singlesTeams[2].id, team2_id: singlesTeams[3].id, mode: 1, status: 0, scheduled_at: daysFromNow(5), created_at: daysAgo(2) }
   );
 
   await prisma.match.createMany({ data: matchesToCreate });
@@ -179,7 +207,6 @@ async function seedTeamsAndMatches(club_id: number) {
 async function seedLeaderboard(club_id: number) {
   const members = await prisma.member.findMany({ where: { club_id } });
 
-  // Tracking object for all members
   const stats = new Map<number, { wins: number; losses: number; points: number; streak: number; best_streak: number; total_matches: number; user_id: number }>();
   
   for (const m of members) {
@@ -211,7 +238,6 @@ async function seedLeaderboard(club_id: number) {
           s.streak = 0;
         }
         
-        // Exact same floor logic used in your backend leaderboard updates
         s.points = Math.max(0, s.points + pointsChange);
       });
     };
@@ -220,7 +246,6 @@ async function seedLeaderboard(club_id: number) {
     updateStats(match.team2, !t1Wins, match.team2_points);
   }
 
-  // Save the mathematically true values to the DB
   for (const [memberId, s] of stats.entries()) {
     await prisma.leaderboard.upsert({
       where: { club_id_user_id_member_id: { club_id, user_id: s.user_id, member_id: memberId } },
@@ -286,14 +311,11 @@ async function main() {
     await seedAttendance(club.id); 
     await seedAnnouncements(club.id, coach.id);
     
-    // CRITICAL FIX: Order of execution matters. 
-    // Matches must be seeded BEFORE the Leaderboard is calculated.
     await seedTeamsAndMatches(club.id);
     await seedLeaderboard(club.id);
-    
     await seedAchievements(club.id, coach);
   }
-  console.log(`Seeded ${clubs.length} clubs with true mathematically-synced statistics.`);
+  console.log(`Seeded ${clubs.length} clubs with realistic historical created_at and scheduled_at timelines.`);
 }
 
 main()
