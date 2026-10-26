@@ -1,0 +1,153 @@
+@baseUrl = http://localhost:3000/api/v1
+@userId = 2
+@clubSlug = test-club
+
+# The REST Client extension keeps cookies between requests, so the order below matters:
+# log in as a normal user, run the 403 checks, then log in as the admin.
+# 401 check (no cookies): curl -i http://localhost:3010/api/v1/admin/ping
+
+###########################################################
+### Login as a NORMAL user
+POST {{baseUrl}}/auth/login
+Content-Type: application/json
+
+{ "email": "coach.tennis@example.com", "password": "abdellahnsila123#002" }
+
+### E1: normal user -> expect 403 "Admin access required"
+GET {{baseUrl}}/admin/ping
+
+### E2: normal user -> expect 403
+GET {{baseUrl}}/admin/users
+
+###########################################################
+### Login as the ADMIN
+POST {{baseUrl}}/auth/login
+Content-Type: application/json
+
+{ "email": "admin@um6p.ma", "password": "change-me" }
+
+### /auth/me must return role: "ADMIN"
+GET {{baseUrl}}/auth/me
+
+### E1: admin -> expect 200 { "ok": true }
+GET {{baseUrl}}/admin/ping
+
+###########################################################
+### E2: list users (defaults: sort joined_at desc, page 1, limit 20)
+GET {{baseUrl}}/admin/users
+
+### E2: partial search, case-insensitive, matches first name, last name or login
+GET {{baseUrl}}/admin/users?search=ALI
+
+### E2: role filter + sort + paging
+GET {{baseUrl}}/admin/users?role=USER&sort=first_name&order=asc&page=1&limit=5
+
+### E2: bad input -> expect 400
+GET {{baseUrl}}/admin/users?sort=password_hash&limit=1000
+
+###########################################################
+### E3: edit a user
+PATCH {{baseUrl}}/admin/users/{{userId}}
+Content-Type: application/json
+
+{ "first_name": "Updated", "department": "CS" }
+
+### E3: change role -> expect 200 with role ADMIN
+PATCH {{baseUrl}}/admin/users/{{userId}}
+Content-Type: application/json
+
+{ "role": "ADMIN" }
+
+### E3: empty body -> expect 400
+PATCH {{baseUrl}}/admin/users/{{userId}}
+Content-Type: application/json
+
+{}
+
+### E3: unknown field -> expect 400 (forbidNonWhitelisted)
+PATCH {{baseUrl}}/admin/users/{{userId}}
+Content-Type: application/json
+
+{ "password_hash": "x" }
+
+### E3: change MY OWN role -> expect 403 (replace 1 with the admin id)
+PATCH {{baseUrl}}/admin/users/1
+Content-Type: application/json
+
+{ "role": "USER" }
+
+### E3: unknown user -> expect 404
+PATCH {{baseUrl}}/admin/users/999999
+Content-Type: application/json
+
+{ "first_name": "Ghost" }
+
+###########################################################
+### E4: delete a user -> expect 204
+DELETE {{baseUrl}}/admin/users/{{userId}}
+
+### E4: the same user again -> expect 404
+DELETE {{baseUrl}}/admin/users/{{userId}}
+
+### E4: delete MYSELF -> expect 403 (replace 1 with the admin id)
+DELETE {{baseUrl}}/admin/users/1
+
+### E4: the deleted user must not appear here any more
+GET {{baseUrl}}/admin/users?search=deleted
+
+###########################################################
+### E5: create a club -> expect 201 with the slug "test-club"
+POST {{baseUrl}}/admin/clubs
+Content-Type: application/json
+
+{ "name": "Test Club", "description": "Just a test", "coach_user_id": 3 }
+
+### E5: same name again -> expect 409
+POST {{baseUrl}}/admin/clubs
+Content-Type: application/json
+
+{ "name": "Test Club", "coach_user_id": 3 }
+
+### E5: coach does not exist -> expect 404
+POST {{baseUrl}}/admin/clubs
+Content-Type: application/json
+
+{ "name": "Ghost Club", "coach_user_id": 999999 }
+
+### E5: slug would be "users" -> expect 400
+POST {{baseUrl}}/admin/clubs
+Content-Type: application/json
+
+{ "name": "Users", "coach_user_id": 3 }
+
+### E5: the new club must be visible in the public list
+GET {{baseUrl}}/clubs
+
+###########################################################
+### E6: delete the club -> expect 204
+DELETE {{baseUrl}}/admin/clubs/{{clubSlug}}
+
+### E6: gone from the public list
+GET {{baseUrl}}/clubs
+
+### E6: -> expect 404
+GET {{baseUrl}}/clubs/{{clubSlug}}
+
+### E6: other club routes -> expect 404
+GET {{baseUrl}}/clubs/{{clubSlug}}/members
+
+### E6: the name is free again -> expect 201
+POST {{baseUrl}}/admin/clubs
+Content-Type: application/json
+
+{ "name": "Test Club", "coach_user_id": 3 }
+
+###########################################################
+### E7: stats (default 8 weeks)
+GET {{baseUrl}}/admin/stats
+
+### E7: 12 weeks
+GET {{baseUrl}}/admin/stats?weeks=12
+
+### E7: out of range -> expect 400
+GET {{baseUrl}}/admin/stats?weeks=100

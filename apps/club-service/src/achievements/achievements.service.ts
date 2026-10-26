@@ -41,9 +41,9 @@ export class AchievementsService {
       where: { club_id: club.id },
     });
 
-    const userIds = achievements.map((achievement) => achievement.user_id);
+    const user_ids = achievements.map((achievement) => achievement.user_id);
     const users = await rpc<User[]>(this.authClient, AUTH_PATTERNS.GET_USERS_BY_IDS, {
-      user_ids: userIds,
+      user_ids: user_ids,
     });
 
     const userMap = new Map(users.map((user) => [user.id, user]));
