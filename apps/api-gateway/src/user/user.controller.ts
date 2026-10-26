@@ -6,6 +6,7 @@ import {
   CLUB_SERVICE,
   GetUserParamDto,
   JoinedClub,
+  Paginated,
   User,
   UserClubRank,
   UserHistoryMatch,
@@ -14,11 +15,13 @@ import {
 } from '@app/contracts';
 import {
   Controller,
+  DefaultValuePipe,
   Get,
   HttpCode,
   Inject,
   NotFoundException,
   Param,
+  ParseIntPipe,
   Patch,
   Query,
 } from '@nestjs/common';
@@ -90,5 +93,17 @@ export class UserController {
     };  
   }
 
+  @Get(':user_id/matches')
+  async getUserMatches(
+    @Param('user_id', ParseIntPipe) userId: number,
+    @Query('page', new DefaultValuePipe(1), ParseIntPipe) page: number,
+    @Query('limit', new DefaultValuePipe(10), ParseIntPipe) limit: number,
+  ) {
+    return rpc<Paginated<UserHistoryMatch>>(this.clubClient, CLUB_PATTERNS.GET_USER_MATCHES, {
+      user_id: userId,
+      page,
+      limit,
+    });
+  }
 
 }
