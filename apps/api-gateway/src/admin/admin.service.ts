@@ -66,7 +66,7 @@ export class AdminService {
     });
   }
 
-  async deleteUser(admin_id: number, user_id: number) {
+  async deleteUser(admin_id: number, user_id: number):Promise<{ status: number; message: string }> {
     if (admin_id === user_id) {
       throw new ForbiddenException('You cannot delete yourself');
     }
@@ -78,9 +78,11 @@ export class AdminService {
     // 2. club service: close the memberships, cancel pending join requests
     // also takes care remove role for coach and give to oldest leader or member
     // TODO, i will add later update club coach
-    await rpc(this.clubClient, CLUB_PATTERNS.DELETE_CLUB_ADMIN_USER_DELETED, {
+    await rpc(this.clubClient, CLUB_PATTERNS.WHEN_USER_DELETED, {
       user_id: user_id,
     });
+
+    return { status: 204, message: `User ${user_id} deleted successfully` };
   }
 
   // ---------- Clubs ----------

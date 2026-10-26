@@ -1,7 +1,8 @@
-import { Injectable } from '@nestjs/common';
+import { BadRequestException, ForbiddenException, Injectable } from '@nestjs/common';
 
-import { AdminListUsersQueryDto } from '@app/contracts/admin/dto/index.js';
+import { AdminListUsersQueryDto, AdminUpdateUserDto } from '@app/contracts/admin/dto/index.js';
 import { PrismaService } from '../prisma/prisma.service.js';
+import { rpcError } from '@app/contracts';
 
 // The ONLY user fields an admin can read. password_hash, tokens, reset fields,
 // phone_number and deleted_at are never selected.
@@ -19,7 +20,7 @@ const ADMIN_USER_SELECT = {
 
 @Injectable()
 export class AdminService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(private readonly prisma: PrismaService) { }
 
   // GET /admin/users
   async listUsers(query: AdminListUsersQueryDto) {
@@ -30,7 +31,7 @@ export class AdminService {
 
     const where = {
       deleted_at: null,
-      ...(role ? { role }: {}),
+      ...(role ? { role } : {}),
       AND: terms.map((term) => ({
         OR: [
           { first_name: { contains: term, mode } },
@@ -53,5 +54,57 @@ export class AdminService {
     ]);
 
     return { data, page, limit, total };
+  }
+
+  // PATCH /admin/users/:user_id
+  async updateUser(admin_id: number, user_id: number, body: AdminUpdateUserDto) {
+    // we already checked:
+    // admin != user_id
+    // the body is not empty
+    // it contains at least one field to update
+
+    // use update many to update user
+    const updatedUser = await this.prisma.user.updateMany({
+      where: { id: user_id, deleted_at: null },
+      data: body,
+    });
+
+    if (updatedUser.count === 0) {
+      throw rpcError(404, 'User not found', "Not Found");
+    }
+
+    return updatedUser;
+  }
+
+  // DELETE /admin/users/:user_id
+  async deleteUser(admin_id: number, user_id: number) {
+
+    // soft delete + anonymize + revoke tokens
+    const deletedUser = await this.prisma.user.updateMany({
+      where: { id: user_id, deleted_at: null },
+      data: {
+        deleted_at: new Date(),
+        login: `ghost_user_${user_id}`,
+        first_name: 'Deleted',
+        last_name: 'User',
+        email: `deleted_${user_id}@internal.system`,
+        department: null,
+        avatar: null,
+        role: 'USER',
+      }
+    });
+
+    if (deletedUser.count === 0) {
+      throw rpcError(404, 'User not found', "Not Found");
+    }
+
+    // delete all tokens for this user (logout everywhere)
+    // TODO: ask nsila if that correct
+    await this.prisma.refreshToken.deleteMany({
+      where: { user_id },
+    });
+    console.log(`[AuthService] Deleted user ${user_id} and revoked all tokens by admin ${admin_id}`);
+
+    return deletedUser;
   }
 }

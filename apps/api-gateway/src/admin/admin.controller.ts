@@ -57,12 +57,12 @@ export class AdminController {
 
   // DELETE /admin/users/:user_id
   @Delete('users/:user_id')
-  @HttpCode(HttpStatus.NO_CONTENT)
+  // @HttpCode(HttpStatus.NO_CONTENT)
   async deleteUser(
     @Param() { user_id }: AdminUserParamDto,
     @CurrentUser() admin: AuthenticatedUser,
   ) {
-    await this.adminService.deleteUser(Number(admin.id), user_id);
+    return await this.adminService.deleteUser(Number(admin.id), user_id);
   }
 
   // POST /admin/clubs

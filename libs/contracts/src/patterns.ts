@@ -75,7 +75,7 @@ export const CLUB_PATTERNS = {
   GET_CLUB_ADMIN_STATS: 'club.admin.stats',
   POST_CLUB_ADMIN_CREATE: 'club.admin.create',
   DELETE_CLUB_ADMIN_DELETE: 'club.admin.delete',
-  DELETE_CLUB_ADMIN_USER_DELETED: 'club.admin.user_deleted',
+  WHEN_USER_DELETED: 'club.when-user-deleted',
 } as const;
 
 // ================= NOTIFICATION SERVICE ==================
