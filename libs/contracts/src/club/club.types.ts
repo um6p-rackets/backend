@@ -332,8 +332,6 @@ export type UserProfileData = {
   joined_clubs: JoinedClub[];
   // Done
   achievements: Achievement[];
-  // Done pagnation
-  history: Paginated<UserHistoryMatch>;
   // Done
   club_ranks: UserClubRank[];
   // Done
