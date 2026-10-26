@@ -12,8 +12,8 @@
     ) {}
 
     // 1. Initial Login
-    async issue(user_id: number, login: string): Promise<AuthTokens> {
-      return this.generateAndSaveTokens(user_id, login, randomUUID());
+    async issue(user_id: number, login: string, role: string): Promise<AuthTokens> {
+      return this.generateAndSaveTokens(user_id, login, role, randomUUID());
     }
 
     // 2. Refresh Token Rotation
@@ -60,7 +60,7 @@
       }
 
       // Issue a new token pair in the SAME family
-      return this.generateAndSaveTokens(tokenRecord.user_id, tokenRecord.user.login, tokenRecord.family_id);
+      return this.generateAndSaveTokens(tokenRecord.user_id, tokenRecord.user.login, tokenRecord.user.role , tokenRecord.family_id);
     }
 
     // 3. Logout
@@ -107,8 +107,8 @@
     }
 
     // --- Private Helper ---
-    private async generateAndSaveTokens(user_id: number, login: string, familyId: string): Promise<AuthTokens> {
-      const accessToken = await this.jwt.signAsync( { sub: String(user_id), login } );
+    private async generateAndSaveTokens(user_id: number, login: string, role: string, familyId: string): Promise<AuthTokens> {
+      const accessToken = await this.jwt.signAsync( { sub: String(user_id), login, role } );
 
       const plainRefreshToken = randomBytes(48).toString('base64url');
       const tokenHash = createHash('sha256').update(plainRefreshToken).digest('hex');

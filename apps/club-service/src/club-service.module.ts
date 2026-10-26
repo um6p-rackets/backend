@@ -7,7 +7,7 @@ import { PrismaModule } from './prisma/prisma.module.js';
 import { SessionsModule } from './sessions/sessions.module.js';
 import { ClubAccessModule } from './access/club-access.module.js';
 import { MembersModule } from './members/members.module.js';
-import { AuthClientModule } from './global-clients/auth-client.module.js';
+import { RPCClientsModule } from './global-clients/rpc-clients.module.js';
 import { AnnouncementsModule } from './announcements/announcements.module.js';
 import { DocumentsModule } from './documents/documents.module.js';
 import { AchievementsModule } from './achievements/achievements.module.js';
@@ -25,7 +25,7 @@ import { LeaderboardModule } from './leaderboard/leaderboard.module.js';
     SessionsModule,
     ClubAccessModule,
     MembersModule,
-    AuthClientModule,
+    RPCClientsModule,
     AnnouncementsModule,
     DocumentsModule,
     AchievementsModule,

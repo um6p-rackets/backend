@@ -12,6 +12,7 @@ import googleOauthConfig from './common/config/google-oauth.config.js';
 import { JwtAuthGuard } from './common/guards/jwt-auth.guard.js';
 import { NotificationsModule } from './notification/notifications.module.js';
 import { UserModule } from './user/user.module.js';
+import { AdminModule } from './admin/admin.module.js';
 
 @Module({
   imports: [
@@ -37,6 +38,7 @@ import { UserModule } from './user/user.module.js';
     ClubModule,
     NotificationsModule,
     UserModule,
+    AdminModule,
   ],
   // Registering guards globally [We never have to remember to add @UseGuards(JwtAuthGuard) to a new controller]
     providers: [

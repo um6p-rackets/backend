@@ -1,5 +1,5 @@
 import { CLUB_PATTERNS } from "@app/contracts";
-import { MessagePattern } from "@nestjs/microservices";
+import { MessagePattern, Payload } from "@nestjs/microservices";
 import { MembersService } from "./members.service.js";
 import { Controller } from "@nestjs/common";
 import { AddMemberDto } from "@app/contracts/club/dto/index.js";
@@ -26,5 +26,10 @@ export class MembersController {
   @MessagePattern(CLUB_PATTERNS.DELETE_CLUB_MEMBER_REMOVE)
   async removeClubMember(data: { club_slug: string; user_id: number, member_id: number }) {
     return this.membersService.removeClubMember(data.club_slug, data.user_id, data.member_id);
+  }
+
+  @MessagePattern(CLUB_PATTERNS.WHEN_USER_DELETED)
+  async whenUserDeleted(@Payload() data: { user_id: number }) {
+    return await this.membersService.whenUserDeleted(data.user_id);
   }
 }

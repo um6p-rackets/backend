@@ -13,6 +13,7 @@ export function toUser(row: PrismaUser): User {
     phone_number: row.phone_number,
     email: row.email,
     avatar: row.avatar,
+    role: row.role as User['role'], // Type assertion to ensure compatibility with the User type
     // Safely convert the JavaScript Date to an ISO string
     joined_at: toFullString(row.joined_at),
   };
