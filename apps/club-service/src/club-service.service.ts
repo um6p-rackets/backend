@@ -6,8 +6,6 @@ import {
   JoinedClub,
   JoinRequestStatus,
   JoinRequestWithUser,
-  Leaderboard,
-  MatchStatus,
   MemberRole,
   Paginated,
   UserClubRank,
@@ -24,7 +22,6 @@ import { User } from '@app/contracts/auth/index.js';
 import { emitEvent, rpc } from '@app/common/helpers/rpc.helper.js';
 import {
   AUTH_PATTERNS,
-  NOTIFICATION_PATTERNS,
 } from '@app/contracts/patterns.js';
 import { ClientProxy } from '@nestjs/microservices';
 import { AUTH_SERVICE, NOTIFICATION_SERVICE } from '@app/contracts/queues.js';
@@ -38,6 +35,7 @@ import {
 import { now, toFullString } from '@app/common/dates.js';
 import { MatchesService } from './matches/matches.service.js';
 import { AchievementsService } from './achievements/achievements.service.js';
+import { CreateClubDto } from '@app/contracts/admin/dto/index.js';
 
 @Injectable()
 export class ClubServiceService {
@@ -45,7 +43,7 @@ export class ClubServiceService {
     private readonly prisma: PrismaService,
     private readonly clubAccessService: ClubAccessService,
     private readonly achievementsService: AchievementsService,
-		private readonly matchesService: MatchesService,
+    private readonly matchesService: MatchesService,
     @Inject(AUTH_SERVICE) private readonly authClient: ClientProxy,
     @Inject(NOTIFICATION_SERVICE)
     private readonly notificationClient: ClientProxy,
@@ -58,7 +56,9 @@ export class ClubServiceService {
       await this.achievementsService.getUserAchievements(user_id);
     const userClubsId = userJoinedClubs.map((joinedClub) => joinedClub.club.id);
     // Fetch the first 10 matches for the user across all joined clubs
-    const userMemberIds = userJoinedClubs.map((joinedClub) => joinedClub.member_id);
+    const userMemberIds = userJoinedClubs.map(
+      (joinedClub) => joinedClub.member_id,
+    );
     const userMatches = await this.matchesService.getUserMatches(
       user_id,
       userMemberIds,
@@ -68,7 +68,10 @@ export class ClubServiceService {
       false, // if [True]: get all matches, if [False]: only limit to 10 matches
     );
     const userClubRanks = await this.UserClubRank(user_id);
-    const userGlobalStats = await this.getUserGlobalStats(user_id, userClubRanks);
+    const userGlobalStats = await this.getUserGlobalStats(
+      user_id,
+      userClubRanks,
+    );
 
     return {
       joined_clubs: userJoinedClubs,
@@ -175,7 +178,10 @@ export class ClubServiceService {
     return userClubRanks;
   }
 
-  async getUserGlobalStats(user_id: number, userClubRanks: UserClubRank[]): Promise<UserGlobalStat> {
+  async getUserGlobalStats(
+    user_id: number,
+    userClubRanks: UserClubRank[],
+  ): Promise<UserGlobalStat> {
     // Only one query needed now: aggregate the global totals
     const stats = await this.prisma.leaderboard.aggregate({
       where: { user_id },
@@ -197,7 +203,8 @@ export class ClubServiceService {
         // A lower numerical rank is better (Rank 1 > Rank 2)
         if (current.rank < best.rank) return current;
         // Tie-breaker: If rank is identical, pick the one with more points
-        if (current.rank === best.rank && current.points > best.points) return current;
+        if (current.rank === best.rank && current.points > best.points)
+          return current;
         return best;
       });
 
@@ -215,9 +222,10 @@ export class ClubServiceService {
     const points = stats._sum.points ?? 0;
     const total_matches = stats._sum.total_matches ?? 0;
     const highest_win_streak = stats._max.win_streak ?? 0;
-    
+
     // 0.00% -> 100.00%
-    const win_rate = total_matches > 0 ? Number(((wins / total_matches) * 100).toFixed(2)) : 0;
+    const win_rate =
+      total_matches > 0 ? Number(((wins / total_matches) * 100).toFixed(2)) : 0;
 
     return {
       total_matches,
@@ -497,18 +505,16 @@ export class ClubServiceService {
           },
           select: { user_id: true },
         }),
-        rpc<User | null>(
-          this.authClient,
-          AUTH_PATTERNS.GET_USER_BY_ID,
-          { user_id },
-        ),
+        rpc<User | null>(this.authClient, AUTH_PATTERNS.GET_USER_BY_ID, {
+          user_id,
+        }),
       ]);
 
       const notify_data: NotificationEventDto = {
         event_id: `${NOTIFICATION_EVENTS.JOIN_REQUESTED}:${club.id}:${user_id}`,
         sender_type: SenderType.USER,
         sender_id: String(user_id),
-        sender_name: user ? `${user.first_name} ${user.last_name}`: null,
+        sender_name: user ? `${user.first_name} ${user.last_name}` : null,
         sender_avatar_url: user?.avatar ?? null,
         category: NotificationCategory.CLUB,
         type: NotificationType.JOIN_REQUESTED,
@@ -681,5 +687,42 @@ export class ClubServiceService {
       throw rpcError(404, 'You are not a member of this club', 'Not Found');
     }
     return { success: true, message: 'You have successfully left the club.' };
+  }
+
+  async createClub(body: CreateClubDto): Promise<Club> {
+    // we already verfied the coach_user_id exists in the auth service, so we can safely create the club
+
+    const slug = body.name.trim().toLowerCase().replace(/\s+/g, '-');
+
+    // check if slug already exists
+    const existingClub = await this.prisma.club.findUnique({
+      where: { slug },
+    });
+    if (existingClub) {
+      throw rpcError(400, 'Club name already exists', 'Bad Request');
+    }
+    // create the club and return it
+    const club = await this.prisma.club.create({
+      data: {
+        name: body.name.trim(),
+        description: body.description?.trim() ?? null,
+        slug: slug,
+        created_at: now(),
+      },
+    });
+
+    // add the coach as a member of the club
+    await this.prisma.member.create({
+      data: {
+        club_id: club.id,
+        user_id: body.coach_user_id,
+        role: MemberRole.COACH,
+        joined_at: now(),
+      },
+    });
+
+    // TODO notify: the coach
+
+    return { ...club, created_at: toFullString(club.created_at) };
   }
 }

@@ -119,7 +119,7 @@ Content-Type: application/json
 POST {{baseUrl}}/admin/clubs
 Content-Type: application/json
 
-{ "name": "Users", "coach_user_id": 3 }
+{ "name": "users", "coach_user_id": 3 }
 
 ### E5: the new club must be visible in the public list
 GET {{baseUrl}}/clubs

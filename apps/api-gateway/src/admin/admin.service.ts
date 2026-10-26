@@ -4,12 +4,14 @@ import {
   AUTH_SERVICE,
   CLUB_PATTERNS,
   CLUB_SERVICE,
+  User,
 } from '@app/contracts';
 import {
   BadRequestException,
   ForbiddenException,
   Inject,
   Injectable,
+  NotFoundException,
 } from '@nestjs/common';
 import { ClientProxy } from '@nestjs/microservices';
 
@@ -19,6 +21,7 @@ import {
   AdminUpdateUserDto,
   CreateClubDto,
 } from '@app/contracts/admin/dto/index.js';
+import { firbiddenSlugs } from '../helpers/forbidden-slugs.js';
 
 // What each service returns for the stats. Replace with the contract types
 // once you have put AdminStats in your contracts.
@@ -90,9 +93,17 @@ export class AdminService {
   async createClub(body: CreateClubDto) {
     // fail early with a 404 if the coach does not exist.
     // Use your existing "get user" pattern (the one taking { user_id: string }).
-    await rpc(this.authClient, AUTH_PATTERNS.GET_USER_BY_ID, {
+    const coach = await rpc<User | null>(this.authClient, AUTH_PATTERNS.GET_USER_BY_ID, {
       user_id: body.coach_user_id,
     });
+    if (!coach) {
+      throw new NotFoundException('Coach not found');
+    }
+    const slug = body.name.trim().toLowerCase().replace(/\s+/g, '-');
+
+    if (firbiddenSlugs.includes(slug)) {
+      throw new BadRequestException('Name is forbidden');
+    }
     return rpc(this.clubClient, CLUB_PATTERNS.POST_CLUB_ADMIN_CREATE, { body });
   }
 

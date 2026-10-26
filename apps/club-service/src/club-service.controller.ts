@@ -9,6 +9,7 @@ import {
 import { ClubServiceService } from './club-service.service.js';
 import { CLUB_PATTERNS } from '@app/contracts';
 import { UpdateClubDto } from '@app/contracts/club/dto/index.js';
+import { CreateClubDto } from '@app/contracts/admin/dto/index.js';
 import { LeaderboardService } from './leaderboard/leaderboard.service.js';
 
 @Controller()
@@ -143,5 +144,10 @@ export class ClubServiceController {
   @MessagePattern(CLUB_PATTERNS.DELETE_CLUB_LEAVE)
   async leaveClub(data: { club_slug: string; user_id: number }) {
     return this.clubServiceService.leaveClub(data.club_slug, data.user_id);
+  }
+
+  @MessagePattern(CLUB_PATTERNS.POST_CLUB_ADMIN_CREATE)
+  createClub(data: { body: CreateClubDto }) {
+    return this.clubServiceService.createClub(data.body);
   }
 }
