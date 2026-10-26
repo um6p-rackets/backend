@@ -52,6 +52,7 @@ export class ClubServiceService {
     private readonly notificationClient: ClientProxy,
   ) {}
 
+
   // =========================== User Profile Data ===========================
   async getUserProfile(user_id: number): Promise<UserProfileData> {
     const joinedClubs = await this.getJoinedClubs(user_id);

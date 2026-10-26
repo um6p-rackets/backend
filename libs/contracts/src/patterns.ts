@@ -47,6 +47,8 @@ export const CLUB_PATTERNS = {
   DELETE_CLUB_SESSION_DELETE: 'club.delete-club-session-delete',
   // ================== MEMBERS SERVICE ==================
   GET_USER_PROFILE: 'club.get-user-profile',
+  GET_USER_MEMBERSHIPS: 'club.get-user-memberships',
+  GET_USER_ACHIEVEMENTS: 'club.get-user-achievements',
   GET_USER_MATCHES: 'club.get-user-matches',
   GET_CLUB_MEMBERS: 'club.get-club-members',
   POST_CLUB_MEMBER_ADD: 'club.post-club-member-add',
@@ -72,6 +74,8 @@ export const CLUB_PATTERNS = {
   POST_CLUB_MATCH_REJECT: 'club.post-club-match-reject',
   POST_CLUB_MATCH_CANCEL: 'club.post-club-match-cancel',
   POST_CLUB_MATCH_RESULT: 'club.post-club-match-result',
+  // ================== LEADERBOARD SERVICE ==================
+  GET_USER_CLUB_LEADERBOARD: 'club.get-user-club-leaderboard',
   // ================== ADMIN SERVICE ==================
   GET_CLUB_ADMIN_STATS: 'club.admin.stats',
   POST_CLUB_ADMIN_CREATE: 'club.admin.create',

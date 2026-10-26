@@ -3,6 +3,7 @@ import { PrismaService } from '../prisma/prisma.service.js';
 import {
   AUTH_PATTERNS,
   AUTH_SERVICE,
+  ClubLeaderboard,
   Leaderboard,
   MemberRole,
   Paginated,
@@ -40,8 +41,7 @@ export class LeaderboardService {
       include: { player1: true, player2: true },
     });
 
-    if (!team1 || !team2)
-      throw new Error('One or both teams not found');
+    if (!team1 || !team2) throw new Error('One or both teams not found');
 
     // --- TEAM 1 ---
     await this.updateMemeberLeaderboard(
@@ -143,23 +143,26 @@ export class LeaderboardService {
 
   async getClubLeaderboard(
     clubSlug: string,
-    user_id: number,
+    requester_id: number, // The person making the request [me] (for auth/access)
     page: number,
     limit: number,
-  ): Promise<Paginated<Leaderboard>> {
-    // Check if the user has access to the club and get the club details
+    target_user_id?: number, // The profile being viewed (optional)
+  ): Promise<ClubLeaderboard> {
     const { club } = await this.clubAccessService.requireRole(
       clubSlug,
-      user_id,
+      requester_id,
       MemberRole.MEMBER,
     );
-    // Calculate the number of rows to skip based on the page and limit
+
     const rowsToSkip = (page - 1) * limit;
-    // Start a transaction to fetch the leaderboard rows and count the total rows for pagination
-    const [rows, total] = await this.prisma.$transaction([
-      // Fetch leaderboard rows for the club with pagination and sorting
+
+    // Prepare queries: Paginated rows, Total count, and Target User Rank
+    const queries: any[] = [
       this.prisma.leaderboard.findMany({
-        where: { club_id: club.id },
+        where: {
+          club_id: club.id,
+          total_matches: { gt: 0 }, // Exclude unranked players
+        },
         orderBy: [
           { points: 'desc' },
           { wins: 'desc' },
@@ -169,42 +172,62 @@ export class LeaderboardService {
         ],
         skip: rowsToSkip,
         take: limit,
-        select: {
-          user_id: true,
-          member_id: true,
-          points: true,
-          wins: true,
-          losses: true,
-          total_matches: true,
-          win_streak: true,
-          best_win_streak: true,
+      }),
+      this.prisma.leaderboard.count({
+        where: {
+          club_id: club.id,
+          total_matches: { gt: 0 }, // Exclude unranked players
         },
       }),
+    ];
 
-      // Count total rows for pagination
-      this.prisma.leaderboard.count({
-        where: { club_id: club.id },
-      }),
-    ]);
-
-    // If no rows are found, return an empty paginated response
-    if (rows.length === 0) {
-      return { data: [], page, limit, total };
+    // Here i am using RANK() built-in SQL function to get the rank of the target user in the leaderboard
+    // If a target user is provided, add the raw SQL Window Function query
+    if (target_user_id) {
+      queries.push(
+        this.prisma.$queryRaw`
+          WITH RankedLeaderboard AS (
+            SELECT 
+              user_id, member_id, points, wins, losses, total_matches, win_streak, best_win_streak,
+              RANK() OVER (
+                ORDER BY points DESC, wins DESC, losses ASC, total_matches DESC, member_id ASC
+              ) as rank
+            FROM "club_schema"."leaderboard"
+            WHERE club_id = ${club.id} AND total_matches > 0
+          )
+          SELECT * FROM RankedLeaderboard WHERE user_id = ${target_user_id} LIMIT 1;
+        `,
+      );
     }
 
-    // Safe guard: Unique user ids
-    const uniqueUserIds = Array.from(new Set(rows.map((row) => row.user_id)));
-    // Fetch user details from Auth Service
+    // Execute concurrently
+    const [rows, total, targetUserRaw] = await Promise.all(queries);
+
+    if (rows.length === 0 && (!targetUserRaw || targetUserRaw.length === 0)) {
+      return {
+        leaderboard: { data: [], page, limit, total },
+        target_user_row: null,
+      };
+    }
+
+    // Resolve User Details (Auth RPC)
+    const uniqueUserIds = new Set(rows.map((row: any) => row.user_id));
+    let targetUserDbRow = null;
+
+    if (targetUserRaw && targetUserRaw.length > 0) {
+      targetUserDbRow = targetUserRaw[0];
+      uniqueUserIds.add(targetUserDbRow.user_id); // Ensure target user is fetched
+    }
+
     const users = await rpc<User[]>(
       this.authClient,
       AUTH_PATTERNS.GET_USERS_BY_IDS,
-      { user_ids: uniqueUserIds },
+      { user_ids: Array.from(uniqueUserIds) },
     );
-    // Map user ids to user details for fast, easy lookup
     const userByIdMap = new Map(users.map((user) => [user.id, user]));
 
-    // Map leaderboard rows to include user details
-    const data = rows.map((row, index) => {
+    // Map Paginated Rows
+    const data = rows.map((row: any, index: number) => {
       const user = userByIdMap.get(row.user_id);
       return {
         rank: rowsToSkip + index + 1,
@@ -214,25 +237,45 @@ export class LeaderboardService {
         total_matches: row.total_matches,
         win_streak: row.win_streak,
         best_win_streak: row.best_win_streak,
-        player: user
-          ? { ...user, member_id: row.member_id }
-          : {
-              id: row.user_id,
-              login: 'Unknown Player',
-              first_name: 'Unknown',
-              last_name: 'Unknown',
-              avatar: null,
-              department: null,
-              member_id: row.member_id,
-            },
+        player: {
+          id: row.user_id,
+          login: user?.login || 'Unknown',
+          first_name: user?.first_name || 'Unknown',
+          last_name: user?.last_name || 'Player',
+          avatar: user?.avatar || null,
+          department: user?.department || null,
+          member_id: row.member_id,
+        },
       };
     });
 
+    // Map Target User Row
+    let target_user_row = null;
+    if (targetUserDbRow) {
+      const user = userByIdMap.get(targetUserDbRow.user_id);
+      target_user_row = {
+        rank: Number(targetUserDbRow.rank),
+        points: targetUserDbRow.points,
+        wins: targetUserDbRow.wins,
+        losses: targetUserDbRow.losses,
+        total_matches: targetUserDbRow.total_matches,
+        win_streak: targetUserDbRow.win_streak,
+        best_win_streak: targetUserDbRow.best_win_streak,
+        player: {
+          id: targetUserDbRow.user_id,
+          login: user?.login || 'Unknown',
+          first_name: user?.first_name || 'Unknown',
+          last_name: user?.last_name || 'Player',
+          avatar: user?.avatar || null,
+          department: user?.department || null,
+          member_id: targetUserDbRow.member_id,
+        },
+      };
+    }
+
     return {
-      data: data,
-      page,
-      limit,
-      total,
+      leaderboard: { data, page, limit, total },
+      target_user_row,
     };
   }
 }

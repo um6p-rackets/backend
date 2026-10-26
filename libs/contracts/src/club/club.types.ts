@@ -316,6 +316,12 @@ export type Leaderboard = {
   best_win_streak: number;
 };
 
+export type ClubLeaderboard = {
+  leaderboard: Paginated<Leaderboard>;
+  // This to show the target user rank without navigating to the next pages
+  target_user_row: Leaderboard | null;
+};
+
 // For all clubs leaderboard
 export type UserGlobalStat = {
   total_matches: number;
