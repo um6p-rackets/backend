@@ -1,3 +1,8 @@
+export enum UserRole {
+  USER = 'USER',
+  ADMIN = 'ADMIN',
+}
+
 export type User = {
   id: number; // bigserial PK
   login: string; // varchar(255) UNIQUE
@@ -8,6 +13,7 @@ export type User = {
   phone_number: string | null; // varchar(50)
   email: string; // varchar(255) UNIQUE
   avatar: string | null; // text
+  role: UserRole; // enum('USER', 'ADMIN')
   joined_at: string; // timestamptz
 };
 
@@ -36,6 +42,7 @@ export interface SuccessResult {
 export interface JwtPayload {
   sub: string; // (*Subject*): Unique identifier for the user.
   login: string;
+  role: UserRole;
   iat?: number; // (*Issued At*): Unix timestamp of when the token was created.
   exp?: number; // (*Expiration Time*): Unix timestamp when the token expires.
 }
