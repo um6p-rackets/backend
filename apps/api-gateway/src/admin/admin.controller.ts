@@ -73,9 +73,9 @@ export class AdminController {
 
   // DELETE /admin/clubs/:slug
   @Delete('clubs/:slug')
-  @HttpCode(HttpStatus.NO_CONTENT)
+  // @HttpCode(HttpStatus.NO_CONTENT)
   async deleteClub(@Param() { slug }: ClubSlugParamDto) {
-    await this.adminService.deleteClub(slug);
+    return await this.adminService.deleteClub(slug);
   }
 
   // GET /admin/stats?weeks=8

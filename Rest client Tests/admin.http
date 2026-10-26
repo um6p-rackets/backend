@@ -1,6 +1,6 @@
 @baseUrl = http://localhost:3000/api/v1
 @userId = 2
-@clubSlug = test-club
+@clubSlug = badminton
 
 # The REST Client extension keeps cookies between requests, so the order below matters:
 # log in as a normal user, run the 403 checks, then log in as the admin.
@@ -134,14 +134,14 @@ GET {{baseUrl}}/clubs
 ### E6: -> expect 404
 GET {{baseUrl}}/clubs/{{clubSlug}}
 
-### E6: other club routes -> expect 404
+### E6: other club routes -> expect 404 new slug = delete-club-:id
 GET {{baseUrl}}/clubs/{{clubSlug}}/members
 
 ### E6: the name is free again -> expect 201
 POST {{baseUrl}}/admin/clubs
 Content-Type: application/json
 
-{ "name": "Test Club", "coach_user_id": 3 }
+{ "name": "badminton", "coach_user_id": 3 }
 
 ###########################################################
 ### E7: stats (default 8 weeks)

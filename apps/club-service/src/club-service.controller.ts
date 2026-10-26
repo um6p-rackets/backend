@@ -20,7 +20,7 @@ export class ClubServiceController {
   ) {}
 
   @MessagePattern(CLUB_PATTERNS.GET_USER_PROFILE)
-  getMemberProfile(data: { user_id: number }) : Promise<UserProfileData> {
+  getMemberProfile(data: { user_id: number }): Promise<UserProfileData> {
     console.log(
       `[ClubService] Received request for member profile for user_id: ${data.user_id}`,
     );
@@ -149,5 +149,10 @@ export class ClubServiceController {
   @MessagePattern(CLUB_PATTERNS.POST_CLUB_ADMIN_CREATE)
   createClub(data: { body: CreateClubDto }) {
     return this.clubServiceService.createClub(data.body);
+  }
+
+  @MessagePattern(CLUB_PATTERNS.DELETE_CLUB_ADMIN_DELETE)
+  deleteClub(data: { club_slug: string }) {
+    return this.clubServiceService.deleteClub(data.club_slug);
   }
 }

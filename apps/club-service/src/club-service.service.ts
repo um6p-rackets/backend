@@ -20,9 +20,7 @@ import { ClubAccessService } from './access/club-access.service.js';
 import { UpdateClubDto } from '@app/contracts/club/dto/index.js';
 import { User } from '@app/contracts/auth/index.js';
 import { emitEvent, rpc } from '@app/common/helpers/rpc.helper.js';
-import {
-  AUTH_PATTERNS,
-} from '@app/contracts/patterns.js';
+import { AUTH_PATTERNS } from '@app/contracts/patterns.js';
 import { ClientProxy } from '@nestjs/microservices';
 import { AUTH_SERVICE, NOTIFICATION_SERVICE } from '@app/contracts/queues.js';
 import { NOTIFICATION_EVENTS } from '@app/contracts/events.js';
@@ -724,5 +722,30 @@ export class ClubServiceService {
     // TODO notify: the coach
 
     return { ...club, created_at: toFullString(club.created_at) };
+  }
+
+  async deleteClub(club_slug: string): Promise<{ success: true, message: string }> {
+
+    const club = await this.clubAccessService.getClub(club_slug);
+    // soft delete + anonymize
+    await this.prisma.club.update({
+      where: { id: club.id, deleted_at: null },
+      data: { 
+        deleted_at: now(),
+        name: 'Deleted Club',
+        description: null,
+        slug: `deleted-club-${club.id}`,
+        avatar: null,
+      },
+    });
+
+    // for club memberships, we can set left_at to now() for all members, but we don't delete the rows to keep history
+    await this.prisma.member.updateMany({
+      where: { club_id: club.id, left_at: null },
+      data: { left_at: now() },
+    });
+
+    // TODO notify: the club's members
+    return { success: true, message: 'Club deleted successfully.' };
   }
 }
