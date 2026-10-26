@@ -1,21 +1,27 @@
 import { Controller } from '@nestjs/common';
 import { MessagePattern, Payload } from '@nestjs/microservices';
 import {
+  Achievement,
   Club,
   ClubMemberStatus,
   ClubWithMembersCountAndCoachFullName,
+  JoinedClub,
   UserProfileData,
 } from '@app/contracts/club/club.types.js';
 import { ClubServiceService } from './club-service.service.js';
-import { CLUB_PATTERNS, Paginated, UserHistoryMatch } from '@app/contracts';
+import { CLUB_PATTERNS, ClubLeaderboard, Paginated, UserHistoryMatch } from '@app/contracts';
 import { UpdateClubDto } from '@app/contracts/club/dto/index.js';
 import { LeaderboardService } from './leaderboard/leaderboard.service.js';
+import { AchievementsService } from './achievements/achievements.service.js';
+import { MembersService } from './members/members.service.js';
 
 @Controller()
 export class ClubServiceController {
   constructor(
     private readonly clubServiceService: ClubServiceService,
+    private readonly membersService: MembersService,
     private readonly leaderboardService: LeaderboardService,
+    private readonly achievementsService: AchievementsService,
   ) {}
 
   @MessagePattern(CLUB_PATTERNS.GET_USER_PROFILE)
@@ -23,7 +29,35 @@ export class ClubServiceController {
     console.log(
       `[ClubService] Received request for member profile for user_id: ${data.user_id}`,
     );
-    return this.clubServiceService.getUserProfile(data.user_id);
+    return this.membersService.getUserProfile(data.user_id);
+  }
+
+  @MessagePattern(CLUB_PATTERNS.GET_USER_MEMBERSHIPS)
+  getUserMemberships(data: { user_id: number }): Promise<JoinedClub[]> {
+    console.log(
+      `[ClubService] Received request for user memberships for user_id: ${data.user_id}`,
+    );
+    return this.membersService.getUserJoinedClubs(data.user_id);
+  }
+
+  @MessagePattern(CLUB_PATTERNS.GET_USER_ACHIEVEMENTS)
+  getUserAchievements(data: { user_id: number }): Promise<Achievement[]> {
+    console.log(
+      `[ClubService] Received request for user achievements for user_id: ${data.user_id}`,
+    );
+    return this.achievementsService.getUserAchievements(data.user_id);
+  }
+
+  @MessagePattern(CLUB_PATTERNS.GET_USER_MATCHES)
+  async getUserMatches(
+    @Payload() payload: { user_id: number; page: number; limit: number },
+  ): Promise<Paginated<UserHistoryMatch>> {
+    return this.membersService.getUserClubsMatchesHistory(
+      payload.user_id,
+      payload.page,
+      payload.limit,
+      false, // fetchAll set to FALSE for paginated results
+    );
   }
 
   @MessagePattern(CLUB_PATTERNS.GET_CLUBS)
@@ -69,17 +103,22 @@ export class ClubServiceController {
   }
 
   @MessagePattern(CLUB_PATTERNS.GET_CLUB_LEADERBOARD)
-  async getClubLeaderboard(data: {
-    club_slug: string;
-    user_id: number;
-    page: number;
-    limit: number;
-  }) {
+  async getClubLeaderboard(
+    @Payload()
+    payload: {
+      slug: string;
+      requester_id: number;
+      page: number;
+      limit: number;
+      target_user_id?: number;
+    },
+  ) : Promise<ClubLeaderboard>{
     return this.leaderboardService.getClubLeaderboard(
-      data.club_slug,
-      data.user_id,
-      data.page,
-      data.limit,
+      payload.slug,
+      payload.requester_id,
+      payload.page,
+      payload.limit,
+      payload.target_user_id,
     );
   }
 
@@ -143,17 +182,5 @@ export class ClubServiceController {
   @MessagePattern(CLUB_PATTERNS.DELETE_CLUB_LEAVE)
   async leaveClub(data: { club_slug: string; user_id: number }) {
     return this.clubServiceService.leaveClub(data.club_slug, data.user_id);
-  }
-
-  @MessagePattern(CLUB_PATTERNS.GET_USER_MATCHES)
-  async getUserMatches(
-    @Payload() payload: { user_id: number; page: number; limit: number },
-  ): Promise<Paginated<UserHistoryMatch>> {
-    return this.clubServiceService.getUserClubsHistory(
-      payload.user_id,
-      payload.page,
-      payload.limit,
-      false, // fetchAll set to FALSE for paginated results
-    );
   }
 }
