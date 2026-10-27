@@ -1,17 +1,23 @@
-import { Inject, Injectable } from '@nestjs/common';
-import { ClubAccessService } from '../access/club-access.service.js';
-import { PrismaService } from '../prisma/prisma.service.js';
-import { now, rpc, toFullString } from '@app/common';
+import { Inject, Injectable } from "@nestjs/common";
+import { ClubAccessService } from "../access/club-access.service.js";
+import { PrismaService } from "../prisma/prisma.service.js";
+import { emitEvent, now, rpc, toFullString } from "@app/common";
 import {
   AUTH_PATTERNS,
   AUTH_SERVICE,
+  NOTIFICATION_EVENTS,
+  NOTIFICATION_SERVICE,
+  NotificationCategory,
+  NotificationEventDto,
+  NotificationType,
   rpcError,
+  SenderType,
   User,
   UserGlobalStat,
   UserHistoryMatch,
   UserProfileData,
-} from '@app/contracts';
-import { ClientProxy } from '@nestjs/microservices';
+} from "@app/contracts";
+import { ClientProxy } from "@nestjs/microservices";
 import {
   Member,
   MemberWithUser,
@@ -32,6 +38,8 @@ export class MembersService {
     private readonly prisma: PrismaService,
     @Inject(AUTH_SERVICE) private readonly authClient: ClientProxy,
     private readonly clubAccessService: ClubAccessService,
+    @Inject(NOTIFICATION_SERVICE)
+    private readonly notificationClient: ClientProxy,
     private readonly achievementsService: AchievementsService,
     private readonly matchesService: MatchesService,
   ) {}
@@ -62,7 +70,7 @@ export class MembersService {
           throw rpcError(
             404,
             `User with login ${login} not found`,
-            'Not Found',
+            "Not Found",
           );
         }
         const member = await this.prisma.member.findFirst({
@@ -76,7 +84,7 @@ export class MembersService {
           throw rpcError(
             404,
             `User ${login} is not a member of club ${club_slug}`,
-            'Not Found',
+            "Not Found",
           );
         }
         const member_with_user_summery: MemberWithUser = {
@@ -177,14 +185,14 @@ export class MembersService {
       throw rpcError(
         400,
         `You can't update role to a higher or equal role than your own.`,
-        'Bad Request',
+        "Bad Request",
       );
     }
     if (member && member.role == 1 && body.role == 1) {
       throw rpcError(
         400,
         `Only Coach can add another leader to the club.`,
-        'Bad Request',
+        "Bad Request",
       );
     }
 
@@ -201,7 +209,7 @@ export class MembersService {
       throw rpcError(
         409,
         `User with id ${body.user_id} is already a member of club ${club_slug}`,
-        'Conflict',
+        "Conflict",
       );
     }
 
@@ -215,7 +223,7 @@ export class MembersService {
       throw rpcError(
         404,
         `User with id ${body.user_id} not found in auth service`,
-        'Not Found',
+        "Not Found",
       );
     }
     // add the member (or re-activate a former one) and close the user's pending request.
@@ -245,8 +253,37 @@ export class MembersService {
     ]);
 
     if (accepted.count === 1) {
-      // step 6: notify the user "you were accepted" (count 1 = it came from a request)
+      const sender: User | null = await rpc<User | null>(
+        this.authClient,
+        AUTH_PATTERNS.GET_USER_BY_ID,
+        { user_id: member.user_id },
+      );
+
+      const notify_data: NotificationEventDto = {
+        event_id: `${NOTIFICATION_EVENTS.JOIN_ACCEPTED}:${club.id}:${body.user_id}`,
+        sender_type: SenderType.USER,
+        sender_id: String(member.user_id),
+        sender_name: sender
+          ? `${sender.first_name} ${sender.last_name}`
+          : null,
+        sender_avatar_url: sender?.avatar ?? null,
+        category: NotificationCategory.CLUB,
+        type: NotificationType.JOIN_ACCEPTED,
+        club_id: String(club.id),
+        club_name: club.name,
+        sent_at: now(),
+        receiver_user_ids: [String(body.user_id)],
+      };
+
+      await emitEvent(
+        this.notificationClient,
+        NOTIFICATION_EVENTS.JOIN_ACCEPTED,
+        notify_data,
+      );
     }
+    console.log(
+      `[MemberService] leader ${member.user_id} Added member with user_id ${body.user_id} to club ${club_slug} with role ${body.role ?? 0}`,
+    );
 
     return {
       ...saved,
@@ -271,7 +308,7 @@ export class MembersService {
       throw rpcError(
         400,
         `You can't update role to a higher or equal role than your own.`,
-        'Bad Request',
+        "Bad Request",
       );
     }
     // Check if the member exists in the club
@@ -287,7 +324,7 @@ export class MembersService {
       throw rpcError(
         404,
         `Member with id ${member_id} not found in club ${club_slug}`,
-        'Not Found',
+        "Not Found",
       );
     }
 
@@ -296,7 +333,7 @@ export class MembersService {
       throw rpcError(
         400,
         `Member with id ${member_id} already has the role ${body.role}`,
-        'Bad Request',
+        "Bad Request",
       );
     }
 
@@ -305,7 +342,7 @@ export class MembersService {
       throw rpcError(
         400,
         `You can't change the role of a member who has a higher or equal role than your own.`,
-        'Bad Request',
+        "Bad Request",
       );
     }
 
@@ -351,7 +388,7 @@ export class MembersService {
       throw rpcError(
         404,
         `Member with id ${member_id} not found in club ${club_slug}`,
-        'Not Found',
+        "Not Found",
       );
     }
 
@@ -360,7 +397,7 @@ export class MembersService {
       throw rpcError(
         400,
         `You can't remove a member who has a higher or equal role than your own.`,
-        'Bad Request',
+        "Bad Request",
       );
     }
 
