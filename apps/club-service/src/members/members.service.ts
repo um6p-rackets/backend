@@ -24,6 +24,7 @@ import {
 import { AddMemberDto } from '@app/contracts/club/dto/index.js';
 import { AchievementsService } from '../achievements/achievements.service.js';
 import { MatchesService } from '../matches/matches.service.js';
+import { toSummary } from '../matches/helpers.js';
 
 @Injectable()
 export class MembersService {
@@ -135,15 +136,9 @@ export class MembersService {
             `MembersService.getClubMembers: Mismatch in number of members and users. Members: ${members.length}, Users: ${users.length}`,
           );
         }
-        const members_with_user_summery: (MemberWithUser | null)[] =
-          members.map((member) => {
+        const members_with_user_summery: MemberWithUser[] = members.map(
+          (member) => {
             const user = users.find((user) => user.id === member.user_id);
-            if (!user) {
-              console.error(
-                `MembersService.getClubMembers: User not found for member with user_id: ${member.user_id}`,
-              );
-              return null;
-            }
             return {
               id: member.id,
               club_id: member.club_id,
@@ -151,16 +146,10 @@ export class MembersService {
               role: member.role,
               joined_at: toFullString(member.joined_at),
               left_at: member.left_at ? toFullString(member.left_at) : null,
-              user: {
-                id: user.id,
-                login: user.login,
-                first_name: user.first_name,
-                last_name: user.last_name,
-                department: user.department,
-                avatar: user.avatar,
-              },
+              user: toSummary(user, member.user_id),
             };
-          });
+          },
+        );
         const filtered_members = members_with_user_summery.filter(
           (member) => member !== null,
         ) as MemberWithUser[];

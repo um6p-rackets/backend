@@ -12,7 +12,6 @@ import {
   UserGlobalStat,
   UserHistoryMatch,
   UserProfileData,
-  UserSummary,
 } from '@app/contracts/club/club.types.js';
 import { rpcError } from '@app/contracts/errors.js';
 import { Inject, Injectable } from '@nestjs/common';
@@ -39,6 +38,7 @@ import { ClubStats } from '@app/contracts/admin/admin.types.js';
 
 import { addDays, dayOf, mondayOf, today, toDate } from '@app/common/dates.js';
 import { MatchStatus } from '@app/contracts/club/club.types.js'; // adjust path
+import { toSummary } from './matches/helpers.js';
 
 @Injectable()
 export class ClubServiceService {
@@ -52,11 +52,11 @@ export class ClubServiceService {
     private readonly notificationClient: ClientProxy,
   ) {}
 
-
   // =========================== User Profile Data ===========================
   async getUserProfile(user_id: number): Promise<UserProfileData> {
     const joinedClubs = await this.getJoinedClubs(user_id);
-    const userAchievements = await this.achievementsService.getUserAchievements(user_id);
+    const userAchievements =
+      await this.achievementsService.getUserAchievements(user_id);
     const userClubRanks = await this.UserClubRank(user_id);
     const userGlobalStats = await this.getUserGlobalStats(
       user_id,
@@ -71,18 +71,17 @@ export class ClubServiceService {
     };
   }
 
-async getUserClubsHistory(
+  async getUserClubsHistory(
     user_id: number,
     page: number,
     limit: number,
     getAllMatches: boolean,
   ): Promise<Paginated<UserHistoryMatch>> {
-
     const activeMemberships = await this.prisma.member.findMany({
       where: { user_id, left_at: null },
-      select: { 
-        id: true, 
-        club_id: true 
+      select: {
+        id: true,
+        club_id: true,
       },
     });
 
@@ -263,6 +262,7 @@ async getUserClubsHistory(
   async getAllClubs(): Promise<Club[]> {
     const result = await this.prisma.club.findMany({
       orderBy: { name: 'asc' },
+      where: { deleted_at: null },
     });
     return result.map((club) => ({
       ...club,
@@ -279,7 +279,7 @@ async getUserClubsHistory(
 
     // get club coach full name
     const club_coach = await this.prisma.member.findFirst({
-      where: { club_id: club.id, role: MemberRole.COACH },
+      where: { club_id: club.id, role: MemberRole.COACH, left_at: null },
     });
 
     if (club_coach) {
@@ -300,7 +300,7 @@ async getUserClubsHistory(
     }
 
     const membersCount = await this.prisma.member.count({
-      where: { club_id: club.id },
+      where: { club_id: club.id, left_at: null },
     });
     return {
       ...club,
@@ -374,7 +374,7 @@ async getUserClubsHistory(
     // }
 
     const updatedClub = await this.prisma.club.update({
-      where: { id: club.id },
+      where: { id: club.id, deleted_at: null },
       data: {
         name: body.name ?? club.name,
         description: body.description ?? club.description,
@@ -604,22 +604,12 @@ async getUserClubsHistory(
       : [];
     const userById = new Map(users.map((u) => [u.id, u]));
 
-    // only the summary fields: User also has email and phone, which a leader should not get here
-    const toSummary = (u: User): UserSummary => ({
-      id: u.id,
-      login: u.login,
-      first_name: u.first_name,
-      last_name: u.last_name,
-      avatar: u.avatar,
-      department: u.department,
-    });
-
     return {
       data: requests.map((r) => ({
         ...r,
         requested_at: r.requested_at.toISOString(),
         decided_at: r.decided_at?.toISOString() ?? null,
-        user: toSummary(userById.get(r.user_id)!),
+        user: toSummary(userById.get(r.user_id), r.user_id),
       })),
       page,
       limit,
@@ -717,7 +707,7 @@ async getUserClubsHistory(
 
     // check if slug already exists
     const existingClub = await this.prisma.club.findUnique({
-      where: { slug },
+      where: { slug, deleted_at: null },
     });
     if (existingClub) {
       throw rpcError(400, 'Club name already exists', 'Bad Request');
@@ -756,7 +746,7 @@ async getUserClubsHistory(
       where: { id: club.id, deleted_at: null },
       data: {
         deleted_at: now(),
-        name: `deleted-club-${club.name}-${club.id}`,// name is unique, so we cannot reuse it, but we can anonymize it
+        name: `deleted-club-${club.name}-${club.id}`, // name is unique, so we cannot reuse it, but we can anonymize it
         description: null,
         slug: `deleted-club-${club.slug}-${club.id}`,
         avatar: null,

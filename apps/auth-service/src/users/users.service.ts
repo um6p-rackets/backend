@@ -19,7 +19,7 @@ export class UsersService {
   ) {}
 
   private async findRawByEmail(email: string): Promise<PrismaUser | null> {
-    return await this.prisma.user.findFirst({ where: { email: email } });
+    return await this.prisma.user.findFirst({ where: { email: email, deleted_at: null } });
   }
 
   async findByEmail(email: string): Promise<User | null> {
@@ -28,23 +28,23 @@ export class UsersService {
   }
 
   async findByLogin(login: string): Promise<User | null> {
-    const row = await this.prisma.user.findFirst({ where: { login: login } });
+    const row = await this.prisma.user.findFirst({ where: { login: login, deleted_at: null } });
     return row ? toUser(row) : null;
   }
 
   async findById(id: number): Promise<User | null> {
-    const row = await this.prisma.user.findUnique({ where: { id } });
+    const row = await this.prisma.user.findUnique({ where: { id, deleted_at: null } });
     return row ? toUser(row) : null;
   }
 
   async findMany(ids: number[]): Promise<User[]> {
-    const rows = await this.prisma.user.findMany({ where: { id: { in: ids } } });
+    const rows = await this.prisma.user.findMany({ where: { id: { in: ids }, deleted_at: null } });
     return rows.map(row => toUser(row)); // Map arrays cleanly
   }
 
   async findManyByIds(ids: string[]): Promise<User[]> {
     const numericIds = ids.map(id => parseInt(id, 10)).filter(id => !isNaN(id));
-    const rows = await this.prisma.user.findMany({ where: { id: { in: numericIds } } });
+    const rows = await this.prisma.user.findMany({ where: { id: { in: numericIds }, deleted_at: null } });
     return rows.map(row => toUser(row));
   }
 
@@ -99,7 +99,7 @@ export class UsersService {
       throw new RpcException({ status: 400, message: 'Invalid user ID' });
     }
     await this.prisma.user.update({
-      where: { id: user_id },
+      where: { id: user_id, deleted_at: null },
       data: {
         password_hash: newPasswordHash,
         reset_token_hash: null,
@@ -112,7 +112,7 @@ export class UsersService {
     // 1. Known identity: sign in
     const row = await this.prisma.identity.findUnique({
       where: { provider_subject: { provider: data.provider, subject: data.subject } },
-      include: { user: true },
+      include: { user: true, where: { deleted_at: null } },
     });
     return row?.user ? toUser(row.user) : null;
   }
