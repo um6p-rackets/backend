@@ -109,10 +109,18 @@ export class UsersService {
   }
 
   async getUserByIdentity(data: {provider: string, subject: string}): Promise<User | null> {
-    // 1. Known identity: sign in
-    const row = await this.prisma.identity.findUnique({
-      where: { provider_subject: { provider: data.provider, subject: data.subject } },
-      include: { user: true, where: { deleted_at: null } },
+    // Known identity: sign in
+    const row = await this.prisma.identity.findFirst({
+      where: {
+        provider: data.provider,
+        subject: data.subject,
+        user: {
+          deleted_at: null
+        }
+      },
+      include: { 
+        user: true 
+      },
     });
     return row?.user ? toUser(row.user) : null;
   }
