@@ -2,13 +2,7 @@ import { Inject, Injectable } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service.js';
 import { ClientProxy } from '@nestjs/microservices';
 import { ClubAccessService } from '../access/club-access.service.js';
-import {
-  AUTH_PATTERNS,
-  AUTH_SERVICE,
-  MatchMode,
-  rpcError,
-  User,
-} from '@app/contracts';
+import { AUTH_SERVICE, MatchMode, rpcError } from '@app/contracts';
 import {
   MatchesQueryDto,
   MatchRequestDto,
@@ -20,11 +14,9 @@ import {
   MatchStatus,
   MemberRole,
   Paginated,
-  Player,
-  TeamWithPlayers,
   UserHistoryMatch,
 } from '@app/contracts/club/index.js';
-import { rankingFunction, rpc, toFullString } from '@app/common';
+import { rankingFunction, toFullString } from '@app/common';
 import { LeaderboardService } from '../leaderboard/leaderboard.service.js';
 import { Prisma } from '../generated/prisma/client.js';
 import {
