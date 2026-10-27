@@ -9,7 +9,7 @@ import {
   Paginated,
 } from '@app/contracts/club/club.types.js';
 import { rpc, toFullString } from '@app/common';
-import { toSummary } from '../matches/helpers.js';
+import { toSummary } from '../helpers.js';
 
 @Injectable()
 export class AnnouncementsService {
@@ -72,7 +72,10 @@ export class AnnouncementsService {
       return {
         ...announcement,
         created_at: toFullString(announcement.created_at),
-        announcer: { ...toSummary(user, member?.user_id), member_id: announcement.announcer_id },
+        announcer: {
+          ...toSummary(user, member?.user_id),
+          member_id: announcement.announcer_id,
+        },
       };
     });
 

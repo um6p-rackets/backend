@@ -11,7 +11,7 @@ import {
 } from '@app/contracts/club/club.types.js';
 import { now, rpc, toFullString } from '@app/common';
 import { CreateAchievementDto } from '@app/contracts/club/dto/index.js';
-import { toSummary } from '../matches/helpers.js';
+import { toSummary } from '../helpers.js';
 
 @Injectable()
 export class AchievementsService {
@@ -43,9 +43,12 @@ export class AchievementsService {
     });
 
     const user_ids = achievements.map((achievement) => achievement.user_id);
-    const users = user_ids.length > 0 ? await rpc<User[]>(this.authClient, AUTH_PATTERNS.GET_USERS_BY_IDS, {
-      user_ids: user_ids,
-    }) : [];
+    const users =
+      user_ids.length > 0
+        ? await rpc<User[]>(this.authClient, AUTH_PATTERNS.GET_USERS_BY_IDS, {
+            user_ids: user_ids,
+          })
+        : [];
 
     const userMap = new Map(users.map((user) => [user.id, user]));
 
@@ -58,7 +61,7 @@ export class AchievementsService {
       }),
     );
 
-    // this will send server error in case of 
+    // this will send server error in case of
 
     return {
       data: achievementsWithUser,

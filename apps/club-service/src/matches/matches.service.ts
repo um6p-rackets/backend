@@ -34,7 +34,7 @@ import {
   playerWhere,
   STATUS_FILTER,
   toMatchDetail,
-} from './helpers.js';
+} from '../helpers.js';
 
 const memberSelect = { select: { id: true, user_id: true } } as const;
 const teamInclude = {

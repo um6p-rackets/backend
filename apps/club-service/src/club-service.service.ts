@@ -38,7 +38,7 @@ import { ClubStats } from '@app/contracts/admin/admin.types.js';
 
 import { addDays, dayOf, mondayOf, today, toDate } from '@app/common/dates.js';
 import { MatchStatus } from '@app/contracts/club/club.types.js'; // adjust path
-import { toSummary } from './matches/helpers.js';
+import { toSummary } from './helpers.js';
 
 @Injectable()
 export class ClubServiceService {

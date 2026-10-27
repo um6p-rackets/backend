@@ -24,7 +24,7 @@ import {
 import { AddMemberDto } from '@app/contracts/club/dto/index.js';
 import { AchievementsService } from '../achievements/achievements.service.js';
 import { MatchesService } from '../matches/matches.service.js';
-import { toSummary } from '../matches/helpers.js';
+import { toSummary } from '../helpers.js';
 
 @Injectable()
 export class MembersService {

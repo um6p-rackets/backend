@@ -11,7 +11,7 @@ import { ClubAccessService } from '../access/club-access.service.js';
 import { rpc } from '@app/common/helpers/rpc.helper.js';
 import { ClientProxy } from '@nestjs/microservices';
 import { Prisma } from '../generated/prisma/client.js';
-import { toSummary } from '../matches/helpers.js';
+import { toSummary } from '../helpers.js';
 
 @Injectable()
 export class LeaderboardService {

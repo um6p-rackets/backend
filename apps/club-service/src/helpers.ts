@@ -7,7 +7,7 @@ import {
   User,
   UserSummary,
 } from '@app/contracts';
-import { Prisma } from '../generated/prisma/client.js';
+import { Prisma } from './generated/prisma/client.js';
 import { ClientProxy } from '@nestjs/microservices';
 import { rpc, toFullString } from '@app/common';
 
