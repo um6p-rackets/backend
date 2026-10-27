@@ -13,6 +13,9 @@ import {
   rpcError,
   SenderType,
   User,
+  UserGlobalStat,
+  UserHistoryMatch,
+  UserProfileData,
 } from "@app/contracts";
 import { ClientProxy } from "@nestjs/microservices";
 import {
@@ -21,8 +24,13 @@ import {
   Paginated,
   MemberRole,
   JoinRequestStatus,
-} from "@app/contracts/club/club.types.js";
-import { AddMemberDto } from "@app/contracts/club/dto/index.js";
+  JoinedClub,
+  UserClubRank,
+} from '@app/contracts/club/club.types.js';
+import { AddMemberDto } from '@app/contracts/club/dto/index.js';
+import { AchievementsService } from '../achievements/achievements.service.js';
+import { MatchesService } from '../matches/matches.service.js';
+import { toSummary } from '../helpers.js';
 
 @Injectable()
 export class MembersService {
@@ -32,6 +40,8 @@ export class MembersService {
     private readonly clubAccessService: ClubAccessService,
     @Inject(NOTIFICATION_SERVICE)
     private readonly notificationClient: ClientProxy,
+    private readonly achievementsService: AchievementsService,
+    private readonly matchesService: MatchesService,
   ) {}
 
   async getClubMembers(
@@ -134,15 +144,9 @@ export class MembersService {
             `MembersService.getClubMembers: Mismatch in number of members and users. Members: ${members.length}, Users: ${users.length}`,
           );
         }
-        const members_with_user_summery: (MemberWithUser | null)[] =
-          members.map((member) => {
+        const members_with_user_summery: MemberWithUser[] = members.map(
+          (member) => {
             const user = users.find((user) => user.id === member.user_id);
-            if (!user) {
-              console.error(
-                `MembersService.getClubMembers: User not found for member with user_id: ${member.user_id}`,
-              );
-              return null;
-            }
             return {
               id: member.id,
               club_id: member.club_id,
@@ -150,16 +154,10 @@ export class MembersService {
               role: member.role,
               joined_at: toFullString(member.joined_at),
               left_at: member.left_at ? toFullString(member.left_at) : null,
-              user: {
-                id: user.id,
-                login: user.login,
-                first_name: user.first_name,
-                last_name: user.last_name,
-                department: user.department,
-                avatar: user.avatar,
-              },
+              user: toSummary(user, member.user_id),
             };
-          });
+          },
+        );
         const filtered_members = members_with_user_summery.filter(
           (member) => member !== null,
         ) as MemberWithUser[];
@@ -419,6 +417,306 @@ export class MembersService {
     return {
       status: 204,
       message: `Member with id ${member_id} has been removed from club ${club_slug}`,
+    };
+  }
+
+  // =========================== User Profile Data ===========================
+  async getUserProfile(user_id: number): Promise<UserProfileData> {
+    const joinedClubs = await this.getUserJoinedClubs(user_id);
+    const userAchievements =
+      await this.achievementsService.getUserAchievements(user_id);
+    const userClubRanks = await this.UserClubRank(user_id);
+    const userGlobalStats = await this.getUserGlobalStats(
+      user_id,
+      userClubRanks,
+    );
+
+    return {
+      joined_clubs: joinedClubs,
+      achievements: userAchievements,
+      club_ranks: userClubRanks,
+      global_stats: userGlobalStats,
+    };
+  }
+
+  async getUserClubsMatchesHistory(
+    user_id: number,
+    page: number,
+    limit: number,
+    getAllMatches: boolean,
+  ): Promise<Paginated<UserHistoryMatch>> {
+    const activeMemberships = await this.prisma.member.findMany({
+      where: { user_id, left_at: null },
+      select: {
+        id: true,
+        club_id: true,
+      },
+    });
+
+    if (activeMemberships.length === 0) {
+      return { data: [], page, limit, total: 0 };
+    }
+
+    const memberIds = activeMemberships.map((m) => m.id);
+    const clubIds = activeMemberships.map((m) => m.club_id);
+
+    return this.matchesService.getUserMatches(
+      user_id,
+      memberIds,
+      clubIds,
+      page,
+      limit,
+      getAllMatches,
+    );
+  }
+
+  async getUserJoinedClubs(user_id: number): Promise<JoinedClub[]> {
+    const memberClubs = await this.prisma.member.findMany({
+      where: { user_id, left_at: null },
+      select: {
+        // Club Info
+        club: {
+          select: {
+            id: true,
+            name: true,
+            slug: true,
+            description: true,
+            avatar: true,
+            created_at: true,
+          },
+        },
+        // Member info in this Club
+        id: true,
+        role: true,
+        joined_at: true,
+      },
+    });
+    return memberClubs.map((mc: (typeof memberClubs)[0]) => ({
+      club: {
+        ...mc.club,
+        created_at: toFullString(mc.club.created_at),
+      },
+      member_id: mc.id,
+      role: mc.role,
+      joined_at: toFullString(mc.joined_at),
+    }));
+  }
+
+  async UserClubRank(user_id: number): Promise<UserClubRank[]> {
+    // Fetch all leaderboard rows for this user (including tie-breaker fields)
+    const userRows = await this.prisma.leaderboard.findMany({
+      where: { user_id },
+      select: {
+        club_id: true,
+        points: true,
+        wins: true,
+        losses: true,
+        total_matches: true,
+        member_id: true,
+        club: {
+          select: {
+            name: true,
+            slug: true,
+          },
+        },
+      },
+    });
+    // Calculate the exact rank for each club
+    const userClubRanks: UserClubRank[] = await Promise.all(
+      userRows.map(async (row) => {
+        const higherRankedCount = await this.prisma.leaderboard.count({
+          where: {
+            club_id: row.club_id,
+            OR: [
+              // Tie-breaker rules perfectly matching @@index in prisma schema
+              { points: { gt: row.points } },
+              { points: row.points, wins: { gt: row.wins } },
+              {
+                points: row.points,
+                wins: row.wins,
+                losses: { lt: row.losses },
+              },
+              {
+                points: row.points,
+                wins: row.wins,
+                losses: row.losses,
+                total_matches: { gt: row.total_matches },
+              },
+              {
+                points: row.points,
+                wins: row.wins,
+                losses: row.losses,
+                total_matches: row.total_matches,
+                member_id: { lt: row.member_id },
+              },
+            ],
+          },
+        });
+
+        return {
+          club_id: row.club_id,
+          club_name: row.club.name,
+          club_slug: row.club.slug,
+          points: row.points,
+          rank: higherRankedCount + 1, // if no one above you, rank is 1
+        };
+      }),
+    );
+
+    return userClubRanks;
+  }
+
+  async getUserGlobalStats(
+    user_id: number,
+    userClubRanks: UserClubRank[],
+  ): Promise<UserGlobalStat> {
+    // Only one query needed now: aggregate the global totals
+    const stats = await this.prisma.leaderboard.aggregate({
+      where: { user_id },
+      _sum: {
+        points: true,
+        wins: true,
+        losses: true,
+        total_matches: true,
+      },
+      _max: {
+        win_streak: true,
+      },
+    });
+
+    // Determine best rank in-memory from the already-calculated ranks
+    let best_rank = null;
+    if (userClubRanks.length > 0) {
+      const bestClubRank = userClubRanks.reduce((best, current) => {
+        // A lower numerical rank is better (Rank 1 > Rank 2)
+        if (current.rank < best.rank) return current;
+        // Tie-breaker: If rank is identical, pick the one with more points
+        if (current.rank === best.rank && current.points > best.points)
+          return current;
+        return best;
+      });
+
+      best_rank = {
+        club_id: bestClubRank.club_id,
+        club_name: bestClubRank.club_name,
+        club_slug: bestClubRank.club_slug,
+        rank: bestClubRank.rank,
+        points: bestClubRank.points,
+      };
+    }
+
+    const wins = stats._sum.wins ?? 0;
+    const losses = stats._sum.losses ?? 0;
+    const points = stats._sum.points ?? 0;
+    const total_matches = stats._sum.total_matches ?? 0;
+    const highest_win_streak = stats._max.win_streak ?? 0;
+
+    // 0.00% -> 100.00%
+    const win_rate =
+      total_matches > 0 ? Number(((wins / total_matches) * 100).toFixed(2)) : 0;
+
+    return {
+      total_matches,
+      wins,
+      losses,
+      win_rate,
+      ladder_points: points,
+      current_win_streak: highest_win_streak,
+      best_rank: best_rank,
+    };
+  }
+
+  async whenUserDeleted(
+    user_id: number,
+  ): Promise<{ status: number; message: string }> {
+    // 1. get all memberships of the user, with role and club_id, where left_at is null
+    const memberships = await this.prisma.member.findMany({
+      where: {
+        user_id: user_id,
+        left_at: null,
+      },
+      select: {
+        id: true,
+        club_id: true,
+        role: true,
+      },
+    });
+
+    // 2. if the user is coach set oldest leader to coach, if no leader, set oldest member to coach, if no member, do nothing
+    for (const membership of memberships) {
+      if (membership.role === MemberRole.COACH) {
+        const oldestLeader = await this.prisma.member.findFirst({
+          where: {
+            club_id: membership.club_id,
+            role: MemberRole.LEADER,
+            left_at: null,
+          },
+          orderBy: {
+            joined_at: 'asc',
+          },
+        });
+
+        if (oldestLeader) {
+          await this.prisma.member.update({
+            where: {
+              id: oldestLeader.id,
+            },
+            data: {
+              role: MemberRole.COACH,
+            },
+          });
+        } else {
+          const oldestMember = await this.prisma.member.findFirst({
+            where: {
+              club_id: membership.club_id,
+              role: MemberRole.MEMBER,
+              left_at: null,
+            },
+            orderBy: {
+              joined_at: 'asc',
+            },
+          });
+
+          if (oldestMember) {
+            await this.prisma.member.update({
+              where: {
+                id: oldestMember.id,
+              },
+              data: {
+                role: MemberRole.COACH,
+              },
+            });
+          }
+        }
+      }
+    }
+
+    // 3. set left_at for all memberships of the user to now()
+    await this.prisma.member.updateMany({
+      where: {
+        user_id: user_id,
+        left_at: null,
+      },
+      data: {
+        left_at: now(),
+      },
+    });
+
+    // 4. set status of all pending join requests of the user to cancelled
+    await this.prisma.joinRequest.updateMany({
+      where: {
+        user_id: user_id,
+        status: JoinRequestStatus.PENDING,
+      },
+      data: {
+        status: JoinRequestStatus.CANCELLED,
+        decided_at: now(),
+      },
+    });
+
+    return {
+      status: 204,
+      message: `User with id ${user_id} has been removed from all clubs and their pending join requests have been cancelled.`,
     };
   }
 }

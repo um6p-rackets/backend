@@ -41,31 +41,33 @@ export class UserController {
     private readonly userService: UserService,
   ) {}
 
-  // @Get(':user_id')
-  // async getUserById(@Param() { user_id }: GetUserParamDto) {
-  //   console.log('[ClubController] Received request for user by id: ', user_id);
-  //   const user = this.authClient.send(AUTH_PATTERNS.GET_USER_BY_ID, {
-  //     user_id,
-  //   });
-  //   if (!user) {
-  //     throw new NotFoundException(`User with ID ${user_id} not found`);
-  //   }
-  //   return this.authClient.send(AUTH_PATTERNS.GET_USER_BY_ID, { user_id });
-  // }
-
-
   @Throttle({ default: { limit: REQUEST_LIMIT, ttl: REQUEST_TTL } })
   @HttpCode(200)
   @Get('me/profile')
-  async getCurrentUserProfile(@CurrentUser() authenticatedUser: AuthenticatedUser) : Promise<UserProfile> {
-    console.log('[UserController] Received request for current user profile: ', authenticatedUser.id);
+  async getCurrentUserProfile(
+    @CurrentUser() authenticatedUser: AuthenticatedUser,
+  ): Promise<UserProfile> {
+    console.log(
+      '[UserController] Received request for current user profile: ',
+      authenticatedUser.id,
+    );
     // Get Raw User First
-    const user = await rpc<User>(this.authClient, AUTH_PATTERNS.GET_USER_BY_ID, { user_id: authenticatedUser.id });
+    const user = await rpc<User>(
+      this.authClient,
+      AUTH_PATTERNS.GET_USER_BY_ID,
+      { user_id: authenticatedUser.id },
+    );
     if (!user) {
-      throw new NotFoundException(`User with ID ${authenticatedUser.id} not found`);
+      throw new NotFoundException(
+        `User with ID ${authenticatedUser.id} not found`,
+      );
     }
     // Get User Profile Data from Club Service [if he's a member]
-    const memberProfile = await rpc<UserProfileData>(this.clubClient, CLUB_PATTERNS.GET_USER_PROFILE, { user_id: authenticatedUser.id });
+    const memberProfile = await rpc<UserProfileData>(
+      this.clubClient,
+      CLUB_PATTERNS.GET_USER_PROFILE,
+      { user_id: authenticatedUser.id },
+    );
     return {
       user,
       memberProfile,
@@ -78,32 +80,74 @@ export class UserController {
   async getUserProfile(
     @Param() { user_id }: GetUserParamDto,
     // return type
-  ) : Promise<UserProfile> {
-    console.log('[UserController] Received request for user profile by id: ', user_id);
+  ): Promise<UserProfile> {
+    console.log(
+      '[UserController] Received request for user profile by id: ',
+      user_id,
+    );
     // Get Raw User First
-    const user = await rpc<User>(this.authClient, AUTH_PATTERNS.GET_USER_BY_ID, { user_id });
+    const user = await rpc<User>(
+      this.authClient,
+      AUTH_PATTERNS.GET_USER_BY_ID,
+      { user_id },
+    );
     if (!user) {
       throw new NotFoundException(`User with ID ${user_id} not found`);
     }
     // Get User Profile Data from Club Service [if he's a member]
-    const memberProfile = await rpc<UserProfileData>(this.clubClient, CLUB_PATTERNS.GET_USER_PROFILE, { user_id });
+    const memberProfile = await rpc<UserProfileData>(
+      this.clubClient,
+      CLUB_PATTERNS.GET_USER_PROFILE,
+      { user_id },
+    );
     return {
       user,
       memberProfile,
-    };  
+    };
+  }
+
+  // /users/:userId/memberships
+  @Get(':user_id/memberships')
+  async getUserMemberships(
+    @Param() { user_id }: GetUserParamDto,
+  ): Promise<JoinedClub[]> {
+    return rpc<JoinedClub[]>(
+      this.clubClient,
+      CLUB_PATTERNS.GET_USER_MEMBERSHIPS,
+      {
+        user_id: user_id,
+      },
+    );
+  }
+
+  // /users/:userId/achievements
+  @Get(':user_id/achievements')
+  async getUserAchievements(
+    @Param() { user_id }: GetUserParamDto,
+  ): Promise<Achievement[]> {
+    return rpc<Achievement[]>(
+      this.clubClient,
+      CLUB_PATTERNS.GET_USER_ACHIEVEMENTS,
+      {
+        user_id: user_id,
+      },
+    );
   }
 
   @Get(':user_id/matches')
   async getUserMatches(
-    @Param('user_id', ParseIntPipe) userId: number,
+    @Param() { user_id }: GetUserParamDto,
     @Query('page', new DefaultValuePipe(1), ParseIntPipe) page: number,
     @Query('limit', new DefaultValuePipe(10), ParseIntPipe) limit: number,
   ) {
-    return rpc<Paginated<UserHistoryMatch>>(this.clubClient, CLUB_PATTERNS.GET_USER_MATCHES, {
-      user_id: userId,
-      page,
-      limit,
-    });
+    return rpc<Paginated<UserHistoryMatch>>(
+      this.clubClient,
+      CLUB_PATTERNS.GET_USER_MATCHES,
+      {
+        user_id: user_id,
+        page,
+        limit,
+      },
+    );
   }
-
 }

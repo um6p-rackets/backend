@@ -6,15 +6,12 @@ import {
   JoinedClub,
   JoinRequestStatus,
   JoinRequestWithUser,
-  Leaderboard,
-  MatchStatus,
   MemberRole,
   Paginated,
   UserClubRank,
   UserGlobalStat,
   UserHistoryMatch,
   UserProfileData,
-  UserSummary,
 } from '@app/contracts/club/club.types.js';
 import { rpcError } from '@app/contracts/errors.js';
 import { Inject, Injectable } from '@nestjs/common';
@@ -23,10 +20,7 @@ import { ClubAccessService } from './access/club-access.service.js';
 import { UpdateClubDto } from '@app/contracts/club/dto/index.js';
 import { User } from '@app/contracts/auth/index.js';
 import { emitEvent, rpc } from '@app/common/helpers/rpc.helper.js';
-import {
-  AUTH_PATTERNS,
-  NOTIFICATION_PATTERNS,
-} from '@app/contracts/patterns.js';
+import { AUTH_PATTERNS } from '@app/contracts/patterns.js';
 import { ClientProxy } from '@nestjs/microservices';
 import { AUTH_SERVICE, NOTIFICATION_SERVICE } from '@app/contracts/queues.js';
 import { NOTIFICATION_EVENTS } from '@app/contracts/events.js';
@@ -39,6 +33,12 @@ import {
 import { now, toFullString } from '@app/common/dates.js';
 import { MatchesService } from './matches/matches.service.js';
 import { AchievementsService } from './achievements/achievements.service.js';
+import { CreateClubDto } from '@app/contracts/admin/dto/index.js';
+import { ClubStats } from '@app/contracts/admin/admin.types.js';
+
+import { addDays, dayOf, mondayOf, today, toDate } from '@app/common/dates.js';
+import { MatchStatus } from '@app/contracts/club/club.types.js'; // adjust path
+import { toSummary } from './helpers.js';
 
 @Injectable()
 export class ClubServiceService {
@@ -46,7 +46,7 @@ export class ClubServiceService {
     private readonly prisma: PrismaService,
     private readonly clubAccessService: ClubAccessService,
     private readonly achievementsService: AchievementsService,
-		private readonly matchesService: MatchesService,
+    private readonly matchesService: MatchesService,
     @Inject(AUTH_SERVICE) private readonly authClient: ClientProxy,
     @Inject(NOTIFICATION_SERVICE)
     private readonly notificationClient: ClientProxy,
@@ -55,9 +55,13 @@ export class ClubServiceService {
   // =========================== User Profile Data ===========================
   async getUserProfile(user_id: number): Promise<UserProfileData> {
     const joinedClubs = await this.getJoinedClubs(user_id);
-    const userAchievements = await this.achievementsService.getUserAchievements(user_id);
+    const userAchievements =
+      await this.achievementsService.getUserAchievements(user_id);
     const userClubRanks = await this.UserClubRank(user_id);
-    const userGlobalStats = await this.getUserGlobalStats(user_id, userClubRanks);
+    const userGlobalStats = await this.getUserGlobalStats(
+      user_id,
+      userClubRanks,
+    );
 
     return {
       joined_clubs: joinedClubs,
@@ -67,18 +71,17 @@ export class ClubServiceService {
     };
   }
 
-async getUserClubsHistory(
+  async getUserClubsHistory(
     user_id: number,
     page: number,
     limit: number,
     getAllMatches: boolean,
   ): Promise<Paginated<UserHistoryMatch>> {
-
     const activeMemberships = await this.prisma.member.findMany({
       where: { user_id, left_at: null },
-      select: { 
-        id: true, 
-        club_id: true 
+      select: {
+        id: true,
+        club_id: true,
       },
     });
 
@@ -195,7 +198,10 @@ async getUserClubsHistory(
     return userClubRanks;
   }
 
-  async getUserGlobalStats(user_id: number, userClubRanks: UserClubRank[]): Promise<UserGlobalStat> {
+  async getUserGlobalStats(
+    user_id: number,
+    userClubRanks: UserClubRank[],
+  ): Promise<UserGlobalStat> {
     // Only one query needed now: aggregate the global totals
     const stats = await this.prisma.leaderboard.aggregate({
       where: { user_id },
@@ -217,7 +223,8 @@ async getUserClubsHistory(
         // A lower numerical rank is better (Rank 1 > Rank 2)
         if (current.rank < best.rank) return current;
         // Tie-breaker: If rank is identical, pick the one with more points
-        if (current.rank === best.rank && current.points > best.points) return current;
+        if (current.rank === best.rank && current.points > best.points)
+          return current;
         return best;
       });
 
@@ -235,9 +242,10 @@ async getUserClubsHistory(
     const points = stats._sum.points ?? 0;
     const total_matches = stats._sum.total_matches ?? 0;
     const highest_win_streak = stats._max.win_streak ?? 0;
-    
+
     // 0.00% -> 100.00%
-    const win_rate = total_matches > 0 ? Number(((wins / total_matches) * 100).toFixed(2)) : 0;
+    const win_rate =
+      total_matches > 0 ? Number(((wins / total_matches) * 100).toFixed(2)) : 0;
 
     return {
       total_matches,
@@ -254,6 +262,7 @@ async getUserClubsHistory(
   async getAllClubs(): Promise<Club[]> {
     const result = await this.prisma.club.findMany({
       orderBy: { name: 'asc' },
+      where: { deleted_at: null },
     });
     return result.map((club) => ({
       ...club,
@@ -270,7 +279,7 @@ async getUserClubsHistory(
 
     // get club coach full name
     const club_coach = await this.prisma.member.findFirst({
-      where: { club_id: club.id, role: MemberRole.COACH },
+      where: { club_id: club.id, role: MemberRole.COACH, left_at: null },
     });
 
     if (club_coach) {
@@ -291,7 +300,7 @@ async getUserClubsHistory(
     }
 
     const membersCount = await this.prisma.member.count({
-      where: { club_id: club.id },
+      where: { club_id: club.id, left_at: null },
     });
     return {
       ...club,
@@ -365,7 +374,7 @@ async getUserClubsHistory(
     // }
 
     const updatedClub = await this.prisma.club.update({
-      where: { id: club.id },
+      where: { id: club.id, deleted_at: null },
       data: {
         name: body.name ?? club.name,
         description: body.description ?? club.description,
@@ -517,18 +526,16 @@ async getUserClubsHistory(
           },
           select: { user_id: true },
         }),
-        rpc<User | null>(
-          this.authClient,
-          AUTH_PATTERNS.GET_USER_BY_ID,
-          { user_id },
-        ),
-      ]); 
+        rpc<User | null>(this.authClient, AUTH_PATTERNS.GET_USER_BY_ID, {
+          user_id,
+        }),
+      ]);
 
       const notify_data: NotificationEventDto = {
         event_id: `${NOTIFICATION_EVENTS.JOIN_REQUESTED}:${club.id}:${user_id}`,
         sender_type: SenderType.USER,
         sender_id: String(user_id),
-        sender_name: user ? `${user.first_name} ${user.last_name}`: null,
+        sender_name: user ? `${user.first_name} ${user.last_name}` : null,
         sender_avatar_url: user?.avatar ?? null,
         category: NotificationCategory.CLUB,
         type: NotificationType.JOIN_REQUESTED,
@@ -597,22 +604,12 @@ async getUserClubsHistory(
       : [];
     const userById = new Map(users.map((u) => [u.id, u]));
 
-    // only the summary fields: User also has email and phone, which a leader should not get here
-    const toSummary = (u: User): UserSummary => ({
-      id: u.id,
-      login: u.login,
-      first_name: u.first_name,
-      last_name: u.last_name,
-      avatar: u.avatar,
-      department: u.department,
-    });
-
     return {
       data: requests.map((r) => ({
         ...r,
         requested_at: r.requested_at.toISOString(),
         decided_at: r.decided_at?.toISOString() ?? null,
-        user: toSummary(userById.get(r.user_id)!),
+        user: toSummary(userById.get(r.user_id), r.user_id),
       })),
       page,
       limit,
@@ -782,5 +779,135 @@ async getUserClubsHistory(
       throw rpcError(404, 'You are not a member of this club', 'Not Found');
     }
     return { success: true, message: 'You have successfully left the club.' };
+  }
+
+  async createClub(body: CreateClubDto): Promise<Club> {
+    // we already verfied the coach_user_id exists in the auth service, so we can safely create the club
+
+    const slug = body.name.trim().toLowerCase().replace(/\s+/g, '-');
+
+    // check if slug already exists
+    const existingClub = await this.prisma.club.findUnique({
+      where: { slug, deleted_at: null },
+    });
+    if (existingClub) {
+      throw rpcError(400, 'Club name already exists', 'Bad Request');
+    }
+    // create the club and return it
+    const club = await this.prisma.club.create({
+      data: {
+        name: body.name.trim(),
+        description: body.description?.trim() ?? null,
+        slug: slug,
+        created_at: now(),
+      },
+    });
+
+    // add the coach as a member of the club
+    await this.prisma.member.create({
+      data: {
+        club_id: club.id,
+        user_id: body.coach_user_id,
+        role: MemberRole.COACH,
+        joined_at: now(),
+      },
+    });
+
+    // TODO notify: the coach
+
+    return { ...club, created_at: toFullString(club.created_at) };
+  }
+
+  async deleteClub(
+    club_slug: string,
+  ): Promise<{ success: true; message: string }> {
+    const club = await this.clubAccessService.getClub(club_slug);
+    // soft delete + anonymize
+    await this.prisma.club.update({
+      where: { id: club.id, deleted_at: null },
+      data: {
+        deleted_at: now(),
+        name: `deleted-club-${club.name}-${club.id}`, // name is unique, so we cannot reuse it, but we can anonymize it
+        description: null,
+        slug: `deleted-club-${club.slug}-${club.id}`,
+        avatar: null,
+      },
+    });
+
+    // for club memberships, we can set left_at to now() for all members, but we don't delete the rows to keep history
+    await this.prisma.member.updateMany({
+      where: { club_id: club.id, left_at: null },
+      data: { left_at: now() },
+    });
+
+    // TODO notify: the club's members
+    return { success: true, message: 'Club deleted successfully.' };
+  }
+
+  async getClubStats(weeks: number): Promise<ClubStats> {
+    const thisWeek = mondayOf(today());
+    const firstWeek = addDays(thisWeek, -7 * (weeks - 1));
+    const from = toDate(firstWeek);
+    const to = toDate(addDays(thisWeek, 7)); // exclusive, no future weeks
+
+    const [clubs, members, perClub, matches, bookings] = await Promise.all([
+      this.prisma.club.count({ where: { deleted_at: null } }),
+      this.prisma.member.count({
+        where: { left_at: null, club: { deleted_at: null } },
+      }),
+      this.prisma.club.findMany({
+        where: { deleted_at: null },
+        select: {
+          id: true,
+          name: true,
+          slug: true,
+          _count: { select: { members: { where: { left_at: null } } } },
+        },
+      }),
+      this.prisma.match.findMany({
+        where: {
+          scheduled_at: { gte: from, lt: to },
+          status: { not: MatchStatus.CANCELLED },
+          club: { deleted_at: null },
+        },
+        select: { scheduled_at: true },
+      }),
+      this.prisma.sessionAttend.findMany({
+        where: {
+          created_at: { gte: from, lt: to },
+          session: { cancelled_at: null, club: { deleted_at: null } },
+        },
+        select: { created_at: true },
+      }),
+    ]);
+
+    // every week starts at 0, so empty weeks still appear
+    const weekly = new Map<string, { matches: number; bookings: number }>();
+    for (let i = 0; i < weeks; i++) {
+      weekly.set(addDays(firstWeek, 7 * i), { matches: 0, bookings: 0 });
+    }
+
+    for (const { scheduled_at } of matches) {
+      const w = weekly.get(mondayOf(dayOf(scheduled_at)));
+      if (w) w.matches++;
+    }
+    for (const { created_at } of bookings) {
+      const w = weekly.get(mondayOf(dayOf(created_at)));
+      if (w) w.bookings++;
+    }
+
+    return {
+      clubs,
+      members,
+      members_per_club: perClub
+        .map((c) => ({
+          club_id: c.id,
+          name: c.name,
+          slug: c.slug,
+          members_count: c._count.members,
+        }))
+        .sort((a, b) => b.members_count - a.members_count),
+      weekly: [...weekly].map(([week_start, v]) => ({ week_start, ...v })),
+    };
   }
 }

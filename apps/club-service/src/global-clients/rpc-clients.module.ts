@@ -31,4 +31,4 @@ import { rmqOptions } from '@app/rmq';
   ],
   exports: [ClientsModule],
 })
-export class AuthClientModule {}
+export class RPCClientsModule {}

@@ -9,6 +9,8 @@ import {
   Paginated,
 } from '@app/contracts/club/club.types.js';
 import { emitEvent, rpc, toFullString } from '@app/common';
+import { rpc, toFullString } from '@app/common';
+import { toSummary } from '../helpers.js';
 
 @Injectable()
 export class AnnouncementsService {
@@ -69,30 +71,12 @@ export class AnnouncementsService {
       const member = memberById.get(announcement.announcer_id);
       const user = member && userById.get(member.user_id);
 
-      // if (!member)
-      //   throw rpcError(
-      //     500,
-      //     'Announcer member info not found',
-      //     'Internal Server Error',
-      //   );
-      // if (!user)
-      //   throw rpcError(
-      //     500,
-      //     'Announcer user info not found',
-      //     'Internal Server Error',
-      //   );
-
       return {
         ...announcement,
         created_at: toFullString(announcement.created_at),
         announcer: {
-          id: user?.id ?? 0,
-          login: user?.login ?? "",
-          first_name: user?.first_name ?? "",
-          last_name: user?.last_name ?? "",
-          avatar: user?.avatar ?? "",
-          department: user?.department ?? "",
-          member_id: member?.id ?? 0,
+          ...toSummary(user, member?.user_id),
+          member_id: announcement.announcer_id,
         },
       };
     });

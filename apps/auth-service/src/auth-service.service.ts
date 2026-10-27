@@ -55,7 +55,7 @@ export class AuthServiceService {
     }
 
     // Issue the new JWT & Opaque Refresh Token pair
-    const tokens = await this.tokensService.issue(user.id, user.login);
+    const tokens = await this.tokensService.issue(user.id, user.login, user.role);
 
     return {
       user, 
@@ -71,7 +71,7 @@ export class AuthServiceService {
       throw rpcError(401, 'Invalid credentials', 'Unauthorized');
     }
 
-    const tokens = await this.tokensService.issue(user.id, user.login);
+    const tokens = await this.tokensService.issue(user.id, user.login, user.role);
 
     // Return exact shape for the Gateway
     return {
@@ -105,7 +105,7 @@ export class AuthServiceService {
       });
 
       if (user) {
-        const tokens = await this.tokensService.issue(user.id, user.login);
+        const tokens = await this.tokensService.issue(user.id, user.login, user.role);
         return { ...tokens, user };
       }
 
@@ -123,7 +123,7 @@ export class AuthServiceService {
         finalUser = await this.usersService.createIdentityUser(login, dto);
       }
 
-      const tokens = await this.tokensService.issue(finalUser.id, finalUser.login);
+      const tokens = await this.tokensService.issue(finalUser.id, finalUser.login, finalUser.role);
       return { ...tokens, user: finalUser };
     }
     throw rpcError(500, 'Could not create account', 'Internal Server Error');

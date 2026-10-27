@@ -9,6 +9,7 @@ import { UsersModule } from './users/users.module.js';
 import { TokensModule } from './tokens/tokens.module.js';
 import { PrismaModule } from './prisma/prisma.module.js';
 import { EmailModule } from './email/email.module.js';
+import { AdminModule } from './admin/admin.module.js';
 
 
 @Module({
@@ -22,6 +23,7 @@ import { EmailModule } from './email/email.module.js';
     TokensModule,
     PrismaModule,
     EmailModule,
+    AdminModule,
   ],
   controllers: [AuthServiceController],
   providers: [AuthServiceService],

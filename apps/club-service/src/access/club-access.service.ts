@@ -9,7 +9,7 @@ export class ClubAccessService {
   constructor(private readonly prisma: PrismaService) {}
 
   async getClub(slug: string) {
-    const club = await this.prisma.club.findUnique({ where: { slug } });
+    const club = await this.prisma.club.findUnique({ where: { slug, deleted_at: null } });
     if (!club) throw rpcError(404, 'Club not found', 'Not Found');
     return club;
   }

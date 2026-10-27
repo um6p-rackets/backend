@@ -1,4 +1,4 @@
-import { CLUB_PATTERNS, CLUB_SERVICE } from '@app/contracts';
+import { CLUB_PATTERNS, CLUB_SERVICE, ClubLeaderboard } from '@app/contracts';
 import {
   Controller,
   Delete,
@@ -18,6 +18,7 @@ import { rpc } from '../../../../libs/common/src/helpers/rpc.helper.js';
 import { Body } from '@nestjs/common';
 import {
   ClubSlugParamDto,
+  LeaderboardQueryDto,
   JoinRequestParamDto,
   PaginationQueryDto,
   UpdateClubDto,
@@ -84,16 +85,20 @@ export class ClubController {
   async getClubLeaderboard(
     @Param() { slug }: ClubSlugParamDto,
     @CurrentUser() user: AuthenticatedUser,
-    @Query() query: PaginationQueryDto,
+    @Query() query: LeaderboardQueryDto,
   ) {
     console.log(
       `[ClubController] Received request for club leaderboard for slug: ${slug}, and send request to Club Service`,
     );
-    return await rpc(this.clubClient, CLUB_PATTERNS.GET_CLUB_LEADERBOARD, {
-      club_slug: slug,
-      user_id: user.id,
+    // If no target_user_id is provided, we target the requester_id to get their rank in the leaderboard
+    if (!query.target_user_id) {
+      query.target_user_id = user.id;
+    }
+    return await rpc<ClubLeaderboard>(this.clubClient, CLUB_PATTERNS.GET_CLUB_LEADERBOARD, {
+      slug,
       page: query.page,
       limit: query.limit,
+      target_user_id: query.target_user_id,
     });
   }
 

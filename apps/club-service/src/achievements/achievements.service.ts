@@ -11,6 +11,7 @@ import {
 } from '@app/contracts/club/club.types.js';
 import { now, rpc, toFullString } from '@app/common';
 import { CreateAchievementDto } from '@app/contracts/club/dto/index.js';
+import { toSummary } from '../helpers.js';
 
 @Injectable()
 export class AchievementsService {
@@ -41,10 +42,13 @@ export class AchievementsService {
       where: { club_id: club.id },
     });
 
-    const userIds = achievements.map((achievement) => achievement.user_id);
-    const users = await rpc<User[]>(this.authClient, AUTH_PATTERNS.GET_USERS_BY_IDS, {
-      user_ids: userIds,
-    });
+    const user_ids = achievements.map((achievement) => achievement.user_id);
+    const users =
+      user_ids.length > 0
+        ? await rpc<User[]>(this.authClient, AUTH_PATTERNS.GET_USERS_BY_IDS, {
+            user_ids: user_ids,
+          })
+        : [];
 
     const userMap = new Map(users.map((user) => [user.id, user]));
 
@@ -53,18 +57,11 @@ export class AchievementsService {
         ...achievement,
         code: achievement.code as Achievement['code'],
         taken_at: toFullString(achievement.taken_at),
-        user: userMap.get(achievement.user_id) || {
-          id: achievement.user_id,
-          first_name: 'Unknown',
-          last_name: 'User',
-          login: 'unknown',
-          department: null,
-          avatar: null,
-        },
+        user: toSummary(userMap.get(achievement.user_id), achievement.user_id),
       }),
     );
 
-    // this will send server error in case of 
+    // this will send server error in case of
 
     return {
       data: achievementsWithUser,
