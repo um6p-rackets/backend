@@ -145,7 +145,6 @@ export class AuthController {
         @Req() req: Request,
         @Res() res: Response
     ): Promise<void> {
-        console.log('googleCallback', { code, state, error });
         if (error === 'access_denied') {
               return res.redirect(new URL('?error=oauth_cancelled', this.cfg.frontendRedirectUrl).toString());
         }
@@ -195,13 +194,12 @@ export class AuthController {
     @Post('reset-password')
     async resetPassword(
         @Body() dto: ResetPasswordDto,
-        @Res({ passthrough: true }) res: Response,
+        // @Res({ passthrough: true }) res: Response,
     ): Promise<SuccessResult> {
         return await rpc<SuccessResult>(this.authClient, AUTH_PATTERNS.RESET_PASSWORD, {
             token: dto.token,
             password: dto.password,
         });
-        // res.redirect(new URL('?success=password_reset', this.cfg.frontendRedirectUrl).toString());
     }
 
     @Throttle({ default: { limit: REQUEST_LIMIT, ttl: REQUEST_TTL } })
@@ -213,7 +211,6 @@ export class AuthController {
         return { user };
     }
 
-    // /login-available?login=abc 
     @Public()
     @Throttle({ default: { limit: REQUEST_LIMIT, ttl: REQUEST_TTL } })
     @Get('login-available')
