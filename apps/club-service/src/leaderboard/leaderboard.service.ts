@@ -5,6 +5,7 @@ import {
   AUTH_SERVICE,
   ClubLeaderboard,
   MemberRole,
+  rpcError,
   User,
 } from '@app/contracts';
 import { ClubAccessService } from '../access/club-access.service.js';
@@ -152,7 +153,7 @@ export class LeaderboardService {
     });
 
     if (!club) {
-      throw new Error(`Club with slug ${clubSlug} not found`);
+      throw rpcError(404, `Club with slug ${clubSlug} not found`, 'Bad Request');
     }
 
     const rowsToSkip = (page - 1) * limit;
