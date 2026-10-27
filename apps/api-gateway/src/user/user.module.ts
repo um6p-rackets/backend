@@ -6,6 +6,7 @@ import { AUTH_SERVICE, CLUB_SERVICE, QUEUES } from '@app/contracts';
 import { rmqOptions } from '@app/rmq';
 import { UserController } from './user.controller.js';
 import { UserService } from './user.service.js';
+import { AuthModule } from '../auth/auth.module.js';
 
 @Module({
   imports: [
@@ -33,6 +34,7 @@ import { UserService } from './user.service.js';
         },
       },
     ]),
+    AuthModule,
   ],
   controllers: [UserController],
   providers: [UserService],

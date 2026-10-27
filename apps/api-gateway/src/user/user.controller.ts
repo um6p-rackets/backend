@@ -7,6 +7,7 @@ import {
   GetUserParamDto,
   JoinedClub,
   Paginated,
+  UpdateUserDto,
   User,
   UserClubRank,
   UserHistoryMatch,
@@ -14,6 +15,7 @@ import {
   UserProfileData,
 } from '@app/contracts';
 import {
+    Body,
   Controller,
   DefaultValuePipe,
   Get,
@@ -104,6 +106,23 @@ export class UserController {
       user,
       memberProfile,
     };
+  }
+
+  @Throttle({ default: { limit: REQUEST_LIMIT, ttl: REQUEST_TTL } })
+  @Patch('me')
+  async updateProfile(
+    @CurrentUser() user: AuthenticatedUser,
+    @Body() dto: UpdateUserDto,
+  ): Promise<{ user: User }> {
+    // Enforce ownership: The user can only update their own ID
+    const payload = { user_id: user.id, profileData: { ...dto } };
+
+    const updatedUser = await rpc<User>(
+      this.authClient,
+      AUTH_PATTERNS.UPDATE_USER,
+      payload,
+    );
+    return { user: updatedUser };
   }
 
   // /users/:userId/memberships
