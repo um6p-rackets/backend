@@ -10,7 +10,7 @@ export class PaginationQueryDto {
   limit: number = 10;
 }
 
-export class GetUsersQueryDto extends PaginationQueryDto {
+export class LeaderboardQueryDto extends PaginationQueryDto {
   @IsOptional()
   @IsIdParam('target_user_id')
   target_user_id?: number;

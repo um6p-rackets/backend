@@ -143,16 +143,18 @@ export class LeaderboardService {
 
   async getClubLeaderboard(
     clubSlug: string,
-    requester_id: number, // The person making the request [me] (for auth/access)
     page: number,
     limit: number,
-    target_user_id?: number, // The profile being viewed (optional)
+    target_user_id: number, // The profile being viewed (optional)
   ): Promise<ClubLeaderboard> {
-    const { club } = await this.clubAccessService.requireRole(
-      clubSlug,
-      requester_id,
-      MemberRole.MEMBER,
-    );
+
+    const club = await this.prisma.club.findUnique({
+      where: { slug: clubSlug },
+    });
+
+    if (!club) {
+      throw new Error(`Club with slug ${clubSlug} not found`);
+    }
 
     const rowsToSkip = (page - 1) * limit;
 
