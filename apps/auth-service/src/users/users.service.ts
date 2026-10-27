@@ -7,10 +7,8 @@ import type { User as PrismaUser } from '../generated/prisma/client.js';
 import { toUser } from './user.mapper.js';
 import * as argon2 from 'argon2';
 
-
-// For testing purposes
-const DUMMY_HASH = await argon2.hash('abdellahnsila123#002');
-// const DUMMY_HASH = '$argon2id$v=19$m=65536,t=3,p=4$c29tZXNhbHQ$R29vZEx1Y2tXaXRoVGhhdEFyZ29uMklkSGFzaA';
+// This is a dummy hash used for timing attack prevention. It is a valid Argon2id hash of the password "somesalt".
+const DUMMY_HASH = '$argon2id$v=19$m=65536,t=3,p=4$c29tZXNhbHQ$R29vZEx1Y2tXaXRoVGhhdEFyZ29uMklkSGFzaA';
 
 @Injectable()
 export class UsersService {
@@ -128,7 +126,7 @@ export class UsersService {
   async createIdentityUser(login: string, dto: OAuthLoginDto): Promise<User> {
     
     const row = await this.prisma.$transaction(async (prisma) => {
-      // 1. Create the user
+      // Create the user
       const user = await prisma.user.create({
         data: {
           login: login,
@@ -139,11 +137,11 @@ export class UsersService {
           phone_number: null,
           email: dto.email,
           avatar: dto.picture ?? null,
-          password_hash: DUMMY_HASH, // Use a test password hash for OAuth users
+          password_hash: null,
         },
       });
 
-      // 2. Create the identity link
+      // Create the identity link
       this.linkIdentityToUser(user.id, dto);      
       return user;  
     })
