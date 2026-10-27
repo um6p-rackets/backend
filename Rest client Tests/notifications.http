@@ -42,5 +42,8 @@ POST {{API}}/notifications/1/read
 
 ### 2e. Notifications - mark all notifications as read for user_id=1
 POST {{API}}/notifications/read-all
+{
+  "count": 2
+}
 
 ### 

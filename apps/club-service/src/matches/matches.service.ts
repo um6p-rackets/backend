@@ -355,19 +355,13 @@ export class MatchesService {
       );
     }
 
-    console.log(
-      'match.scheduled_at:',
-      match.scheduled_at,
-      'new Date():',
-      new Date(),
-    );
-    if (match.scheduled_at <= new Date()) {
-      throw rpcError(
-        422,
-        'Cannot accept a match whose scheduled time has already passed',
-        'Unprocessable Entity',
-      );
-    }
+    // if (match.scheduled_at <= new Date()) {
+    //   throw rpcError(
+    //     422,
+    //     'Cannot accept a match whose scheduled time has already passed',
+    //     'Unprocessable Entity',
+    //   );
+    // }
 
     // leader+ can't accept a match that they are part of
     const isInMatch =
