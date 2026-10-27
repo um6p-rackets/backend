@@ -109,15 +109,13 @@ export class ClubServiceController {
     @Payload()
     payload: {
       slug: string;
-      requester_id: number;
       page: number;
       limit: number;
-      target_user_id?: number;
+      target_user_id: number;
     },
   ) : Promise<ClubLeaderboard>{
     return this.leaderboardService.getClubLeaderboard(
       payload.slug,
-      payload.requester_id,
       payload.page,
       payload.limit,
       payload.target_user_id,
