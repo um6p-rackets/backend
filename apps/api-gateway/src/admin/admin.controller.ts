@@ -4,8 +4,6 @@ import {
   Controller,
   Delete,
   Get,
-  HttpCode,
-  HttpStatus,
   Param,
   Patch,
   Post,
@@ -33,11 +31,11 @@ import { AdminService } from './admin.service.js';
 export class AdminController {
   constructor(private readonly adminService: AdminService) {}
 
-  // jsut for testing, remove after there is anotehr endopoint works
-  @Get('ping')
-  ping() {
-    return { ok: true };
-  }
+  // jsut for testing, remove after there is another endopoint works
+  // @Get('ping')
+  // ping() {
+  //   return { ok: true, message: 'pingooooo' };
+  // }
 
   // GET /admin/users
   @Get('users')

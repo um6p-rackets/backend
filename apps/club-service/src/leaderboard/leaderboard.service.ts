@@ -4,15 +4,14 @@ import {
   AUTH_PATTERNS,
   AUTH_SERVICE,
   ClubLeaderboard,
-  Leaderboard,
   MemberRole,
-  Paginated,
   User,
 } from '@app/contracts';
 import { ClubAccessService } from '../access/club-access.service.js';
 import { rpc } from '@app/common/helpers/rpc.helper.js';
 import { ClientProxy } from '@nestjs/microservices';
 import { Prisma } from '../generated/prisma/client.js';
+import { toSummary } from '../helpers.js';
 
 @Injectable()
 export class LeaderboardService {
@@ -237,15 +236,7 @@ export class LeaderboardService {
         total_matches: row.total_matches,
         win_streak: row.win_streak,
         best_win_streak: row.best_win_streak,
-        player: {
-          id: row.user_id,
-          login: user?.login || 'Unknown',
-          first_name: user?.first_name || 'Unknown',
-          last_name: user?.last_name || 'Player',
-          avatar: user?.avatar || null,
-          department: user?.department || null,
-          member_id: row.member_id,
-        },
+        player: { ...toSummary(user, row.user_id), member_id: row.member_id },
       };
     });
 
@@ -262,12 +253,7 @@ export class LeaderboardService {
         win_streak: targetUserDbRow.win_streak,
         best_win_streak: targetUserDbRow.best_win_streak,
         player: {
-          id: targetUserDbRow.user_id,
-          login: user?.login || 'Unknown',
-          first_name: user?.first_name || 'Unknown',
-          last_name: user?.last_name || 'Player',
-          avatar: user?.avatar || null,
-          department: user?.department || null,
+          ...toSummary(user, targetUserDbRow.user_id),
           member_id: targetUserDbRow.member_id,
         },
       };
