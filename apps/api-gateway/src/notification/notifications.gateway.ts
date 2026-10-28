@@ -6,13 +6,7 @@ import {
 import type { Server, Socket } from 'socket.io';
 import { WsAuthService } from './ws-auth.service.js';
 
-@WebSocketGateway({
-  namespace: '/notifications',
-  cors: {
-    origin: 'http://localhost:3000',
-    credentials: true,
-  },
-})
+@WebSocketGateway({ namespace: '/notifications' })
 
 export class NotificationsGateway implements OnGatewayConnection {
   @WebSocketServer()
