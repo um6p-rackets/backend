@@ -38,15 +38,16 @@ CMD ["sh", "-c", "npm run prisma:${APP_NAME} -- db seed"]
 FROM node:24.21.0-alpine3.24
 
 WORKDIR /usr/src/app
-ARG APP_NAME
 
 ENV NODE_ENV=production
-ENV EXEC_PATH=/usr/src/app/dist/apps/${APP_NAME}/main.js
 
 COPY --chown=node:node package*.json ./
 
 # install production dependencies and clean npm cache to reduce image size, --omit=dev flag is used to skip dev dependencies
 RUN npm ci --omit=dev && npm cache clean --force
+
+ARG APP_NAME
+ENV EXEC_PATH=/usr/src/app/dist/apps/${APP_NAME}/main.js
 
 COPY --from=build --chown=node:node  /usr/src/app/dist ./dist
 
